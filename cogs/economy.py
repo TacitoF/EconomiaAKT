@@ -75,7 +75,7 @@ class Economy(commands.Cog):
 
     @commands.command()
     async def comprar(self, ctx, *, item: str):
-        """Lógica de compra (Etapa 2)."""
+        """Lógica de compra."""
         user_id = str(ctx.author.id)
         user = db.get_user_data(user_id)
         if not user: return await ctx.send("❌ Use `!trabalhar` primeiro!")
@@ -101,6 +101,30 @@ class Economy(commands.Cog):
         else:
             db.update_value(user['row'], 6, escolha.capitalize())
             await ctx.send(f"🛡️ Você comprou um **{escolha.capitalize()}**!")
+
+    @commands.command(name="wipe")
+    async def wipe_planilha(self, ctx):
+        """Limpa toda a planilha (Dono apenas)."""
+        MEU_ID = 757752617722970243
+        
+        if ctx.author.id != MEU_ID:
+            return await ctx.send("❌ Você não tem permissão para usar este comando de mestre! 🍌")
+
+        await ctx.send("🧹 Iniciando limpeza total da planilha de economia...")
+
+        try:
+            # Pega todos os registros da planilha
+            records = db.sheet.get_all_records()
+            
+            if len(records) > 0:
+                # Apaga da linha 2 até a última (preserva o cabeçalho na linha 1)
+                db.sheet.delete_rows(2, len(records) + 1)
+                await ctx.send("✅ **RESET TOTAL CONCLUÍDO!** A economia do AKTrovão voltou ao zero.")
+            else:
+                await ctx.send("🤔 A planilha já está vazia (apenas o cabeçalho existe).")
+                
+        except Exception as e:
+            await ctx.send(f"⚠️ Ocorreu um erro ao tentar limpar a planilha: {e}")
 
 def setup(bot):
     bot.add_cog(Economy(bot))
