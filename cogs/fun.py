@@ -22,14 +22,14 @@ class Fun(commands.Cog):
 
         # Tabela de Preços (Valores altos para ser algo raro/especial)
         precos = {
-            "mute": {1: 1000, 5: 4000, 10: 7000},
-            "deaf": {1: 1500, 5: 5000, 10: 9000},
-            "total": {1: 3000, 5: 8000, 10: 15000}
+            "mudo": {1: 1000, 5: 4000, 10: 7000},
+            "surdo": {1: 1500, 5: 5000, 10: 9000},
+            "surdomudo": {1: 3000, 5: 8000, 10: 15000}
         }
 
         tipo = tipo.lower()
         if tipo not in precos or tempo not in precos[tipo]:
-            return await ctx.send("❌ Opção inválida! Escolha entre `mute`, `deaf` ou `total` e tempos de `1`, `5` ou `10` minutos.")
+            return await ctx.send("❌ Opção inválida! Escolha entre `mudo`, `surdo` ou `surdomudo` e tempos de `1`, `5` ou `10` minutos.")
 
         custo = precos[tipo][tempo]
         saldo_atual = int(user['data'][2])

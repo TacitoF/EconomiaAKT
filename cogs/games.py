@@ -8,9 +8,12 @@ class Games(commands.Cog):
         self.bot = bot
 
     async def cog_before_invoke(self, ctx):
-        # Esta função corre antes de QUALQUER comando deste arquivo
         if ctx.channel.name != 'cassino-conguito':
-            await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal #cassino-conguito.")
+            # Procuramos o objeto do canal pelo nome para criar a menção clicável
+            canal = disnake.utils.get(ctx.guild.channels, name='cassino-conguito')
+            mencao = canal.mention if canal else "#cassino-conguito"
+            
+            await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal {mencao}.")
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command()
@@ -30,14 +33,14 @@ class Games(commands.Cog):
             status = "🍌 PAR!"
         else:
             ganho = -aposta
-            status = "💀 PERDESTE"
+            status = "💀 PERDEU"
 
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
         await ctx.send(f"🎰 [ {' | '.join(res)} ]\n{status} Resultado: **{ganho} Conguitos**.")
 
     @commands.command()
     async def roubar(self, ctx, vitima: disnake.Member):
-        if vitima.id == ctx.author.id: return await ctx.send("🐒 Não podes roubar a ti mesmo!")
+        if vitima.id == ctx.author.id: return await ctx.send("🐒 Não pode roubar de você mesmo!")
         
         ladrão = db.get_user_data(str(ctx.author.id))
         alvo = db.get_user_data(str(vitima.id))
@@ -52,12 +55,12 @@ class Games(commands.Cog):
             valor = int(int(alvo['data'][2]) * 0.2)
             db.update_value(ladrão['row'], 3, int(ladrão['data'][2]) + valor)
             db.update_value(alvo['row'], 3, int(alvo['data'][2]) - valor)
-            await ctx.send(f"🥷 SUCESSO! Roubaste **{valor} Conguitos** de {vitima.name}!")
+            await ctx.send(f"🥷 SUCESSO! Você roubou **{valor} Conguitos** de {vitima.name}!")
         else:
             multa = int(int(ladrão['data'][2]) * 0.15)
             db.update_value(ladrão['row'], 3, int(ladrão['data'][2]) - multa)
             db.update_value(alvo['row'], 3, int(alvo['data'][2]) + multa)
-            await ctx.send(f"👮 O macaco policial apanhou-te! Pagaste **{multa} Conguitos** à vítima.")
+            await ctx.send(f"👮 O macaco policial te pegou! Você pagou **{multa} Conguitos** para a  vítima.")
 
 def setup(bot):
     bot.add_cog(Games(bot))
