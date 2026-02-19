@@ -21,4 +21,14 @@ def update_value(row, col, value):
 
 def create_user(user_id, name):
     # ID, Nome, Saldo, Cargo, LastWork, Inventário
-    sheet.append_row([user_id, name, 0, "Estagiário", 0, "Nenhum"])
+    sheet.append_row([user_id, name, 0, "Macaquinho", 0, "Nenhum"])
+
+def wipe_database():
+    """Apaga todos os dados da planilha, preservando o cabeçalho."""
+    # Obtém todas as linhas
+    rows = sheet.get_all_values()
+    
+    # Se houver mais de uma linha (além do cabeçalho)
+    if len(rows) > 1:
+        # Apaga da linha 2 até a última
+        sheet.delete_rows(2, len(rows))
