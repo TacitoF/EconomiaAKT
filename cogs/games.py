@@ -34,8 +34,8 @@ class Games(commands.Cog):
                 'briga_de_bar': set(),
                 'ima_desgraca': set(),
                 'veterano_coco': set(),
-                'queda_livre': set(),      # NOVO: Azar no Crash (1.0x)
-                'astronauta_cipo': set()   # NOVO: Coragem no Crash (>=5.0x)
+                'queda_livre': set(),      
+                'astronauta_cipo': set()   
             }
 
     async def cog_before_invoke(self, ctx):
@@ -51,6 +51,76 @@ class Games(commands.Cog):
             mencao = canal.mention if canal else "#🎰・akbet"
             await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal {mencao}.")
             raise commands.CommandError("Canal de apostas incorreto.")
+
+    # --- NOVO MINIGAME: MAIOR CARTA (DUELO PVP) ---
+    @commands.command(aliases=["cartas", "duelo_carta", "draw"])
+    async def carta(self, ctx, oponente: disnake.Member, aposta: int):
+        """Desafia alguém para um duelo de cartas. Quem tirar a maior vence!"""
+        if oponente.id == ctx.author.id: 
+            return await ctx.send(f"🃏 {ctx.author.mention}, você não pode jogar cartas contra o espelho!")
+        
+        if aposta <= 0:
+            return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
+
+        desafiante_db = db.get_user_data(str(ctx.author.id))
+        oponente_db = db.get_user_data(str(oponente.id))
+
+        if not desafiante_db or not oponente_db or int(oponente_db['data'][2]) < aposta or int(desafiante_db['data'][2]) < aposta: 
+            return await ctx.send(f"❌ {ctx.author.mention}, alguém na mesa não tem saldo para cobrir essa aposta!")
+
+        await ctx.send(f"🃏 {oponente.mention}, você foi desafiado por {ctx.author.mention} para um Duelo de Cartas valendo **{aposta} C**! Digite `comprar` no chat para aceitar e sacar sua carta!")
+
+        def check(m): return m.author == oponente and m.content.lower() == 'comprar' and m.channel == ctx.channel
+        try:
+            await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            return await ctx.send(f"⏱️ {oponente.mention} demorou demais para comprar a carta. O duelo foi cancelado!")
+
+        # O Duelo começa!
+        valores = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+        naipes = ["♠️", "♥️", "♦️", "♣️"]
+        
+        # Sorteia as cartas
+        carta_desafiante_valor = random.choice(valores)
+        carta_oponente_valor = random.choice(valores)
+        
+        # Garante que não sejam a mesma exata carta (valor e naipe igual)
+        carta_desafiante_naipe = random.choice(naipes)
+        carta_oponente_naipe = random.choice(naipes)
+        while carta_desafiante_valor == carta_oponente_valor and carta_desafiante_naipe == carta_oponente_naipe:
+            carta_oponente_naipe = random.choice(naipes)
+
+        # Calcula quem ganhou (A é maior, 2 é menor)
+        peso_desafiante = valores.index(carta_desafiante_valor)
+        peso_oponente = valores.index(carta_oponente_valor)
+
+        embed = disnake.Embed(title="🃏 DUELO DE CARTAS 🃏", color=disnake.Color.dark_theme())
+        embed.add_field(name=f"Sacado por {ctx.author.display_name}:", value=f"**{carta_desafiante_valor}** {carta_desafiante_naipe}", inline=True)
+        embed.add_field(name=f"Sacado por {oponente.display_name}:", value=f"**{carta_oponente_valor}** {carta_oponente_naipe}", inline=True)
+
+        if peso_desafiante > peso_oponente:
+            vencedor = ctx.author
+            perdedor = oponente
+            resultado_txt = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou o pote de **{aposta} C**."
+        elif peso_oponente > peso_desafiante:
+            vencedor = oponente
+            perdedor = ctx.author
+            resultado_txt = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou o pote de **{aposta} C**."
+        else:
+            # Empate: Os dois perdem o dinheiro pra "Banca"
+            db.update_value(desafiante_db['row'], 3, int(desafiante_db['data'][2]) - aposta)
+            db.update_value(oponente_db['row'], 3, int(oponente_db['data'][2]) - aposta)
+            embed.description = f"🤝 **EMPATE!** Vossas cartas têm o mesmo peso.\nAmbos perdem a aposta de **{aposta} C** para o Cassino!"
+            return await ctx.send(embed=embed)
+
+        # Atualiza os saldos em caso de vitória/derrota
+        v_db = db.get_user_data(str(vencedor.id))
+        p_db = db.get_user_data(str(perdedor.id))
+        db.update_value(v_db['row'], 3, int(v_db['data'][2]) + aposta)
+        db.update_value(p_db['row'], 3, int(p_db['data'][2]) - aposta)
+
+        embed.description = resultado_txt
+        await ctx.send(embed=embed)
 
     # --- NOVO MINIGAME: CRASH DO CIPÓ (FOGUETINHO) ---
     @commands.command(aliases=["cipo", "foguetinho"])
@@ -160,7 +230,6 @@ class Games(commands.Cog):
             embed.color = disnake.Color.red()
             embed.description = f"💥 **ARREBENTOU!**\nO cipó não aguentou o peso e rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} caiu na lama e perdeu **{aposta} C**."
             await msg.edit(embed=embed)
-
 
     # --- SISTEMA DE LOTERIA ---
     @commands.command(aliases=["premio", "acumulado"])
@@ -365,6 +434,7 @@ class Games(commands.Cog):
             name="🎮 Comandos Disponíveis",
             value=(
                 "🚀 **!crash <valor>** - Foguetinho! Suba no cipó e digite `parar`.\n"
+                "🃏 **!carta @user <valor>** - Desafie alguém para um duelo de Cartas.\n"
                 "🎰 **!cassino <valor>** - Caça-níquel clássico.\n"
                 "🥥 **!coco <valor>** - Crie uma Roleta do Coco Explosivo.\n"
                 "🏃 **!entrar_coco** - Entre na roda antes do tempo acabar!\n"
@@ -379,7 +449,7 @@ class Games(commands.Cog):
         embed.set_footer(text="Lembre-se: A casa sempre ganha! 🐒")
         await ctx.send(embed=embed)
 
-    # --- OUTROS JOGOS (Corrida, Bicho, Minas, Briga, Moeda, Cassino) mantidos integralmente ---
+    # --- OUTROS JOGOS (Corrida, Bicho, Minas, Briga, Moeda, Cassino) ---
     @commands.command(name="corrida")
     async def corrida_macaco(self, ctx, escolha: str, aposta: int):
         opcoes = {"macaquinho": "🐒", "gorila": "🦍", "orangutango": "🦧"}

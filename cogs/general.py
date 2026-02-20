@@ -57,6 +57,7 @@ class General(commands.Cog):
             "🥊 `!briga @user <valor>` - Desafie alguém para PvP!\n"
             "🎫 `!loteria` (!bilhete) - Compre um bilhete (500 C) para o sorteio acumulado!\n"
             "💰 `!pote` (!premio) - Veja o valor total acumulado na loteria.\n"
+            "🃏 `!carta @user <valor>` - Desafie alguém para um duelo de cartas!\n"
             "💡 *Use os jogos no canal #🎰・akbet*"
         )
         embed.add_field(name="🎲 AK-BET JOGOS & EVENTOS", value=jogos_txt, inline=False)
@@ -136,6 +137,12 @@ class General(commands.Cog):
         embed.add_field(
             name="🥥 6. NOVO JOGO: COCO EXPLOSIVO", 
             value="Roleta mortal multiplayer! Inicie com `!coco <valor>`. Os outros macacos têm 1 minuto para entrar usando `!entrar_coco`. O coco vai passar de mão em mão até explodir. O último que sobreviver leva o dinheiro de todo mundo!", 
+            inline=False
+        )
+
+        embed.add_field(
+            name="🃏 7. NOVO JOGO: DUELO DE CARTAS", 
+            value="Desafie alguém para um duelo de cartas! Use `!carta <usuário> <valor>`. Quem tirar a carta maior vence o pote!", 
             inline=False
         )
 
