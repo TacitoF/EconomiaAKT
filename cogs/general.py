@@ -94,33 +94,41 @@ class General(commands.Cog):
     async def patchnotes(self, ctx):
         """Envia o anúncio de atualização do bot (Apenas Admin)."""
         embed = disnake.Embed(
-            title="📢 GRANDE ATUALIZAÇÃO DA SELVA: A Era do Caos! (V2.0) 🍌🦍",
-            description="O Gerente Conguito recebeu um pacote gigante de novidades! A economia mudou, o submundo cresceu e o cassino expandiu. Confiram as novidades:",
+            title="📢 ATUALIZAÇÃO DA SELVA: A Era das Conquistas! 🏆🐒",
+            description="O Gerente Conguito instalou um sistema de troféus para separar os verdadeiros reis da selva dos macacos de imitação! Confiram as novidades:",
             color=disnake.Color.brand_red()
         )
 
-        embed.add_field(name="📉 1. DEFLAÇÃO TOTAL", value="Tudo ficou mais barato! Os preços da `!loja` e dos castigos de voz despencaram.", inline=False)
-        
-        embed.add_field(name="🏅 2. BADGES DE PERFIL", value="O `!perfil` agora exibe suas conquistas automáticas (💎 Magnata, 👑 Rei da Selva, 🕵️ Invasor e 🦴 Passando Fome).", inline=False)
-        
-        embed.add_field(name="💸 3. PIX DO MACACO", value="Agora você pode transferir conguitos! Use `!pagar @usuario <valor>`. Façam alianças ou ajudem os falidos.", inline=False)
-        
-        embed.add_field(name="🚨 4. CAÇADORES DE RECOMPENSA (Mercenários)", value="Alguém te irritou? Coloque a cabeça dele a prêmio com `!recompensa @usuario <valor>`. O primeiro que conseguir roubar essa vítima com sucesso leva o roubo E a recompensa!", inline=False)
-        
-        embed.add_field(name="🕵️ 5. NOVO ITEM: PÉ DE CABRA", value="Vendido na `!loja` por 1.200 C. Ele aumenta a chance de sucesso no seu próximo roubo para **70%**! *(Quebra após o uso)*.", inline=False)
-        
-        embed.add_field(name="🏦 6. SISTEMA BANCÁRIO", value="`!investir fixo <valor>`: Rende +10% garantido na hora (Máx 5k por dia).\n`!investir cripto <valor>`: Volátil! Risco de perder até -25% ou ganhar até +25% em 1 min.", inline=False)
-        
-        embed.add_field(name="🎫 7. LOTERIA ACUMULADA", value="Compre um `!bilhete` por 500 C. O dinheiro vai para um pote. Use **`!pote`** para ver o prêmio acumulado. Quando a administração realizar o sorteio, **UM ÚNICO SORTUDO** leva tudo!", inline=False)
+        embed.add_field(
+            name="📜 1. NOVO COMANDO: `!conquistas`", 
+            value="Use este comando (ou `!emblemas`) para abrir o Guia Oficial. Lá você verá o que precisa fazer para desbloquear emblemas baseados no seu Rank, Riqueza e Atividades diárias.", 
+            inline=False
+        )
 
-        embed.add_field(name="🔥 8. FIM DO ANTI-FOCO", value="A trava de proteção contra roubos repetidos foi removida! A selva está mais perigosa do que nunca. O único jeito de se proteger agora é comprando **Escudo**.", inline=False)
+        embed.add_field(
+            name="🏅 2. NOVO `!perfil`", 
+            value="Suas vitórias (e fracassos) agora ficam cravadas no seu perfil para todos verem! **Atenção:** Algumas conquistas como *Proletário Padrão* e *Mestre das Sombras* resetam diariamente. Mantenha o ritmo para não perder o status!", 
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🤫 3. SEGREDOS DA SELVA", 
+            value="O guia possui uma área de Conquistas Secretas (???). Elas são desbloqueadas através de azar absurdo ou sorte extrema. Testem os limites dos comandos!", 
+            inline=False
+        )
 
-        embed.set_footer(text="Digite !ajuda para ver o manual completo atualizado.")
+        embed.add_field(
+            name="🎰 4. VISUAL DO CASSINO & JACKPOT", 
+            value="O comando `!cassino` ganhou uma interface de caça-níquel real. Quem conseguir a proeza de tirar 3 emojis iguais vai estourar um **JACKPOT** de 10x o valor apostado.", 
+            inline=False
+        )
+
+        embed.set_footer(text="A caça aos troféus começou! Digite !conquistas e boa sorte.")
         
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        await ctx.send(content="@everyone Atualização fresquinha!", embed=embed)
+        await ctx.send(content="@everyone 🚨 **NOVA MECÂNICA LIBERADA!** 🚨", embed=embed)
         
         # Apaga o seu comando '!patchnotes' do chat para ficar limpo
         await ctx.message.delete()

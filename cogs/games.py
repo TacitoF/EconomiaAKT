@@ -13,6 +13,21 @@ class Games(commands.Cog):
         self.loteria_participantes = []
         self.loteria_pote = 0
 
+        # --- AJUSTE: Inicializa a memória global completa aqui também ---
+        if not hasattr(bot, 'tracker_emblemas'):
+            bot.tracker_emblemas = {
+                'trabalhos': {},           
+                'roubos_sucesso': {},      
+                'roubos_falha': {},        
+                'esquadrao_suicida': set(),
+                'palhaco': set(),          
+                'filho_da_sorte': set(),
+                'escorregou_banana': set(),
+                'pix_irritante': set(),
+                'casca_grossa': set(),
+                'briga_de_bar': set()
+            }
+
     async def cog_before_invoke(self, ctx):
         """Restringe comandos deste Cog, com exceção do banco e loteria."""
         # Permite investir e loteria nos canais de economia e apostas
@@ -241,13 +256,26 @@ class Games(commands.Cog):
         await ctx.send(f"💣 {ctx.author.mention} entrando no campo com {bombas} bombas...")
         await asyncio.sleep(1.5)
 
+        # Lógica de vitória/derrota
         if random.randint(1, 10) > (bombas * 1.5):
+            if bombas == 5:
+                # --- TRACKER: Esquadrão Suicida ---
+                if 'esquadrao_suicida' not in self.bot.tracker_emblemas:
+                    self.bot.tracker_emblemas['esquadrao_suicida'] = set()
+                self.bot.tracker_emblemas['esquadrao_suicida'].add(str(ctx.author.id))
+                
             mult = 1.5 + (bombas * 0.5)
             ganho = int(aposta * mult)
             status = f"🚩 **LIMPO!** {ctx.author.mention} ganhou **{ganho} conguitos**! ({mult}x)"
         else:
             ganho = -aposta
             status = f"💥 **BOOOOM!** {ctx.author.mention} pisou em uma mina e perdeu **{aposta} C**."
+            
+            # --- TRACKER SECRETO: Escorregou na Banana ---
+            if bombas == 1:
+                if 'escorregou_banana' not in self.bot.tracker_emblemas:
+                    self.bot.tracker_emblemas['escorregou_banana'] = set()
+                self.bot.tracker_emblemas['escorregou_banana'].add(str(ctx.author.id))
 
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
         await ctx.send(status)
@@ -262,6 +290,12 @@ class Games(commands.Cog):
 
         if not ladrao or not alvo or int(alvo['data'][2]) < aposta or int(ladrao['data'][2]) < aposta:
             return await ctx.send(f"❌ {ctx.author.mention}, alguém não tem saldo para essa briga!")
+
+        # --- TRACKER SECRETO: Briga de Bar ---
+        if aposta == 1:
+            if 'briga_de_bar' not in self.bot.tracker_emblemas:
+                self.bot.tracker_emblemas['briga_de_bar'] = set()
+            self.bot.tracker_emblemas['briga_de_bar'].add(str(ctx.author.id))
 
         await ctx.send(f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma briga por **{aposta} C**! Digite `aceitar` para lutar!")
 
@@ -322,12 +356,18 @@ class Games(commands.Cog):
         if res[0] == res[1] == res[2]:
             ganho = aposta * 10
             status_msg = f"🎰 **JACKPOT!** 🎰\nVocê ganhou **+{ganho} C**"
+            
+            # --- TRACKER SECRETO: Filho da Sorte ---
+            if 'filho_da_sorte' not in self.bot.tracker_emblemas:
+                self.bot.tracker_emblemas['filho_da_sorte'] = set()
+            self.bot.tracker_emblemas['filho_da_sorte'].add(str(ctx.author.id))
+            
         elif res[0] == res[1] or res[1] == res[2] or res[0] == res[2]:
             ganho = aposta * 2
             status_msg = f"Você ganhou **+{ganho} C**"
         else:
             ganho = -aposta
-            status_msg = f"Você perdeu **-{aposta} C**"
+            status_msg = f"Você perdeu **{ganho} C**" 
 
         # Atualiza no banco de dados
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
