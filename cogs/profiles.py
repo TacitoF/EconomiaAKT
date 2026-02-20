@@ -6,6 +6,7 @@ import time
 class Profiles(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        if not hasattr(bot, 'tracker_emblemas'): bot.tracker_emblemas = {}
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -27,10 +28,8 @@ class Profiles(commands.Cog):
     async def rank(self, ctx):
         all_data = db.sheet.get_all_records()
         if not all_data: return await ctx.send("❌ Sem dados suficientes.")
-
         sorted_users = sorted(all_data, key=lambda x: int(x.get('saldo', 0)), reverse=True)
         embed = disnake.Embed(title="🏆 Ranking de Conguitos", color=disnake.Color.gold())
-
         lista_rank = ""
         for i, user in enumerate(sorted_users[:10]):
             nome = user.get('nome', 'Desconhecido')
@@ -40,7 +39,6 @@ class Profiles(commands.Cog):
             elif i == 2: linha = f"🥉 **{nome}** — `{saldo} C`"
             else: linha = f"**{i+1}.** {nome} — `{saldo} C`"
             lista_rank += linha + "\n"
-
         embed.add_field(name="Top 10 Jogadores", value=lista_rank, inline=False)
         await ctx.send(embed=embed)
 
@@ -53,33 +51,18 @@ class Profiles(commands.Cog):
 
         saldo = int(user['data'][2])
         cargo = user['data'][3]
-        
-        # --- LÓGICA DO INVENTÁRIO INFINITO ---
         inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
         inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
         
-        # Conta e agrupa os itens iguais (Ex: 2x Escudo)
-        if not inv_list:
-            inv_formatado = "Nenhum item"
+        if not inv_list: inv_formatado = "Nenhum item"
         else:
             contagem = {}
-            for item in inv_list:
-                contagem[item] = contagem.get(item, 0) + 1
-            
-            # Formata a string final
-            itens_agrupados = []
-            for item, qtd in contagem.items():
-                if qtd > 1:
-                    itens_agrupados.append(f"`{qtd}x {item}`")
-                else:
-                    itens_agrupados.append(f"`{item}`")
-                    
+            for item in inv_list: contagem[item] = contagem.get(item, 0) + 1
+            itens_agrupados = [f"`{qtd}x {item}`" if qtd > 1 else f"`{item}`" for item, qtd in contagem.items()]
             inv_formatado = " | ".join(itens_agrupados)
-        # ----------------------------------------
 
         emblemas = []
         agora = time.time()
-
         if saldo >= 20000: emblemas.append("💎 **Magnata**")
         if cargo == "Gorila": emblemas.append("👑 **Rei da Selva**")
         if "Pé de Cabra" in inv_list: emblemas.append("🕵️ **Invasor**")
@@ -90,7 +73,7 @@ class Profiles(commands.Cog):
         if all_data:
             sorted_users = sorted(all_data, key=lambda x: int(x.get('saldo', 0)), reverse=True)
             for i, u in enumerate(sorted_users):
-                if str(u.get('id', u.get('ID', u.get('Id', '')))) == user_id:
+                if str(u.get('id', u.get('id_usuario', u.get('Id', '')))) == user_id:
                     if i == 0: emblemas.append("🥇 **O Alfa da Selva**")
                     elif i == 1: emblemas.append("🥈 **Vice-Líder**")
                     elif i == 2: emblemas.append("🥉 **Bronze de Ouro**")
@@ -124,82 +107,6 @@ class Profiles(commands.Cog):
         if rec > 0: embed.add_field(name="🚨 PROCURADO", value=f"`{rec} C` pela sua cabeça!", inline=False)
 
         await ctx.send(embed=embed)
-
-    @commands.command(aliases=["shop", "mercado"])
-    async def loja(self, ctx):
-        embed = disnake.Embed(
-            title="🛒 Loja de Itens e Maldades", 
-            description="Compre usando `!comprar <nome do item>`",
-            color=disnake.Color.blue()
-        )
-        
-        embed.add_field(
-            name="📈 Cargos (Mais dinheiro no !trabalhar)", 
-            value="🐒 **Chimpanzé:** 1.500 C\n🦧 **Orangutango:** 5.000 C\n🦍 **Gorila:** 15.000 C", 
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🛡️ Equipamentos (Acumulativos)", 
-            value="🛡️ **Escudo** (800 C): Evita que você seja roubado 1 vez.\n"
-                  "🕵️ **Pé de Cabra** (1.200 C): Aumenta sua chance de roubo para 70%.\n"
-                  "📄 **Seguro** (1.000 C): Se for roubado, o banco te devolve 60% do valor.", 
-            inline=False
-        )
-
-        # TEXTO ATUALIZADO AQUI
-        embed.add_field(
-            name="😈 Itens de Sabotagem (Acumulativos)", 
-            value="🍌 **Casca de Banana** (300 C): Faz o próximo trabalho/roubo do alvo falhar `!casca @user`.\n"
-                  "🦍 **Imposto do Gorila** (1.500 C): Roube 25% de todo trabalho do alvo por **24 horas** `!taxar @user`.\n"
-                  "🪄 **Troca de Nick** (2.500 C): Altera o apelido de alguém no servidor por 30min `!apelidar @user <nick>`.", 
-            inline=False
-        )
-        
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def comprar(self, ctx, *, item: str):
-        user_id = str(ctx.author.id)
-        user = db.get_user_data(user_id)
-        if not user: return await ctx.send("❌ Use `!trabalhar` primeiro!")
-
-        loja = {
-            "chimpanzé": {"nome": "Chimpanzé", "preco": 1500, "tipo": "cargo"},
-            "chimpanze": {"nome": "Chimpanzé", "preco": 1500, "tipo": "cargo"},
-            "orangutango": {"nome": "Orangutango", "preco": 5000, "tipo": "cargo"},
-            "gorila": {"nome": "Gorila", "preco": 15000, "tipo": "cargo"},
-            "escudo": {"nome": "Escudo", "preco": 800, "tipo": "item"},
-            "pé de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"},
-            "pe de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"},
-            "seguro": {"nome": "Seguro", "preco": 1000, "tipo": "item"},
-            "casca de banana": {"nome": "Casca de Banana", "preco": 300, "tipo": "item"},
-            "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1500, "tipo": "item"},
-            "troca de nick": {"nome": "Troca de Nick", "preco": 2500, "tipo": "item"}
-        }
-
-        escolha = item.lower()
-        if escolha not in loja: return await ctx.send("❌ Item inválido! Digite exatamente como está na loja.")
-        
-        item_data = loja[escolha]
-        saldo = int(user['data'][2])
-        if saldo < item_data["preco"]: return await ctx.send("❌ Saldo insuficiente!")
-
-        db.update_value(user['row'], 3, saldo - item_data["preco"])
-
-        if item_data["tipo"] == "cargo":
-            db.update_value(user['row'], 4, item_data["nome"])
-            await ctx.send(f"✅ {ctx.author.mention} evoluiu para o cargo **{item_data['nome']}**!")
-            
-        elif item_data["tipo"] == "item":
-            inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
-            inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
-            
-            inv_list.append(item_data["nome"])
-            novo_inv_str = ", ".join(inv_list)
-            
-            db.update_value(user['row'], 6, novo_inv_str)
-            await ctx.send(f"🛍️ {ctx.author.mention} comprou **{item_data['nome']}** e guardou no inventário!")
 
 def setup(bot):
     bot.add_cog(Profiles(bot))
