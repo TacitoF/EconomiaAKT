@@ -22,7 +22,9 @@ class Economy(commands.Cog):
                 'escorregou_banana': set(),# IDs de quem perdeu na mina com 1 bomba
                 'pix_irritante': set(),    # IDs de quem fez um pix de 1 C
                 'casca_grossa': set(),     # IDs de quem bateu no Escudo
-                'briga_de_bar': set()      # IDs de quem brigou por 1 C
+                'briga_de_bar': set(),     # IDs de quem brigou por 1 C
+                'ima_desgraca': set(),     # IDs de quem explodiu primeiro no coco (>=4)
+                'veterano_coco': set()     # IDs de quem sobreviveu ao coco (>=5)
             }
 
     async def cog_before_invoke(self, ctx):
@@ -86,7 +88,9 @@ class Economy(commands.Cog):
                 "❓ **???** - *Como alguém consegue pisar na única casca do chão?*\n"
                 "❓ **???** - *Até a menor das moedas pode causar a maior das irritações.*\n"
                 "❓ **???** - *Deu de cara no muro tentando levar o que não é seu.*\n"
-                "❓ **???** - *Brigar por uma única moeda? Isso é falta de amor à vida.*"
+                "❓ **???** - *Brigar por uma única moeda? Isso é falta de amor à vida.*\n"
+                "❓ **???** - *Alguém precisava ser o primeiro a tomar na cabeça...*\n"
+                "❓ **???** - *Um verdadeiro sobrevivente do caos coletivo.*"
             ),
             inline=False
         )
@@ -131,35 +135,6 @@ class Economy(commands.Cog):
 
         embed.add_field(name="Top 10 Jogadores", value=lista_rank, inline=False)
         embed.set_footer(text="Trabalhe e suba no ranking! 🐒")
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def jogos(self, ctx):
-        """Lista os jogos disponíveis. Restrito ao canal #🎰・akbet."""
-        if ctx.channel.name != '🎰・akbet':
-            canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
-            mencao = canal.mention if canal else "#🎰・akbet"
-            return await ctx.send(f"⚠️ {ctx.author.mention}, apostas e jogos são permitidos apenas no canal {mencao}!")
-
-        embed = disnake.Embed(
-            title="🎰 AK-BET JOGOS",
-            description="Transforme seus conguitos em fortuna!",
-            color=disnake.Color.purple()
-        )
-
-        embed.add_field(
-            name="🎮 Comandos Disponíveis",
-            value=(
-                "🎰 **!cassino <valor>** - Caça-níquel.\n"
-                "🐒 **!corrida <animal> <valor>** - Aposte entre \"Macaquinho\", \"Gorila\" ou \"Orangutango\".\n"
-                "🪙 **!moeda <cara/coroa> <valor>** - Dobro ou nada.\n"
-                "🦁 **!bicho <animal> <valor>** - Escolha entre \"Leao\", \"Cobra\", \"Jacare\", \"Arara\", \"Elefante\".\n"
-                "💣 **!minas <bombas> <valor>** - Escolha entre 1 e 5 bombas.\n"
-                "⚔️ **!briga @user <valor>** - Desafie alguém para PvP!"
-            ),
-            inline=False
-        )
-        embed.set_footer(text="Lembre-se: A casa sempre ganha! 🐒")
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -274,6 +249,13 @@ class Economy(commands.Cog):
                 
             if user_id in tracker.get('briga_de_bar', set()):
                 emblemas.append("🥊 **Briga de Bar**")
+                
+            # NOVAS DO COCO EXPLOSIVO
+            if user_id in tracker.get('ima_desgraca', set()):
+                emblemas.append("🧲 **Imã de Desgraça**")
+                
+            if user_id in tracker.get('veterano_coco', set()):
+                emblemas.append("🥥 **Veterano de Guerra**")
         
         emblemas_str = " | ".join(emblemas) if emblemas else "Nenhum"
 

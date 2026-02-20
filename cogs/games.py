@@ -9,9 +9,15 @@ class Games(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.owner_id = 757752617722970243
+        
         # Memória temporária para a loteria
         self.loteria_participantes = []
         self.loteria_pote = 0
+
+        # Memória temporária para o Coco Explosivo
+        self.coco_active = False
+        self.coco_players = []
+        self.coco_aposta = 0
 
         # --- AJUSTE: Inicializa a memória global completa aqui também ---
         if not hasattr(bot, 'tracker_emblemas'):
@@ -25,7 +31,9 @@ class Games(commands.Cog):
                 'escorregou_banana': set(),
                 'pix_irritante': set(),
                 'casca_grossa': set(),
-                'briga_de_bar': set()
+                'briga_de_bar': set(),
+                'ima_desgraca': set(),     # NOVO: Azar no Coco
+                'veterano_coco': set()     # NOVO: Sorte extrema no Coco
             }
 
     async def cog_before_invoke(self, ctx):
@@ -166,6 +174,145 @@ class Games(commands.Cog):
                 await ctx.send(f"🚀 **ALTA NO MERCADO!** A MacacoCoin valorizou! {ctx.author.mention} recebeu **{retorno} C** (Lucro: `+{lucro} C`).")
             else:
                 await ctx.send(f"📉 **CRASH NO MERCADO!** A MacacoCoin desabou... {ctx.author.mention} recebeu apenas **{retorno} C** (Prejuízo: `{lucro} C`).")
+
+    # --- NOVO MINIGAME: ROLETA DO COCO EXPLOSIVO ---
+    @commands.command(aliases=["roleta_coco", "coco_explosivo"])
+    async def coco(self, ctx, aposta: int):
+        """Inicia uma roda de Coco Explosivo."""
+        if self.coco_active:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, já existe uma roda de coco aberta! Digite `!entrar_coco`.")
+        
+        if aposta <= 0:
+            return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
+
+        user = db.get_user_data(str(ctx.author.id))
+        if not user or int(user['data'][2]) < aposta:
+            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+
+        # Desconta o valor do criador
+        db.update_value(user['row'], 3, int(user['data'][2]) - aposta)
+
+        self.coco_active = True
+        self.coco_aposta = aposta
+        self.coco_players = [ctx.author]
+
+        embed = disnake.Embed(
+            title="🚨 ROLETA DO COCO EXPLOSIVO! 🚨",
+            description=f"{ctx.author.mention} abriu uma roda mortal!\n\n💰 **Entrada:** `{aposta} C`\n⏳ **Tempo:** 60 segundos para entrar!\n\nDigite **`!entrar_coco`** para participar.",
+            color=disnake.Color.dark_red()
+        )
+        await ctx.send(embed=embed)
+
+        await asyncio.sleep(60)
+
+        # Fim do tempo, verifica jogadores
+        if len(self.coco_players) < 2:
+            # Devolve o dinheiro
+            user_refund = db.get_user_data(str(ctx.author.id))
+            db.update_value(user_refund['row'], 3, int(user_refund['data'][2]) + aposta)
+            self.coco_active = False
+            self.coco_players = []
+            self.coco_aposta = 0
+            return await ctx.send(f"🥥 Ninguém teve coragem de entrar na roda do {ctx.author.mention}. O jogo foi cancelado e o dinheiro devolvido.")
+
+        # O Jogo Começa
+        jogadores = self.coco_players.copy()
+        total_jogadores = len(jogadores)
+        pote = self.coco_aposta * total_jogadores
+
+        await ctx.send(f"🔥 **A RODA FECHOU!** Temos {total_jogadores} macacos corajosos e um pote de **{pote} Conguitos**.\nQue os jogos comecem...")
+        
+        # Reseta os dados temporários para liberar nova criação APÓS o jogo terminar
+        self.coco_active = False 
+
+        rodada = 1
+        while len(jogadores) > 1:
+            await asyncio.sleep(2.5)
+            await ctx.send("🥥 *O coco está passando de mão em mão...*")
+            await asyncio.sleep(2)
+            await ctx.send("⏱️ *Tic... Tac... Tic...*")
+            await asyncio.sleep(2.5)
+
+            eliminado = random.choice(jogadores)
+            jogadores.remove(eliminado)
+
+            await ctx.send(f"💥 **KABOOOM!** O coco explodiu na cara do {eliminado.mention}! Fora da roda.")
+
+            # --- TRACKER SECRETO: Imã de Desgraça ---
+            if rodada == 1 and total_jogadores >= 4:
+                if 'ima_desgraca' not in self.bot.tracker_emblemas:
+                    self.bot.tracker_emblemas['ima_desgraca'] = set()
+                self.bot.tracker_emblemas['ima_desgraca'].add(str(eliminado.id))
+
+            rodada += 1
+
+        vencedor = jogadores[0]
+        v_db = db.get_user_data(str(vencedor.id))
+        db.update_value(v_db['row'], 3, int(v_db['data'][2]) + pote)
+
+        await asyncio.sleep(1)
+        await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} foi o único que não perdeu a cabeça e faturou sozinho o pote de **{pote} C**!")
+
+        # --- TRACKER SECRETO: Veterano de Guerra ---
+        if total_jogadores >= 5:
+            if 'veterano_coco' not in self.bot.tracker_emblemas:
+                self.bot.tracker_emblemas['veterano_coco'] = set()
+            self.bot.tracker_emblemas['veterano_coco'].add(str(vencedor.id))
+            
+        self.coco_players = []
+        self.coco_aposta = 0
+
+    @commands.command(name="entrar_coco")
+    async def entrar_coco(self, ctx):
+        """Entra na roda de Coco Explosivo atual."""
+        if not self.coco_active:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, não há nenhuma roda de coco aberta no momento! Crie uma com `!coco <valor>`.")
+        
+        if ctx.author in self.coco_players:
+            return await ctx.send(f"🐒 {ctx.author.mention}, você já está na roda! Controle a ansiedade.")
+
+        user = db.get_user_data(str(ctx.author.id))
+        if not user or int(user['data'][2]) < self.coco_aposta:
+            return await ctx.send(f"❌ {ctx.author.mention}, você não tem os **{self.coco_aposta} C** necessários para entrar nessa roda!")
+
+        # Desconta o valor
+        db.update_value(user['row'], 3, int(user['data'][2]) - self.coco_aposta)
+        self.coco_players.append(ctx.author)
+
+        pote_atual = len(self.coco_players) * self.coco_aposta
+        await ctx.send(f"🥥 {ctx.author.mention} entrou na roda da morte! (Pote atual: **{pote_atual} C**)")
+
+    # --- LISTA DE JOGOS ATUALIZADA ---
+    @commands.command()
+    async def jogos(self, ctx):
+        """Lista os jogos disponíveis. Restrito ao canal #🎰・akbet."""
+        if ctx.channel.name != '🎰・akbet':
+            canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
+            mencao = canal.mention if canal else "#🎰・akbet"
+            return await ctx.send(f"⚠️ {ctx.author.mention}, apostas e jogos são permitidos apenas no canal {mencao}!")
+
+        embed = disnake.Embed(
+            title="🎰 AK-BET JOGOS",
+            description="Transforme seus conguitos em fortuna!",
+            color=disnake.Color.purple()
+        )
+
+        embed.add_field(
+            name="🎮 Comandos Disponíveis",
+            value=(
+                "🎰 **!cassino <valor>** - Caça-níquel.\n"
+                "🥥 **!coco <valor>** - Crie uma Roleta do Coco Explosivo.\n"
+                "🏃 **!entrar_coco** - Entre na roda antes do tempo acabar!\n"
+                "🐒 **!corrida <animal> <valor>** - Aposte no Macaquinho, Gorila ou Orangutango.\n"
+                "🪙 **!moeda <cara/coroa> <valor>** - Dobro ou nada.\n"
+                "🦁 **!bicho <animal> <valor>** - Aposte em: Leao, Cobra, Jacare, Arara, Elefante.\n"
+                "💣 **!minas <bombas> <valor>** - Escolha entre 1 e 5 bombas.\n"
+                "⚔️ **!briga @user <valor>** - Desafie alguém para PvP!"
+            ),
+            inline=False
+        )
+        embed.set_footer(text="Lembre-se: A casa sempre ganha! 🐒")
+        await ctx.send(embed=embed)
 
     # --- 1. CORRIDA DE MACACOS ---
     @commands.command(name="corrida")

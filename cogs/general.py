@@ -47,6 +47,8 @@ class General(commands.Cog):
         # Jogos & Eventos
         jogos_txt = (
             "🎰 `!cassino <valor>` - Caça-níquel.\n"
+            "🥥 `!coco <valor>` - Crie uma Roleta do Coco Explosivo.\n"
+            "🏃 `!entrar_coco` - Entre na roda de coco antes do tempo acabar!\n"
             "🏁 `!corrida <corredor> <valor>` - Aposte entre \"Macaquinho\", \"Gorila\" ou \"Orangutango\".\n"
             "🪙 `!moeda <cara/coroa> <valor>` - Dobro ou nada.\n"
             "🦁 `!bicho <animal> <valor>` - Escolha entre \"Leao\", \"Cobra\", \"Jacare\", \"Arara\" ou \"Elefante\".\n"
