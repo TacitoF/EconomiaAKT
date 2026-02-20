@@ -3,25 +3,158 @@ from disnake.ext import commands
 import database as db
 import random
 import asyncio
+import time
 
 class Games(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.owner_id = 757752617722970243
+        # Memória temporária para a loteria
+        self.loteria_participantes = []
+        self.loteria_pote = 0
 
     async def cog_before_invoke(self, ctx):
-        """Restringe todos os comandos deste Cog ao canal #🎰・akbet."""
+        """Restringe comandos deste Cog, com exceção do banco e loteria."""
+        # Permite investir e loteria nos canais de economia e apostas
+        if ctx.command.name in ['investir', 'banco', 'depositar', 'loteria', 'bilhete', 'loto', 'sortear_loteria', 'pote', 'premio', 'acumulado']:
+            if ctx.channel.name not in ['🐒・conguitos', '🎰・akbet']:
+                await ctx.send(f"⚠️ {ctx.author.mention}, vá ao banco/loteria no canal #🐒・conguitos ou #🎰・akbet.")
+                raise commands.CommandError("Canal incorreto para banco/loteria.")
+            return
+
+        # Restringe o resto (jogos reais) apenas ao canal akbet
         if ctx.channel.name != '🎰・akbet':
-            # Tenta encontrar o canal para criar a menção azul clicável
             canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
             
             await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal {mencao}.")
             raise commands.CommandError("Canal de apostas incorreto.")
 
+    # --- NOVO: COMANDO PARA VER O POTE ---
+    @commands.command(aliases=["premio", "acumulado"])
+    async def pote(self, ctx):
+        """Mostra o valor total acumulado na loteria e a quantidade de participantes."""
+        if self.loteria_pote == 0:
+            return await ctx.send(f"🎫 {ctx.author.mention}, o pote da loteria está zerado! Seja o primeiro a comprar usando `!loteria` (500 C).")
+        
+        qtd_participantes = len(self.loteria_participantes)
+        embed = disnake.Embed(
+            title="💰 Pote da Loteria da Selva",
+            description=f"O prêmio acumulado atual é de **{self.loteria_pote} Conguitos**!\n\n👥 **Bilhetes vendidos:** `{qtd_participantes}`",
+            color=disnake.Color.gold()
+        )
+        embed.set_footer(text="Garanta sua chance digitando !loteria")
+        await ctx.send(embed=embed)
+
+    # --- SISTEMA DE LOTERIA DA SELVA ---
+    @commands.command(aliases=["bilhete", "loto"])
+    async def loteria(self, ctx):
+        """Compra um bilhete para a loteria atual ou vê o pote."""
+        custo_bilhete = 500
+        user_id = ctx.author.id
+
+        # Se o usuário já tiver comprado
+        if user_id in self.loteria_participantes:
+            return await ctx.send(f"🎫 {ctx.author.mention}, você já tem um bilhete! O pote atual está em **{self.loteria_pote} C**.")
+
+        user = db.get_user_data(str(user_id))
+        if not user or int(user['data'][2]) < custo_bilhete:
+            return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo_bilhete} C** para comprar um bilhete!")
+
+        # Processa a compra
+        db.update_value(user['row'], 3, int(user['data'][2]) - custo_bilhete)
+        self.loteria_participantes.append(user_id)
+        self.loteria_pote += custo_bilhete
+
+        await ctx.send(f"🎫 **BILHETE COMPRADO!** {ctx.author.mention} entrou na loteria.\n💰 O prêmio acumulado agora é de **{self.loteria_pote} Conguitos**!")
+
+    @commands.command()
+    async def sortear_loteria(self, ctx):
+        """Sorteia o prêmio acumulado entre os participantes. (Apenas Dono)"""
+        if ctx.author.id != self.owner_id:
+            return await ctx.send("❌ Apenas o Rei da Selva pode girar o globo da loteria!")
+
+        if not self.loteria_participantes:
+            return await ctx.send("❌ Nenhum bilhete foi vendido para esta rodada.")
+
+        await ctx.send("🎰 **O GLOBO ESTÁ GIRANDO... QUEM SERÁ O NOVO MILIONÁRIO?**")
+        await asyncio.sleep(3)
+
+        ganhador_id = random.choice(self.loteria_participantes)
+        ganhador = await self.bot.fetch_user(ganhador_id)
+        premio = self.loteria_pote
+
+        user_db = db.get_user_data(str(ganhador_id))
+        db.update_value(user_db['row'], 3, int(user_db['data'][2]) + premio)
+
+        embed = disnake.Embed(
+            title="🎉 TEMOS UM VENCEDOR! 🎉",
+            description=f"O grande sortudo da rodada é **{ganhador.mention}**!\nEle acaba de faturar **{premio} Conguitos**!",
+            color=disnake.Color.gold()
+        )
+        embed.set_footer(text="A próxima rodada começa agora! Compre seu bilhete.")
+        await ctx.send(embed=embed)
+
+        # Reseta a loteria para a próxima rodada
+        self.loteria_participantes = []
+        self.loteria_pote = 0
+
+    # --- SISTEMA DE BANCO DUPLO (FIXO e CRIPTO) ---
+    @commands.command(aliases=["banco", "depositar"])
+    async def investir(self, ctx, tipo: str = None, valor: int = 0):
+        """Sistema de investimentos: Seguro (Fixo) ou Volátil (Cripto)."""
+        if not tipo or tipo.lower() not in ['cripto', 'fixo'] or valor <= 0:
+            embed = disnake.Embed(title="🏦 Banco da Selva AKTrovão", color=disnake.Color.green())
+            embed.add_field(name="📈 `!investir cripto <valor>`", value="Risco alto! Rende de **-25% a +25%** em 1 minuto.\n*Sem limite de valor.*", inline=False)
+            embed.add_field(name="🏛️ `!investir fixo <valor>`", value="Seguro! Rende **+10%** na hora.\n*Limite: 5.000 C por dia.*", inline=False)
+            return await ctx.send(embed=embed)
+
+        user = db.get_user_data(str(ctx.author.id))
+        if not user or int(user['data'][2]) < valor:
+            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+
+        tipo = tipo.lower()
+        agora = time.time()
+
+        if tipo == 'fixo':
+            limite = 5000
+            if valor > limite:
+                return await ctx.send(f"❌ O banco só aceita até **{limite} C** na Renda Fixa! Para investir mais, use a Cripto.")
+
+            ultimo_invest = float(user['data'][7]) if len(user['data']) > 7 and user['data'][7] else 0
+            if agora - ultimo_invest < 86400: 
+                restante_horas = int((86400 - (agora - ultimo_invest)) / 3600)
+                restante_min = int(((86400 - (agora - ultimo_invest)) % 3600) / 60)
+                return await ctx.send(f"⏳ {ctx.author.mention}, seu limite diário esgotou. Volte em **{restante_horas}h {restante_min}m** para a Renda Fixa.")
+
+            lucro = int(valor * 0.10)
+            db.update_value(user['row'], 3, int(user['data'][2]) + lucro)
+            db.update_value(user['row'], 8, agora) 
+            
+            await ctx.send(f"🏛️ **RENDA FIXA!** Seu rendimento de 10% foi aplicado na hora. Você ganhou **+{lucro} C** limpos, {ctx.author.mention}!")
+
+        elif tipo == 'cripto':
+            db.update_value(user['row'], 3, int(user['data'][2]) - valor)
+            await ctx.send(f"📈 {ctx.author.mention} comprou **{valor} C** em MacacoCoin (MC). O mercado fechará em 1 minuto...")
+
+            await asyncio.sleep(60)
+
+            user_atual = db.get_user_data(str(ctx.author.id))
+            
+            variacao = random.uniform(-0.25, 0.25)
+            retorno = int(valor * (1 + variacao))
+            lucro = retorno - valor
+
+            db.update_value(user_atual['row'], 3, int(user_atual['data'][2]) + retorno)
+            
+            if lucro > 0:
+                await ctx.send(f"🚀 **ALTA NO MERCADO!** A MacacoCoin valorizou! {ctx.author.mention} recebeu **{retorno} C** (Lucro: `+{lucro} C`).")
+            else:
+                await ctx.send(f"📉 **CRASH NO MERCADO!** A MacacoCoin desabou... {ctx.author.mention} recebeu apenas **{retorno} C** (Prejuízo: `{lucro} C`).")
+
     # --- 1. CORRIDA DE MACACOS ---
     @commands.command(name="corrida")
     async def corrida_macaco(self, ctx, escolha: str, aposta: int):
-        """Aposte em um macaco: macaquinho, gorila ou orangutango."""
         opcoes = {
             "macaquinho": "🐒",
             "gorila": "🦍",
@@ -164,15 +297,12 @@ class Games(commands.Cog):
         res = random.choice(["cara", "coroa"])
         venceu = (lado == res)
         
-        # Calcula o novo saldo e a mensagem
         if venceu:
-            ganho = aposta  # Ele recebe o que apostou de volta + o prêmio (dobro)
+            ganho = aposta  
             msg = f"✅ **Ganhou, +{aposta} C!**"
-            cor = "Ganhou"
         else:
             ganho = -aposta
             msg = f"❌ **Perdeu, -{aposta} C!**"
-            cor = "Perdeu"
 
         novo_saldo = int(user['data'][2]) + ganho
         db.update_value(user['row'], 3, novo_saldo)
@@ -183,7 +313,7 @@ class Games(commands.Cog):
     async def cassino_slots(self, ctx, aposta: int):
         user = db.get_user_data(str(ctx.author.id))
         if not user or aposta > int(user['data'][2]) or aposta <= 0: return
-        emojis = ["🍌", "🐒", "⚡", "🥥", "💎"]
+        emojis = ["🍌", "🐒", "⚡", "🥥", "💎", "🦍"]
         res = [random.choice(emojis) for _ in range(3)]
         ganho = aposta * 10 if res[0] == res[1] == res[2] else (aposta * 2 if res[0] == res[1] or res[1] == res[2] or res[0] == res[2] else -aposta)
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)

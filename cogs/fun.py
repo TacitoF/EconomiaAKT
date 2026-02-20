@@ -28,11 +28,11 @@ class Fun(commands.Cog):
         if not user:
             return await ctx.send(f"❌ {ctx.author.mention}, você não tem conta! Use `!trabalhar`.")
 
-        # Tabela de Preços
+        # Tabela de Preços Atualizada (Deflação)
         precos = {
-            "mudo": {1: 1500, 5: 7500, 10: 15000},
-            "surdo": {1: 1500, 5: 7500, 10: 15000},
-            "surdomudo": {1: 3000, 5: 15000, 10: 30000}
+            "mudo": {1: 300, 5: 1500, 10: 3000},
+            "surdo": {1: 300, 5: 1500, 10: 3000},
+            "surdomudo": {1: 600, 5: 3000, 10: 6000}
         }
 
         tipo = tipo.lower()
@@ -93,7 +93,8 @@ class Fun(commands.Cog):
         if not user:
             return await ctx.send(f"❌ {ctx.author.mention}, você não tem conta! Use `!trabalhar`.")
 
-        custo = 5000
+        # Custo atualizado (Deflação)
+        custo = 1200
         saldo_atual = int(user['data'][2])
 
         if saldo_atual < custo:
