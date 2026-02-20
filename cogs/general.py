@@ -100,7 +100,7 @@ class General(commands.Cog):
     async def patchnotes(self, ctx):
         """Envia o anúncio de atualização do bot (Apenas Admin)."""
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA: Novos Jogos & Conquistas! 🏆🎰 (V3.1)",
+            title="📢 ATUALIZAÇÃO DA SELVA: Novos Jogos & Conquistas! 🏆🎰 (V3.2)",
             description="O Gerente Conguito trouxe novos vícios para a selva e instalou um sistema de troféus para separar os verdadeiros reis dos macacos de imitação! Confiram as novidades:",
             color=disnake.Color.brand_red()
         )
@@ -148,7 +148,7 @@ class General(commands.Cog):
         )
 
         embed.add_field(
-            name="♠️ 8. NOVO JOGO: BLACK JACK (21)", 
+            name="♠️ 8. NOVO JOGO: BLACK JACK (21) BETA", 
             value="Teste sua sorte contra o dealer! Use `!21 <valor>`. Tente chegar o mais próximo possível de 21 sem passar. Se vencer, ganha o dobro do valor apostado!", 
             inline=False
         )
