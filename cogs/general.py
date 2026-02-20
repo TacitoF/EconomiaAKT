@@ -23,23 +23,24 @@ class General(commands.Cog):
             color=disnake.Color.green()
         )
 
-        # Economia & Interação (Incluindo Roubo aqui)
+        # Economia & Interação
         economia_txt = (
             "💰 `!trabalhar` - Ganhe conguitos (1h cooldown).\n"
             "👤 `!perfil [@user]` - Ver saldo, cargo e inventário.\n"
+            "🏆 `!rank` (!top) - Veja os primatas mais ricos do servidor.\n"
             "🛒 `!loja` - Ver preços de itens, cargos e castigos.\n"
             "💳 `!comprar <item>` - Evoluir cargo ou comprar Escudo.\n"
             "🥷 `!roubar @user` - Tenta roubar 20% do saldo (40% chance)."
         )
         embed.add_field(name="💵 ECONOMIA & ROUBOS", value=economia_txt, inline=False)
 
-        # Jogos (Apenas jogos de aposta pura)
+        # Jogos
         jogos_txt = (
             "🎰 `!cassino <valor>` - Caça-níquel.\n"
-            "🏁 `!corrida <corredor> <valor>` - Aposte entre ""Macaquinho"", ""Gorila"" ou ""Orangutango"".\n"
+            "🏁 `!corrida <corredor> <valor>` - Aposte entre \"Macaquinho\", \"Gorila\" ou \"Orangutango\".\n"
             "🪙 `!moeda <cara/coroa> <valor>` - Dobro ou nada.\n"
-            "🦁 `!bicho <animal> <valor>` - escolha entre ""Leao"", ""Cobra"", ""Jacare"", ""Arara"" ou ""Elefante"".\n"
-            "💣 `!minas <bombas> <valor>` - escolha entre 1 e 5 bombas.\n"
+            "🦁 `!bicho <animal> <valor>` - Escolha entre \"Leao\", \"Cobra\", \"Jacare\", \"Arara\" ou \"Elefante\".\n"
+            "💣 `!minas <bombas> <valor>` - Escolha entre 1 e 5 bombas.\n"
             "🥊 `!briga @user <valor>` - Desafie alguém para PvP!\n"
             "💡 *Use estes no canal #🎰・akbet*"
         )
@@ -51,7 +52,7 @@ class General(commands.Cog):
             "🎧 `!castigo surdo <tempo> @user` - Ensurdece alguém.\n"
             "🤐 `!castigo surdomudo <tempo> @user` - Combo Total.\n"
             "⏱️ *Tempos: 1, 5 ou 10 minutos.*\n"
-            "👟 `!desconectar(!kick - !tchau) @user` - Chuta o usuário da call."
+            "👟 `!desconectar` (@kick) - Chuta o usuário da call."
         )
         embed.add_field(name="🤐 CASTIGOS DE VOZ", value=castigos_txt, inline=False)
 
@@ -68,6 +69,7 @@ class General(commands.Cog):
         embed = disnake.Embed(title="🍌 Regras da Selva AKTrovão", color=disnake.Color.gold())
         embed.add_field(name="⚒️ Trabalho", value="`!trabalhar` a cada 1h no #🐒・conguitos. Evolua seu primata!", inline=False)
         embed.add_field(name="🥷 Roubos", value="Comando `!roubar` liberado no #🐒・conguitos. Use Escudo para se proteger!", inline=False)
+        embed.add_field(name="🏆 Ranking", value="Use `!rank` para ver o pódio da ostentação.", inline=False)
         embed.add_field(name="🎰 Cassino", value="Jogos e apostas liberados apenas no canal #🎰・akbet.", inline=False)
         embed.add_field(name="🤐 Castigos", value="Respeite para não ser castigado. Castigos custam conguitos.", inline=False)
         
