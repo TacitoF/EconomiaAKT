@@ -58,6 +58,7 @@ class General(commands.Cog):
             "🎫 `!loteria` (!bilhete) - Compre um bilhete (500 C) para o sorteio acumulado!\n"
             "💰 `!pote` (!premio) - Veja o valor total acumulado na loteria.\n"
             "🃏 `!carta @user <valor>` - Desafie alguém para um duelo de cartas!\n"
+            "♠️ `!21 <valor>` - Jogue contra o dealer e tente chegar mais perto de 21!\n"
             "💡 *Use os jogos no canal #🎰・akbet*"
         )
         embed.add_field(name="🎲 AK-BET JOGOS & EVENTOS", value=jogos_txt, inline=False)
