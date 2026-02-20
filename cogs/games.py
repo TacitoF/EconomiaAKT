@@ -312,12 +312,32 @@ class Games(commands.Cog):
     @commands.command(name="cassino")
     async def cassino_slots(self, ctx, aposta: int):
         user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0: return
+        if not user or aposta > int(user['data'][2]) or aposta <= 0: 
+            return await ctx.send(f"⚠️ {ctx.author.mention}, saldo insuficiente ou aposta inválida!")
+
         emojis = ["🍌", "🐒", "⚡", "🥥", "💎", "🦍"]
         res = [random.choice(emojis) for _ in range(3)]
-        ganho = aposta * 10 if res[0] == res[1] == res[2] else (aposta * 2 if res[0] == res[1] or res[1] == res[2] or res[0] == res[2] else -aposta)
+        
+        # Lógica de ganhos
+        if res[0] == res[1] == res[2]:
+            ganho = aposta * 10
+            status_msg = f"🎰 **JACKPOT!** 🎰\nVocê ganhou **+{ganho} C**"
+        elif res[0] == res[1] or res[1] == res[2] or res[0] == res[2]:
+            ganho = aposta * 2
+            status_msg = f"Você ganhou **+{ganho} C**"
+        else:
+            ganho = -aposta
+            status_msg = f"Você perdeu **-{aposta} C**"
+
+        # Atualiza no banco de dados
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
-        await ctx.send(f"🎰 [ {' | '.join(res)} ] | {ctx.author.mention}: {ganho} C")
+
+        # Mensagem formatada
+        await ctx.send(
+            f"🎰 **CASSINO AKTrovão** 🎰\n"
+            f"**[ {res[0]} | {res[1]} | {res[2]} ]**\n"
+            f"{ctx.author.mention}, {status_msg}!"
+        )
 
 def setup(bot):
     bot.add_cog(Games(bot))
