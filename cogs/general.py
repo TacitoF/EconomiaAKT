@@ -23,42 +23,43 @@ class General(commands.Cog):
             color=disnake.Color.green()
         )
 
-        # Economia & Interação
+        # Economia & Interação (ATUALIZADO)
         economia_txt = (
             "💰 `!trabalhar` - Ganhe conguitos (1h cooldown).\n"
             "👤 `!perfil [@user]` - Ver saldo, cargo, inventário e **🏆 Conquistas**.\n"
-            "🏅 `!conquistas` (!emblemas) - Veja o guia completo de troféus e segredos da selva.\n"
+            "🏅 `!conquistas` (!emblemas) - Veja o guia de troféus e segredos.\n"
             "🏆 `!rank` (!top) - Veja os primatas mais ricos do servidor.\n"
-            "🛒 `!loja` - Ver preços de itens (Pé de Cabra, Escudo), cargos e castigos.\n"
-            "💳 `!comprar <item>` - Evoluir cargo ou comprar itens de proteção/ação.\n"
+            "🛒 `!loja` - Ver preços de itens, cargos e castigos.\n"
+            "💳 `!comprar <item>` - Evoluir cargo ou comprar itens de proteção.\n"
             "🥷 `!roubar @user` - 40% de chance de roubar 20% do saldo do alvo.\n"
             "💸 `!pagar @user <valor>` (!pix) - Transfira dinheiro para outro macaco.\n"
-            "🚨 `!recompensa @user <valor>` - Coloque a cabeça de um macaco a prêmio!"
+            "🚨 `!recompensa @user <valor>` - Coloque a cabeça de alguém a prêmio!\n"
+            "📜 `!recompensas` (!procurados) - Veja o mural com todos os procurados."
         )
-        embed.add_field(name="💵 ECONOMIA, ROUBOS & RECOMPENSAS", value=economia_txt, inline=False)
+        embed.add_field(name="💵 ECONOMIA, ROUBOS & CAÇADAS", value=economia_txt, inline=False)
 
         # Banco & Investimentos
         banco_txt = (
             "🏛️ `!investir fixo <valor>` - Seguro! Rende **+10%** na hora (Limite 5.000 C/dia).\n"
-            "📈 `!investir cripto <valor>` - Risco Alto! Rende entre **-25% a +25%** em 1 min (Sem limites)."
+            "📈 `!investir cripto <valor>` - Risco Alto! Rende entre **-25% a +25%** em 1 min."
         )
         embed.add_field(name="🏦 BANCO E INVESTIMENTOS", value=banco_txt, inline=False)
 
-        # Jogos & Eventos
+        # Jogos & Eventos (ATUALIZADO)
         jogos_txt = (
             "🚀 `!crash <valor>` - Foguetinho! Suba no cipó e digite `parar` a tempo.\n"
             "🎰 `!cassino <valor>` - Caça-níquel.\n"
             "🥥 `!coco <valor>` - Crie uma Roleta do Coco Explosivo.\n"
             "🏃 `!entrar_coco` - Entre na roda de coco antes do tempo acabar!\n"
-            "🏁 `!corrida <corredor> <valor>` - Aposte entre \"Macaquinho\", \"Gorila\" ou \"Orangutango\".\n"
+            "🏁 `!corrida <corredor> <valor>` - Aposte entre Macaquinho, Gorila ou Orangutango.\n"
             "🪙 `!moeda <cara/coroa> <valor>` - Dobro ou nada.\n"
-            "🦁 `!bicho <animal> <valor>` - Escolha entre \"Leao\", \"Cobra\", \"Jacare\", \"Arara\" ou \"Elefante\".\n"
+            "🦁 `!bicho <animal> <valor>` - Escolha Leao, Cobra, Jacare, Arara ou Elefante.\n"
             "💣 `!minas <bombas> <valor>` - Escolha entre 1 e 5 bombas.\n"
             "🥊 `!briga @user <valor>` - Desafie alguém para PvP!\n"
-            "🎫 `!loteria` (!bilhete) - Compre um bilhete (500 C) para o sorteio acumulado!\n"
+            "🎫 `!loteria` (!bilhete) - Compre um bilhete (500 C) para o sorteio!\n"
             "💰 `!pote` (!premio) - Veja o valor total acumulado na loteria.\n"
             "🃏 `!carta @user <valor>` - Desafie alguém para um duelo de cartas!\n"
-            "♠️ `!21 <valor>` - Jogue contra o dealer e tente chegar mais perto de 21!\n"
+            "♠️ `!21 <valor>` (!bj) - Crie uma mesa de **Blackjack MULTIPLAYER**!\n"
             "💡 *Use os jogos no canal #🎰・akbet*"
         )
         embed.add_field(name="🎲 AK-BET JOGOS & EVENTOS", value=jogos_txt, inline=False)
@@ -148,8 +149,8 @@ class General(commands.Cog):
         )
 
         embed.add_field(
-            name="♠️ 8. NOVO JOGO: BLACK JACK (21) BETA", 
-            value="Teste sua sorte contra o dealer! Use `!21 <valor>`. Tente chegar o mais próximo possível de 21 sem passar. Se vencer, ganha o dobro do valor apostado!", 
+            name="♠️ 8. NOVO JOGO: BLACK JACK (21) MULTIPLAYER", 
+            value="Teste sua sorte contra o dealer junto com seus amigos! Use `!21 <valor>`. A mesa abre, seus amigos entram, e o jogo acontece em botões dinâmicos com opções de Hit, Stand, Double e Split!", 
             inline=False
         )
 
@@ -159,8 +160,6 @@ class General(commands.Cog):
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await ctx.send(content="🚨 **ATUALIZAÇÃO DE JOGOS E CONQUISTAS LIBERADA!** 🚨\n", embed=embed)
-        
-        # Apaga o seu comando '!patchnotes' do chat para ficar limpo
         await ctx.message.delete()
 
 def setup(bot):
