@@ -30,7 +30,7 @@ class General(commands.Cog):
             "🏆 `!rank` (!top) - Veja os primatas mais ricos do servidor.\n"
             "🛒 `!loja` - Ver preços de itens (Pé de Cabra, Escudo), cargos e castigos.\n"
             "💳 `!comprar <item>` - Evoluir cargo ou comprar itens de proteção/ação.\n"
-            "🥷 `!roubar @user` - Rouba 20% do saldo (Anti-foco: máx 2 roubos a cada 2h).\n"
+            "🥷 `!roubar @user` - Rouba 20% do saldo do alvo.\n"
             "💸 `!pagar @user <valor>` (!pix) - Transfira dinheiro para outro macaco.\n"
             "🚨 `!recompensa @user <valor>` - Coloque a cabeça de um macaco a prêmio!"
         )
@@ -112,6 +112,8 @@ class General(commands.Cog):
         embed.add_field(name="🏦 6. SISTEMA BANCÁRIO", value="`!investir fixo <valor>`: Rende +10% garantido na hora (Máx 5k por dia).\n`!investir cripto <valor>`: Volátil! Risco de perder até -25% ou ganhar até +25% em 1 min.", inline=False)
         
         embed.add_field(name="🎫 7. LOTERIA ACUMULADA", value="Compre um `!bilhete` por 500 C. O dinheiro vai para um pote. Use **`!pote`** para ver o prêmio acumulado. Quando a administração realizar o sorteio, **UM ÚNICO SORTUDO** leva tudo!", inline=False)
+
+        embed.add_field(name="🔥 8. FIM DO ANTI-FOCO", value="A trava de proteção contra roubos repetidos foi removida! A selva está mais perigosa do que nunca. O único jeito de se proteger agora é comprando **Escudo**.", inline=False)
 
         embed.set_footer(text="Digite !ajuda para ver o manual completo atualizado.")
         

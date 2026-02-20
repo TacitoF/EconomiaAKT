@@ -8,8 +8,6 @@ class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.owner_id = 757752617722970243
-        # Dicionário para rastrear roubos recebidos: {user_id: [timestamp1, timestamp2]}
-        self.roubos_recebidos = {}
         # Dicionário para rastrear recompensas ativas: {user_id: valor_acumulado}
         self.recompensas = {}
 
@@ -289,17 +287,7 @@ class Economy(commands.Cog):
         if not ladrao_data or not alvo_data: return await ctx.send("❌ Conta não encontrada!")
 
         agora = time.time()
-        intervalo_foco = 7200 # 2 horas
-
         vitima_id = str(vitima.id)
-        if vitima_id not in self.roubos_recebidos:
-            self.roubos_recebidos[vitima_id] = []
-        
-        # Remove timestamps velhos
-        self.roubos_recebidos[vitima_id] = [t for t in self.roubos_recebidos[vitima_id] if agora - t < intervalo_foco]
-
-        if len(self.roubos_recebidos[vitima_id]) >= 2:
-            return await ctx.send(f"🛡️ {vitima.mention} já foi alvo de muitos roubos recentemente! Tente outro alvo.")
 
         ultimo_roubo = float(ladrao_data['data'][6]) if len(ladrao_data['data']) > 6 and ladrao_data['data'][6] else 0
         if agora - ultimo_roubo < 7200:
@@ -315,7 +303,6 @@ class Economy(commands.Cog):
         if "Escudo" in alvo_data['data'][5]:
             db.update_value(alvo_data['row'], 6, "")
             db.update_value(ladrao_data['row'], 7, agora)
-            self.roubos_recebidos[vitima_id].append(agora) 
             return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um Escudo e você perdeu o seu ataque!")
 
         if random.randint(1, 100) <= chance_sucesso:
@@ -331,7 +318,6 @@ class Economy(commands.Cog):
             db.update_value(ladrao_data['row'], 3, int(ladrao_data['data'][2]) + ganho_total)
             db.update_value(alvo_data['row'], 3, int(alvo_data['data'][2]) - valor_roubado)
             db.update_value(ladrao_data['row'], 7, agora)
-            self.roubos_recebidos[vitima_id].append(agora)
             
             mensagem = f"🥷 **SUCESSO!** Roubou **{valor_roubado} C** de {vitima.mention}!"
             if chance_sucesso == 70:
@@ -346,7 +332,6 @@ class Economy(commands.Cog):
             db.update_value(ladrao_data['row'], 3, int(ladrao_data['data'][2]) - multa)
             db.update_value(alvo_data['row'], 3, int(alvo_data['data'][2]) + multa)
             db.update_value(ladrao_data['row'], 7, agora)
-            self.roubos_recebidos[vitima_id].append(agora)
             await ctx.send(f"👮 **PRESO!** Pagou **{multa} C** de multa.")
 
     @commands.command(aliases=["pix", "transferir", "enviar", "pay"])
