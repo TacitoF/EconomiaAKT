@@ -24,7 +24,9 @@ class Economy(commands.Cog):
                 'casca_grossa': set(),     # IDs de quem bateu no Escudo
                 'briga_de_bar': set(),     # IDs de quem brigou por 1 C
                 'ima_desgraca': set(),     # IDs de quem explodiu primeiro no coco (>=4)
-                'veterano_coco': set()     # IDs de quem sobreviveu ao coco (>=5)
+                'veterano_coco': set(),    # IDs de quem sobreviveu ao coco (>=5)
+                'queda_livre': set(),      # NOVO: Azar no Crash (1.0x)
+                'astronauta_cipo': set()   # NOVO: Coragem no Crash (>=5.0x)
             }
 
     async def cog_before_invoke(self, ctx):
@@ -90,7 +92,9 @@ class Economy(commands.Cog):
                 "❓ **???** - *Deu de cara no muro tentando levar o que não é seu.*\n"
                 "❓ **???** - *Brigar por uma única moeda? Isso é falta de amor à vida.*\n"
                 "❓ **???** - *Alguém precisava ser o primeiro a tomar na cabeça...*\n"
-                "❓ **???** - *Um verdadeiro sobrevivente do caos coletivo.*"
+                "❓ **???** - *Um verdadeiro sobrevivente do caos coletivo.*\n"
+                "❓ **???** - *O cipó arrebentou antes mesmo de você segurar.*\n"
+                "❓ **???** - *Coragem de aço! Ou seria burrice?*"
             ),
             inline=False
         )
@@ -228,7 +232,7 @@ class Economy(commands.Cog):
             if tracker['roubos_falha'].get(user_id, 0) >= 3:
                 emblemas.append("⛓️ **Freguês da Delegacia**")
                 
-            # Secretas (Avaliando IDs salvos)
+            # Secretas Originais
             if user_id in tracker.get('esquadrao_suicida', set()):
                 emblemas.append("💣 **Esquadrão Suicida**")
             
@@ -250,12 +254,19 @@ class Economy(commands.Cog):
             if user_id in tracker.get('briga_de_bar', set()):
                 emblemas.append("🥊 **Briga de Bar**")
                 
-            # NOVAS DO COCO EXPLOSIVO
+            # Novas do Coco Explosivo
             if user_id in tracker.get('ima_desgraca', set()):
                 emblemas.append("🧲 **Imã de Desgraça**")
                 
             if user_id in tracker.get('veterano_coco', set()):
                 emblemas.append("🥥 **Veterano de Guerra**")
+                
+            # Novas do Crash
+            if user_id in tracker.get('queda_livre', set()):
+                emblemas.append("📉 **Queda Livre**")
+                
+            if user_id in tracker.get('astronauta_cipo', set()):
+                emblemas.append("🚀 **Astronauta de Cipó**")
         
         emblemas_str = " | ".join(emblemas) if emblemas else "Nenhum"
 

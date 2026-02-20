@@ -32,34 +32,141 @@ class Games(commands.Cog):
                 'pix_irritante': set(),
                 'casca_grossa': set(),
                 'briga_de_bar': set(),
-                'ima_desgraca': set(),     # NOVO: Azar no Coco
-                'veterano_coco': set()     # NOVO: Sorte extrema no Coco
+                'ima_desgraca': set(),
+                'veterano_coco': set(),
+                'queda_livre': set(),      # NOVO: Azar no Crash (1.0x)
+                'astronauta_cipo': set()   # NOVO: Coragem no Crash (>=5.0x)
             }
 
     async def cog_before_invoke(self, ctx):
         """Restringe comandos deste Cog, com exceção do banco e loteria."""
-        # Permite investir e loteria nos canais de economia e apostas
         if ctx.command.name in ['investir', 'banco', 'depositar', 'loteria', 'bilhete', 'loto', 'sortear_loteria', 'pote', 'premio', 'acumulado']:
             if ctx.channel.name not in ['🐒・conguitos', '🎰・akbet']:
                 await ctx.send(f"⚠️ {ctx.author.mention}, vá ao banco/loteria no canal #🐒・conguitos ou #🎰・akbet.")
                 raise commands.CommandError("Canal incorreto para banco/loteria.")
             return
 
-        # Restringe o resto (jogos reais) apenas ao canal akbet
         if ctx.channel.name != '🎰・akbet':
             canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
-            
             await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal {mencao}.")
             raise commands.CommandError("Canal de apostas incorreto.")
 
-    # --- NOVO: COMANDO PARA VER O POTE ---
+    # --- NOVO MINIGAME: CRASH DO CIPÓ (FOGUETINHO) ---
+    @commands.command(aliases=["cipo", "foguetinho"])
+    async def crash(self, ctx, aposta: int):
+        """Jogue o Crash do Cipó! Digite 'parar' antes que arrebente."""
+        if aposta <= 0:
+            return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
+
+        user = db.get_user_data(str(ctx.author.id))
+        if not user or int(user['data'][2]) < aposta:
+            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+
+        # Desconta a aposta na largada
+        db.update_value(user['row'], 3, int(user['data'][2]) - aposta)
+
+        # Lógica matemática do Crash (Mais chance de quebrar cedo, menos chance de ir longe)
+        chance = random.random()
+        if chance < 0.05:
+            crash_point = 1.0  # 5% de chance de dar Instakill
+        elif chance < 0.65:
+            crash_point = random.uniform(1.1, 2.0)
+        elif chance < 0.90:
+            crash_point = random.uniform(2.0, 4.0)
+        else:
+            crash_point = random.uniform(4.0, 10.0)
+        
+        crash_point = round(crash_point, 1)
+        current_mult = 1.0
+
+        embed = disnake.Embed(
+            title="📈 CRASH DO CIPÓ 🐒",
+            description=f"{ctx.author.mention} apostou **{aposta} C**!\n\n🌿 O macaco começou a subir...\n**Multiplicador:** `{current_mult}x`\n\n⚠️ *Digite `parar` no chat para pular!*",
+            color=disnake.Color.green()
+        )
+        msg = await ctx.send(embed=embed)
+
+        # Se quebrou no 1.0x (Instakill)
+        if crash_point == 1.0:
+            await asyncio.sleep(1)
+            embed.color = disnake.Color.red()
+            embed.description = f"💥 **ARREBENTOU INSTANTANEAMENTE!**\nO cipó rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} perdeu **{aposta} C** direto na lama."
+            await msg.edit(embed=embed)
+            
+            # Tracker: Queda Livre
+            if 'queda_livre' not in self.bot.tracker_emblemas:
+                self.bot.tracker_emblemas['queda_livre'] = set()
+            self.bot.tracker_emblemas['queda_livre'].add(str(ctx.author.id))
+            return
+
+        # Evento para ouvir o "parar" enquanto o multiplicador sobe
+        stop_event = asyncio.Event()
+
+        async def listen_for_parar():
+            def check(m): return m.author == ctx.author and m.content.lower() == 'parar' and m.channel == ctx.channel
+            try:
+                await self.bot.wait_for('message', check=check, timeout=30.0)
+                stop_event.set()
+            except asyncio.TimeoutError:
+                pass
+
+        # Inicia a escuta em segundo plano
+        listen_task = self.bot.loop.create_task(listen_for_parar())
+
+        # Loop de subida do multiplicador
+        while current_mult < crash_point:
+            try:
+                # Aguarda 1.5s ou até o jogador digitar parar
+                await asyncio.wait_for(stop_event.wait(), timeout=1.5)
+                break
+            except asyncio.TimeoutError:
+                # Sobe o multiplicador de forma gradual
+                current_mult += round(random.uniform(0.1, 0.4), 1)
+                current_mult = round(current_mult, 1)
+                
+                if current_mult > crash_point:
+                    current_mult = crash_point
+
+                embed.description = f"{ctx.author.mention} apostou **{aposta} C**!\n\n🌿 Subindo alto...\n**Multiplicador:** `{current_mult}x`\n\n⚠️ *Digite `parar` no chat para pular!*"
+                
+                try:
+                    await msg.edit(embed=embed)
+                except:
+                    pass
+
+        # Cancela a escuta para não vazar memória
+        listen_task.cancel()
+
+        user_atual = db.get_user_data(str(ctx.author.id))
+
+        if stop_event.is_set():
+            # Jogador digitou parar a tempo!
+            ganho = int(aposta * current_mult)
+            lucro = ganho - aposta
+            db.update_value(user_atual['row'], 3, int(user_atual['data'][2]) + ganho)
+            
+            embed.color = disnake.Color.blue()
+            embed.description = f"✅ **PULOU A TEMPO!**\nO macaco soltou o cipó no `{current_mult}x`.\n\n💰 {ctx.author.mention} faturou **{ganho} C** (Lucro: `+{lucro} C`)!"
+            await msg.edit(embed=embed)
+            
+            # Tracker: Astronauta de Cipó
+            if current_mult >= 5.0:
+                if 'astronauta_cipo' not in self.bot.tracker_emblemas:
+                    self.bot.tracker_emblemas['astronauta_cipo'] = set()
+                self.bot.tracker_emblemas['astronauta_cipo'].add(str(ctx.author.id))
+        else:
+            # O Cipó arrebentou!
+            embed.color = disnake.Color.red()
+            embed.description = f"💥 **ARREBENTOU!**\nO cipó não aguentou o peso e rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} caiu na lama e perdeu **{aposta} C**."
+            await msg.edit(embed=embed)
+
+
+    # --- SISTEMA DE LOTERIA ---
     @commands.command(aliases=["premio", "acumulado"])
     async def pote(self, ctx):
-        """Mostra o valor total acumulado na loteria e a quantidade de participantes."""
         if self.loteria_pote == 0:
             return await ctx.send(f"🎫 {ctx.author.mention}, o pote da loteria está zerado! Seja o primeiro a comprar usando `!loteria` (500 C).")
-        
         qtd_participantes = len(self.loteria_participantes)
         embed = disnake.Embed(
             title="💰 Pote da Loteria da Selva",
@@ -69,14 +176,11 @@ class Games(commands.Cog):
         embed.set_footer(text="Garanta sua chance digitando !loteria")
         await ctx.send(embed=embed)
 
-    # --- SISTEMA DE LOTERIA DA SELVA ---
     @commands.command(aliases=["bilhete", "loto"])
     async def loteria(self, ctx):
-        """Compra um bilhete para a loteria atual ou vê o pote."""
         custo_bilhete = 500
         user_id = ctx.author.id
 
-        # Se o usuário já tiver comprado
         if user_id in self.loteria_participantes:
             return await ctx.send(f"🎫 {ctx.author.mention}, você já tem um bilhete! O pote atual está em **{self.loteria_pote} C**.")
 
@@ -84,21 +188,15 @@ class Games(commands.Cog):
         if not user or int(user['data'][2]) < custo_bilhete:
             return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo_bilhete} C** para comprar um bilhete!")
 
-        # Processa a compra
         db.update_value(user['row'], 3, int(user['data'][2]) - custo_bilhete)
         self.loteria_participantes.append(user_id)
         self.loteria_pote += custo_bilhete
-
         await ctx.send(f"🎫 **BILHETE COMPRADO!** {ctx.author.mention} entrou na loteria.\n💰 O prêmio acumulado agora é de **{self.loteria_pote} Conguitos**!")
 
     @commands.command()
     async def sortear_loteria(self, ctx):
-        """Sorteia o prêmio acumulado entre os participantes. (Apenas Dono)"""
-        if ctx.author.id != self.owner_id:
-            return await ctx.send("❌ Apenas o Rei da Selva pode girar o globo da loteria!")
-
-        if not self.loteria_participantes:
-            return await ctx.send("❌ Nenhum bilhete foi vendido para esta rodada.")
+        if ctx.author.id != self.owner_id: return await ctx.send("❌ Apenas o Rei da Selva pode girar o globo da loteria!")
+        if not self.loteria_participantes: return await ctx.send("❌ Nenhum bilhete foi vendido para esta rodada.")
 
         await ctx.send("🎰 **O GLOBO ESTÁ GIRANDO... QUEM SERÁ O NOVO MILIONÁRIO?**")
         await asyncio.sleep(3)
@@ -118,14 +216,12 @@ class Games(commands.Cog):
         embed.set_footer(text="A próxima rodada começa agora! Compre seu bilhete.")
         await ctx.send(embed=embed)
 
-        # Reseta a loteria para a próxima rodada
         self.loteria_participantes = []
         self.loteria_pote = 0
 
-    # --- SISTEMA DE BANCO DUPLO (FIXO e CRIPTO) ---
+    # --- SISTEMA DE BANCO ---
     @commands.command(aliases=["banco", "depositar"])
     async def investir(self, ctx, tipo: str = None, valor: int = 0):
-        """Sistema de investimentos: Seguro (Fixo) ou Volátil (Cripto)."""
         if not tipo or tipo.lower() not in ['cripto', 'fixo'] or valor <= 0:
             embed = disnake.Embed(title="🏦 Banco da Selva AKTrovão", color=disnake.Color.green())
             embed.add_field(name="📈 `!investir cripto <valor>`", value="Risco alto! Rende de **-25% a +25%** em 1 minuto.\n*Sem limite de valor.*", inline=False)
@@ -133,35 +229,31 @@ class Games(commands.Cog):
             return await ctx.send(embed=embed)
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or int(user['data'][2]) < valor:
-            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+        if not user or int(user['data'][2]) < valor: return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
         tipo = tipo.lower()
         agora = time.time()
 
         if tipo == 'fixo':
             limite = 5000
-            if valor > limite:
-                return await ctx.send(f"❌ O banco só aceita até **{limite} C** na Renda Fixa! Para investir mais, use a Cripto.")
+            if valor > limite: return await ctx.send(f"❌ O banco só aceita até **{limite} C** na Renda Fixa!")
 
             ultimo_invest = float(user['data'][7]) if len(user['data']) > 7 and user['data'][7] else 0
             if agora - ultimo_invest < 86400: 
                 restante_horas = int((86400 - (agora - ultimo_invest)) / 3600)
                 restante_min = int(((86400 - (agora - ultimo_invest)) % 3600) / 60)
-                return await ctx.send(f"⏳ {ctx.author.mention}, seu limite diário esgotou. Volte em **{restante_horas}h {restante_min}m** para a Renda Fixa.")
+                return await ctx.send(f"⏳ {ctx.author.mention}, limite diário esgotado. Volte em **{restante_horas}h {restante_min}m**.")
 
             lucro = int(valor * 0.10)
             db.update_value(user['row'], 3, int(user['data'][2]) + lucro)
             db.update_value(user['row'], 8, agora) 
-            
-            await ctx.send(f"🏛️ **RENDA FIXA!** Seu rendimento de 10% foi aplicado na hora. Você ganhou **+{lucro} C** limpos, {ctx.author.mention}!")
+            await ctx.send(f"🏛️ **RENDA FIXA!** Seu rendimento de 10% foi aplicado. Você ganhou **+{lucro} C**, {ctx.author.mention}!")
 
         elif tipo == 'cripto':
             db.update_value(user['row'], 3, int(user['data'][2]) - valor)
             await ctx.send(f"📈 {ctx.author.mention} comprou **{valor} C** em MacacoCoin (MC). O mercado fechará em 1 minuto...")
 
             await asyncio.sleep(60)
-
             user_atual = db.get_user_data(str(ctx.author.id))
             
             variacao = random.uniform(-0.25, 0.25)
@@ -169,29 +261,19 @@ class Games(commands.Cog):
             lucro = retorno - valor
 
             db.update_value(user_atual['row'], 3, int(user_atual['data'][2]) + retorno)
-            
-            if lucro > 0:
-                await ctx.send(f"🚀 **ALTA NO MERCADO!** A MacacoCoin valorizou! {ctx.author.mention} recebeu **{retorno} C** (Lucro: `+{lucro} C`).")
-            else:
-                await ctx.send(f"📉 **CRASH NO MERCADO!** A MacacoCoin desabou... {ctx.author.mention} recebeu apenas **{retorno} C** (Prejuízo: `{lucro} C`).")
+            if lucro > 0: await ctx.send(f"🚀 **ALTA NO MERCADO!** A MacacoCoin valorizou! {ctx.author.mention} recebeu **{retorno} C** (`+{lucro} C`).")
+            else: await ctx.send(f"📉 **CRASH NO MERCADO!** A MacacoCoin desabou... {ctx.author.mention} recebeu **{retorno} C** (`{lucro} C`).")
 
-    # --- NOVO MINIGAME: ROLETA DO COCO EXPLOSIVO ---
+    # --- MINIGAME: COCO EXPLOSIVO ---
     @commands.command(aliases=["roleta_coco", "coco_explosivo"])
     async def coco(self, ctx, aposta: int):
-        """Inicia uma roda de Coco Explosivo."""
-        if self.coco_active:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, já existe uma roda de coco aberta! Digite `!entrar_coco`.")
-        
-        if aposta <= 0:
-            return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
+        if self.coco_active: return await ctx.send(f"⚠️ {ctx.author.mention}, já existe uma roda aberta! Digite `!entrar_coco`.")
+        if aposta <= 0: return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or int(user['data'][2]) < aposta:
-            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+        if not user or int(user['data'][2]) < aposta: return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
-        # Desconta o valor do criador
         db.update_value(user['row'], 3, int(user['data'][2]) - aposta)
-
         self.coco_active = True
         self.coco_aposta = aposta
         self.coco_players = [ctx.author]
@@ -205,24 +287,19 @@ class Games(commands.Cog):
 
         await asyncio.sleep(60)
 
-        # Fim do tempo, verifica jogadores
         if len(self.coco_players) < 2:
-            # Devolve o dinheiro
             user_refund = db.get_user_data(str(ctx.author.id))
             db.update_value(user_refund['row'], 3, int(user_refund['data'][2]) + aposta)
             self.coco_active = False
             self.coco_players = []
             self.coco_aposta = 0
-            return await ctx.send(f"🥥 Ninguém teve coragem de entrar na roda do {ctx.author.mention}. O jogo foi cancelado e o dinheiro devolvido.")
+            return await ctx.send(f"🥥 Ninguém teve coragem. O jogo foi cancelado e o dinheiro devolvido para {ctx.author.mention}.")
 
-        # O Jogo Começa
         jogadores = self.coco_players.copy()
         total_jogadores = len(jogadores)
         pote = self.coco_aposta * total_jogadores
 
         await ctx.send(f"🔥 **A RODA FECHOU!** Temos {total_jogadores} macacos corajosos e um pote de **{pote} Conguitos**.\nQue os jogos comecem...")
-        
-        # Reseta os dados temporários para liberar nova criação APÓS o jogo terminar
         self.coco_active = False 
 
         rodada = 1
@@ -238,12 +315,9 @@ class Games(commands.Cog):
 
             await ctx.send(f"💥 **KABOOOM!** O coco explodiu na cara do {eliminado.mention}! Fora da roda.")
 
-            # --- TRACKER SECRETO: Imã de Desgraça ---
             if rodada == 1 and total_jogadores >= 4:
-                if 'ima_desgraca' not in self.bot.tracker_emblemas:
-                    self.bot.tracker_emblemas['ima_desgraca'] = set()
+                if 'ima_desgraca' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['ima_desgraca'] = set()
                 self.bot.tracker_emblemas['ima_desgraca'].add(str(eliminado.id))
-
             rodada += 1
 
         vencedor = jogadores[0]
@@ -253,10 +327,8 @@ class Games(commands.Cog):
         await asyncio.sleep(1)
         await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} foi o único que não perdeu a cabeça e faturou sozinho o pote de **{pote} C**!")
 
-        # --- TRACKER SECRETO: Veterano de Guerra ---
         if total_jogadores >= 5:
-            if 'veterano_coco' not in self.bot.tracker_emblemas:
-                self.bot.tracker_emblemas['veterano_coco'] = set()
+            if 'veterano_coco' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['veterano_coco'] = set()
             self.bot.tracker_emblemas['veterano_coco'].add(str(vencedor.id))
             
         self.coco_players = []
@@ -264,28 +336,20 @@ class Games(commands.Cog):
 
     @commands.command(name="entrar_coco")
     async def entrar_coco(self, ctx):
-        """Entra na roda de Coco Explosivo atual."""
-        if not self.coco_active:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, não há nenhuma roda de coco aberta no momento! Crie uma com `!coco <valor>`.")
-        
-        if ctx.author in self.coco_players:
-            return await ctx.send(f"🐒 {ctx.author.mention}, você já está na roda! Controle a ansiedade.")
+        if not self.coco_active: return await ctx.send(f"⚠️ {ctx.author.mention}, não há roda de coco aberta! Crie uma com `!coco <valor>`.")
+        if ctx.author in self.coco_players: return await ctx.send(f"🐒 {ctx.author.mention}, você já está na roda!")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or int(user['data'][2]) < self.coco_aposta:
-            return await ctx.send(f"❌ {ctx.author.mention}, você não tem os **{self.coco_aposta} C** necessários para entrar nessa roda!")
+        if not user or int(user['data'][2]) < self.coco_aposta: return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
-        # Desconta o valor
         db.update_value(user['row'], 3, int(user['data'][2]) - self.coco_aposta)
         self.coco_players.append(ctx.author)
-
         pote_atual = len(self.coco_players) * self.coco_aposta
         await ctx.send(f"🥥 {ctx.author.mention} entrou na roda da morte! (Pote atual: **{pote_atual} C**)")
 
-    # --- LISTA DE JOGOS ATUALIZADA ---
+    # --- LISTA DE JOGOS ---
     @commands.command()
     async def jogos(self, ctx):
-        """Lista os jogos disponíveis. Restrito ao canal #🎰・akbet."""
         if ctx.channel.name != '🎰・akbet':
             canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
@@ -300,7 +364,8 @@ class Games(commands.Cog):
         embed.add_field(
             name="🎮 Comandos Disponíveis",
             value=(
-                "🎰 **!cassino <valor>** - Caça-níquel.\n"
+                "🚀 **!crash <valor>** - Foguetinho! Suba no cipó e digite `parar`.\n"
+                "🎰 **!cassino <valor>** - Caça-níquel clássico.\n"
                 "🥥 **!coco <valor>** - Crie uma Roleta do Coco Explosivo.\n"
                 "🏃 **!entrar_coco** - Entre na roda antes do tempo acabar!\n"
                 "🐒 **!corrida <animal> <valor>** - Aposte no Macaquinho, Gorila ou Orangutango.\n"
@@ -314,30 +379,22 @@ class Games(commands.Cog):
         embed.set_footer(text="Lembre-se: A casa sempre ganha! 🐒")
         await ctx.send(embed=embed)
 
-    # --- 1. CORRIDA DE MACACOS ---
+    # --- OUTROS JOGOS (Corrida, Bicho, Minas, Briga, Moeda, Cassino) mantidos integralmente ---
     @commands.command(name="corrida")
     async def corrida_macaco(self, ctx, escolha: str, aposta: int):
-        opcoes = {
-            "macaquinho": "🐒",
-            "gorila": "🦍",
-            "orangutango": "🦧"
-        }
-        
+        opcoes = {"macaquinho": "🐒", "gorila": "🦍", "orangutango": "🦧"}
         escolha = escolha.lower()
-        if escolha not in opcoes:
-            return await ctx.send(f"❌ {ctx.author.mention}, escolha um competidor válido: `macaquinho`, `gorila` ou `orangutango`.")
+        if escolha not in opcoes: return await ctx.send(f"❌ {ctx.author.mention}, escolha: `macaquinho`, `gorila` ou `orangutango`.")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0:
-            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+        if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
         macacos_lista = list(opcoes.values())
         nomes_lista = list(opcoes.keys())
         pistas = [0, 0, 0]
         chegada = 10
         
-        msg = await ctx.send(f"🏁 **A CORRIDA COMEÇOU!** {ctx.author.mention} apostou no **{escolha.capitalize()}**!\n\n" + 
-                             "\n".join([f"{macacos_lista[i]} 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦 🏁" for i in range(3)]))
+        msg = await ctx.send(f"🏁 **A CORRIDA COMEÇOU!** {ctx.author.mention} apostou no **{escolha.capitalize()}**!\n\n" + "\n".join([f"{macacos_lista[i]} 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦 🏁" for i in range(3)]))
 
         vencedor_idx = -1
         while vencedor_idx == -1:
@@ -353,11 +410,9 @@ class Games(commands.Cog):
                 progresso = min(pistas[i], chegada)
                 pista_str = "🟩" * progresso + "🟦" * (chegada - progresso)
                 frame.append(f"{macacos_lista[i]} {pista_str} 🏁")
-            
             await msg.edit(content=f"🏁 **A CORRIDA ESTÁ QUENTE!**\n\n" + "\n".join(frame))
 
         nome_vencedor = nomes_lista[vencedor_idx]
-        
         if escolha == nome_vencedor:
             ganho = aposta * 3
             res_msg = f"🏆 **VITÓRIA!** O {nome_vencedor.capitalize()} cruzou primeiro! Você ganhou **{ganho} conguitos**."
@@ -368,17 +423,14 @@ class Games(commands.Cog):
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
         await ctx.send(f"{ctx.author.mention} {res_msg}")
 
-    # --- 2. JOGO DO BICHO ---
     @commands.command(name="bicho")
     async def jogo_bicho(self, ctx, bicho: str, aposta: int):
         bichos = ["leao", "cobra", "jacare", "arara", "elefante"]
         bicho = bicho.lower()
-        if bicho not in bichos:
-            return await ctx.send(f"❌ {ctx.author.mention}, escolha entre: `leao, cobra, jacare, arara, elefante`")
+        if bicho not in bichos: return await ctx.send(f"❌ {ctx.author.mention}, escolha: `leao, cobra, jacare, arara, elefante`")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0:
-            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+        if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
         resultado = random.choice(bichos)
         msg = await ctx.send(f"🎰 Sorteando... {ctx.author.mention} apostou no **{bicho.upper()}**!")
@@ -390,25 +442,19 @@ class Games(commands.Cog):
         await msg.edit(content=f"{ctx.author.mention} {txt}")
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
 
-    # --- 3. CAMPO MINADO ---
     @commands.command(name="minas")
     async def campo_minado(self, ctx, bombas: int, aposta: int):
-        if not (1 <= bombas <= 5):
-            return await ctx.send(f"❌ {ctx.author.mention}, escolha entre 1 e 5 bombas.")
+        if not (1 <= bombas <= 5): return await ctx.send(f"❌ {ctx.author.mention}, escolha entre 1 e 5 bombas.")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0:
-            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+        if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
         await ctx.send(f"💣 {ctx.author.mention} entrando no campo com {bombas} bombas...")
         await asyncio.sleep(1.5)
 
-        # Lógica de vitória/derrota
         if random.randint(1, 10) > (bombas * 1.5):
             if bombas == 5:
-                # --- TRACKER: Esquadrão Suicida ---
-                if 'esquadrao_suicida' not in self.bot.tracker_emblemas:
-                    self.bot.tracker_emblemas['esquadrao_suicida'] = set()
+                if 'esquadrao_suicida' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['esquadrao_suicida'] = set()
                 self.bot.tracker_emblemas['esquadrao_suicida'].add(str(ctx.author.id))
                 
             mult = 1.5 + (bombas * 0.5)
@@ -418,16 +464,13 @@ class Games(commands.Cog):
             ganho = -aposta
             status = f"💥 **BOOOOM!** {ctx.author.mention} pisou em uma mina e perdeu **{aposta} C**."
             
-            # --- TRACKER SECRETO: Escorregou na Banana ---
             if bombas == 1:
-                if 'escorregou_banana' not in self.bot.tracker_emblemas:
-                    self.bot.tracker_emblemas['escorregou_banana'] = set()
+                if 'escorregou_banana' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['escorregou_banana'] = set()
                 self.bot.tracker_emblemas['escorregou_banana'].add(str(ctx.author.id))
 
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
         await ctx.send(status)
 
-    # --- 4. BRIGA DE MACACO (PvP) ---
     @commands.command(aliases=["briga", "brigar", "luta", "lutar", "x1"])
     async def briga_macaco(self, ctx, vitima: disnake.Member, aposta: int):
         if vitima.id == ctx.author.id: return await ctx.send(f"🐒 {ctx.author.mention}, não brigue consigo mesmo!")
@@ -435,13 +478,10 @@ class Games(commands.Cog):
         ladrao = db.get_user_data(str(ctx.author.id))
         alvo = db.get_user_data(str(vitima.id))
 
-        if not ladrao or not alvo or int(alvo['data'][2]) < aposta or int(ladrao['data'][2]) < aposta:
-            return await ctx.send(f"❌ {ctx.author.mention}, alguém não tem saldo para essa briga!")
+        if not ladrao or not alvo or int(alvo['data'][2]) < aposta or int(ladrao['data'][2]) < aposta: return await ctx.send(f"❌ {ctx.author.mention}, alguém não tem saldo para essa briga!")
 
-        # --- TRACKER SECRETO: Briga de Bar ---
         if aposta == 1:
-            if 'briga_de_bar' not in self.bot.tracker_emblemas:
-                self.bot.tracker_emblemas['briga_de_bar'] = set()
+            if 'briga_de_bar' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['briga_de_bar'] = set()
             self.bot.tracker_emblemas['briga_de_bar'].add(str(ctx.author.id))
 
         await ctx.send(f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma briga por **{aposta} C**! Digite `aceitar` para lutar!")
@@ -462,53 +502,35 @@ class Games(commands.Cog):
         db.update_value(p_db['row'], 3, int(p_db['data'][2]) - aposta)
         await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e levou o pote de **{aposta} C**!")
 
-    # --- 5. MOEDA E CASSINO ---
     @commands.command(name="moeda", aliases=["cara_coroa", "coinflip", "cf"])
     async def cara_coroa(self, ctx, lado: str, aposta: int):
         user = db.get_user_data(str(ctx.author.id))
-        
-        # Verificações básicas
-        if not user or aposta > int(user['data'][2]) or aposta <= 0:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, você não tem Conguitos suficientes ou a aposta é inválida!")
+        if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"⚠️ {ctx.author.mention}, saldo insuficiente!")
 
         lado = lado.lower()
-        if lado not in ["cara", "coroa"]:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, escolha entre `cara` ou `coroa`!")
+        if lado not in ["cara", "coroa"]: return await ctx.send(f"⚠️ {ctx.author.mention}, escolha entre `cara` ou `coroa`!")
 
         res = random.choice(["cara", "coroa"])
         venceu = (lado == res)
-        
-        if venceu:
-            ganho = aposta  
-            msg = f"✅ **Ganhou, +{aposta} C!**"
-        else:
-            ganho = -aposta
-            msg = f"❌ **Perdeu, -{aposta} C!**"
+        ganho = aposta if venceu else -aposta
+        msg = f"✅ **Ganhou, +{aposta} C!**" if venceu else f"❌ **Perdeu, -{aposta} C!**"
 
-        novo_saldo = int(user['data'][2]) + ganho
-        db.update_value(user['row'], 3, novo_saldo)
-
+        db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
         await ctx.send(f"🪙 {ctx.author.mention} | Caiu **{res.upper()}**! {msg}")
 
     @commands.command(name="cassino")
     async def cassino_slots(self, ctx, aposta: int):
         user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0: 
-            return await ctx.send(f"⚠️ {ctx.author.mention}, saldo insuficiente ou aposta inválida!")
+        if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"⚠️ {ctx.author.mention}, saldo insuficiente!")
 
         emojis = ["🍌", "🐒", "⚡", "🥥", "💎", "🦍"]
         res = [random.choice(emojis) for _ in range(3)]
         
-        # Lógica de ganhos
         if res[0] == res[1] == res[2]:
             ganho = aposta * 10
             status_msg = f"🎰 **JACKPOT!** 🎰\nVocê ganhou **+{ganho} C**"
-            
-            # --- TRACKER SECRETO: Filho da Sorte ---
-            if 'filho_da_sorte' not in self.bot.tracker_emblemas:
-                self.bot.tracker_emblemas['filho_da_sorte'] = set()
+            if 'filho_da_sorte' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['filho_da_sorte'] = set()
             self.bot.tracker_emblemas['filho_da_sorte'].add(str(ctx.author.id))
-            
         elif res[0] == res[1] or res[1] == res[2] or res[0] == res[2]:
             ganho = aposta * 2
             status_msg = f"Você ganhou **+{ganho} C**"
@@ -516,15 +538,8 @@ class Games(commands.Cog):
             ganho = -aposta
             status_msg = f"Você perdeu **{ganho} C**" 
 
-        # Atualiza no banco de dados
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
-
-        # Mensagem formatada
-        await ctx.send(
-            f"🎰 **CASSINO AKTrovão** 🎰\n"
-            f"**[ {res[0]} | {res[1]} | {res[2]} ]**\n"
-            f"{ctx.author.mention}, {status_msg}!"
-        )
+        await ctx.send(f"🎰 **CASSINO AKTrovão** 🎰\n**[ {res[0]} | {res[1]} | {res[2]} ]**\n{ctx.author.mention}, {status_msg}!")
 
 def setup(bot):
     bot.add_cog(Games(bot))

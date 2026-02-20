@@ -46,6 +46,7 @@ class General(commands.Cog):
 
         # Jogos & Eventos
         jogos_txt = (
+            "🚀 `!crash <valor>` - Foguetinho! Suba no cipó e digite `parar` a tempo.\n"
             "🎰 `!cassino <valor>` - Caça-níquel.\n"
             "🥥 `!coco <valor>` - Crie uma Roleta do Coco Explosivo.\n"
             "🏃 `!entrar_coco` - Entre na roda de coco antes do tempo acabar!\n"
