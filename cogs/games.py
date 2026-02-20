@@ -10,8 +10,7 @@ class BlackjackView(disnake.ui.View):
         super().__init__(timeout=120)
         self.ctx = ctx
         self.bot = bot
-        # Criamos os dados para cada jogador que entrou
-        self.players_data = {p.id: {"member": p, "hand": [], "status": "jogando", "aposta": aposta_base} for p in players}
+        self.players_data = {p.id: {"member": p, "hand": [], "status": "jogando", "aposta": aposta_base, "splitted": False} for p in players}
         self.dealer_hand = []
         self.deck = self.gerar_baralho()
         self.player_ids = [p.id for p in players]
@@ -43,7 +42,6 @@ class BlackjackView(disnake.ui.View):
         return ", ".join([f"{c['valor']}{c['naipe']}" for c in hand])
 
     async def atualizar_embed(self, inter=None):
-        # Muda a cor para ouro se terminou
         cor = disnake.Color.dark_purple() if not self.terminado else disnake.Color.gold()
         embed = disnake.Embed(title="🃏 MESA DE BLACKJACK (21)", color=cor)
         
@@ -51,10 +49,21 @@ class BlackjackView(disnake.ui.View):
         status_dealer = f"Pontos: {d_p}" if self.terminado else "Pontos: ?"
         embed.add_field(name="🏦 Dealer (Bot)", value=f"Mão: `{self.formatar_mao(self.dealer_hand, not self.terminado)}`\n{status_dealer}", inline=False)
         
+        # Oculta/Mostra botões dependendo do jogador atual
+        p_atual_id = self.player_ids[self.current_player_idx] if self.current_player_idx < len(self.player_ids) else None
+        if p_atual_id and not self.terminado:
+            p_atual_data = self.players_data[p_atual_id]
+            # Lógica para mostrar o botão de Split (Apenas se tiver 2 cartas de mesmo valor e não tiver feito split ainda)
+            pode_split = len(p_atual_data["hand"]) == 2 and p_atual_data["hand"][0]["valor"] == p_atual_data["hand"][1]["valor"] and not p_atual_data["splitted"]
+            
+            # Ajusta os botões na UI
+            for child in self.children:
+                if child.label == "Dividir (Split)":
+                    child.disabled = not pode_split
+
         for p_id in self.player_ids:
             p = self.players_data[p_id]
-            # Evita o erro de index se o jogo já acabou
-            em_turno = (not self.terminado and self.current_player_idx < len(self.player_ids) and p_id == self.player_ids[self.current_player_idx])
+            em_turno = (not self.terminado and p_atual_id == p_id)
             
             status_emoji = "⏳" if em_turno else "✅"
             if p["status"] == "estourou": status_emoji = "💥"
@@ -63,11 +72,18 @@ class BlackjackView(disnake.ui.View):
             p_p = self.calcular_pontos(p["hand"])
             res_txt = ""
             
+            # --- AJUSTE DE EMPATE (Ambos estouraram) ---
             if self.terminado:
-                if p_p > 21: res_txt = "\n❌ **ESTOUROU**"
-                elif d_p > 21 or p_p > d_p: res_txt = f"\n🏆 **VENCEU! (+{p['aposta']*2} C)**"
-                elif p_p == d_p: res_txt = "\n🤝 **EMPATE**"
-                else: res_txt = "\n💀 **PERDEU**"
+                if p_p > 21 and d_p > 21: 
+                    res_txt = "\n🤝 **EMPATE (Ambos Estouraram)**"
+                elif p_p > 21: 
+                    res_txt = "\n❌ **ESTOUROU**"
+                elif d_p > 21 or p_p > d_p: 
+                    res_txt = f"\n🏆 **VENCEU! (+{p['aposta']*2} C)**"
+                elif p_p == d_p: 
+                    res_txt = "\n🤝 **EMPATE**"
+                else: 
+                    res_txt = "\n💀 **PERDEU**"
 
             embed.add_field(
                 name=f"{status_emoji} {p['member'].display_name}", 
@@ -119,7 +135,7 @@ class BlackjackView(disnake.ui.View):
         u_db = db.get_user_data(str(p_id))
         
         if int(u_db['data'][2]) < p["aposta"]:
-            return await inter.send("❌ Saldo insuficiente!", ephemeral=True)
+            return await inter.send("❌ Saldo insuficiente para dobrar!", ephemeral=True)
         
         db.update_value(u_db['row'], 3, int(u_db['data'][2]) - p["aposta"])
         p["aposta"] *= 2
@@ -127,6 +143,32 @@ class BlackjackView(disnake.ui.View):
         p["status"] = "parou" if self.calcular_pontos(p["hand"]) <= 21 else "estourou"
         
         await self.proximo_turno()
+        await self.atualizar_embed(inter)
+
+    @disnake.ui.button(label="Dividir (Split)", style=disnake.ButtonStyle.danger, disabled=True)
+    async def split(self, button, inter):
+        """Split Simplificado: Descarta uma carta, dobra a aposta e recebe uma nova carta limpa."""
+        if self.terminado or self.current_player_idx >= len(self.player_ids): return
+        p_id = inter.author.id
+        if p_id != self.player_ids[self.current_player_idx]:
+            return await inter.send("❌ Não é sua vez!", ephemeral=True)
+        
+        p = self.players_data[p_id]
+        u_db = db.get_user_data(str(p_id))
+        
+        if int(u_db['data'][2]) < p["aposta"]:
+            return await inter.send("❌ Saldo insuficiente para o Split!", ephemeral=True)
+        
+        # Desconta a aposta do split e altera a mão
+        db.update_value(u_db['row'], 3, int(u_db['data'][2]) - p["aposta"])
+        p["aposta"] *= 2
+        p["splitted"] = True
+        
+        # Remove a segunda carta e dá uma nova
+        p["hand"].pop()
+        p["hand"].append(self.deck.pop())
+        
+        # Como é um split simplificado, a rodada dele continua normal a partir daqui
         await self.atualizar_embed(inter)
 
     async def proximo_turno(self):
@@ -142,7 +184,11 @@ class BlackjackView(disnake.ui.View):
         for p_id, p in self.players_data.items():
             p_p = self.calcular_pontos(p["hand"])
             u_db = db.get_user_data(str(p_id))
-            if p_p <= 21:
+            
+            # --- AJUSTE DE EMPATE ---
+            if p_p > 21 and d_p > 21: # Ambos estouraram
+                db.update_value(u_db['row'], 3, int(u_db['data'][2]) + p["aposta"])
+            elif p_p <= 21:
                 if d_p > 21 or p_p > d_p: # Ganhou
                     db.update_value(u_db['row'], 3, int(u_db['data'][2]) + (p["aposta"] * 2))
                 elif p_p == d_p: # Empatou
@@ -153,36 +199,22 @@ class Games(commands.Cog):
         self.bot = bot
         self.owner_id = 757752617722970243
         
-        # Memória temporária para a loteria
         self.loteria_participantes = []
         self.loteria_pote = 0
-
-        # Memória temporária para o Coco Explosivo
         self.coco_active = False
         self.coco_players = []
         self.coco_aposta = 0
 
-        # --- AJUSTE: Inicializa a memória global completa aqui também ---
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {
-                'trabalhos': {},           
-                'roubos_sucesso': {},      
-                'roubos_falha': {},        
-                'esquadrao_suicida': set(),
-                'palhaco': set(),          
-                'filho_da_sorte': set(),
-                'escorregou_banana': set(),
-                'pix_irritante': set(),
-                'casca_grossa': set(),
-                'briga_de_bar': set(),
-                'ima_desgraca': set(),
-                'veterano_coco': set(),
-                'queda_livre': set(),      
-                'astronauta_cipo': set()   
+                'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {},
+                'esquadrao_suicida': set(), 'palhaco': set(), 'filho_da_sorte': set(),
+                'escorregou_banana': set(), 'pix_irritante': set(), 'casca_grossa': set(),
+                'briga_de_bar': set(), 'ima_desgraca': set(), 'veterano_coco': set(),
+                'queda_livre': set(), 'astronauta_cipo': set() 
             }
 
     async def cog_before_invoke(self, ctx):
-        """Restringe comandos deste Cog, com exceção do banco e loteria."""
         if ctx.command.name in ['investir', 'banco', 'depositar', 'loteria', 'bilhete', 'loto', 'sortear_loteria', 'pote', 'premio', 'acumulado']:
             if ctx.channel.name not in ['🐒・conguitos', '🎰・akbet']:
                 await ctx.send(f"⚠️ {ctx.author.mention}, vá ao banco/loteria no canal #🐒・conguitos ou #🎰・akbet.")
@@ -194,6 +226,55 @@ class Games(commands.Cog):
             mencao = canal.mention if canal else "#🎰・akbet"
             await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal {mencao}.")
             raise commands.CommandError("Canal de apostas incorreto.")
+
+    # --- COMANDO BLACKJACK MULTIPLAYER ---
+    @commands.command(aliases=["bj", "21"])
+    async def blackjack(self, ctx, aposta: int):
+        """Inicia uma mesa de Blackjack multiplayer."""
+        if aposta <= 0: return await ctx.send("❌ Aposta inválida!")
+        u_c = db.get_user_data(str(ctx.author.id))
+        if not u_c or int(u_c['data'][2]) < aposta: return await ctx.send("❌ Saldo insuficiente!")
+        
+        db.update_value(u_c['row'], 3, int(u_c['data'][2]) - aposta)
+        players = [ctx.author]
+        
+        # --- AJUSTE DE TEXTO DE LOBBY ---
+        msg = await ctx.send(f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta} C`\n👥 **Jogadores (1):** {ctx.author.display_name}\n\nDigite `!entrar` para participar!\n{ctx.author.mention}, digite **`começar`** para iniciar o jogo!")
+
+        def check(m): return m.channel == ctx.channel and (m.content.lower() == '!entrar' or (m.author == ctx.author and m.content.lower() == 'começar'))
+        
+        start = False
+        while True:
+            try:
+                m = await self.bot.wait_for('message', check=check, timeout=60.0)
+                if m.content.lower() == 'começar':
+                    start = True
+                    break
+                if m.content.lower() == '!entrar' and m.author not in players:
+                    u_db = db.get_user_data(str(m.author.id))
+                    if u_db and int(u_db['data'][2]) >= aposta:
+                        db.update_value(u_db['row'], 3, int(u_db['data'][2]) - aposta)
+                        players.append(m.author)
+                        
+                        # --- AJUSTE DE ATUALIZAÇÃO DA LISTA DE JOGADORES ---
+                        lista_nomes = ", ".join([p.display_name for p in players])
+                        qtd = len(players)
+                        novo_texto = f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta} C`\n👥 **Jogadores ({qtd}):** {lista_nomes}\n\nDigite `!entrar` para participar!\n{ctx.author.mention}, digite **`começar`** para iniciar o jogo!"
+                        
+                        await msg.edit(content=novo_texto)
+            except asyncio.TimeoutError: break
+
+        if not start:
+            for p in players:
+                p_db = db.get_user_data(str(p.id))
+                db.update_value(p_db['row'], 3, int(p_db['data'][2]) + aposta)
+            return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
+
+        view = BlackjackView(ctx, self.bot, aposta, players)
+        view.dealer_hand = [view.deck.pop(), view.deck.pop()]
+        for p_id in view.player_ids: view.players_data[p_id]["hand"] = [view.deck.pop(), view.deck.pop()]
+        await ctx.send(embed=await view.atualizar_embed(), view=view)
+
 
     # --- NOVO MINIGAME: MAIOR CARTA (DUELO PVP) ---
     @commands.command(aliases=["cartas", "duelo_carta", "draw"])
@@ -219,21 +300,17 @@ class Games(commands.Cog):
         except asyncio.TimeoutError:
             return await ctx.send(f"⏱️ {oponente.mention} demorou demais para comprar a carta. O duelo foi cancelado!")
 
-        # O Duelo começa!
         valores = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
         naipes = ["♠️", "♥️", "♦️", "♣️"]
         
-        # Sorteia as cartas
         carta_desafiante_valor = random.choice(valores)
         carta_oponente_valor = random.choice(valores)
         
-        # Garante que não sejam a mesma exata carta (valor e naipe igual)
         carta_desafiante_naipe = random.choice(naipes)
         carta_oponente_naipe = random.choice(naipes)
         while carta_desafiante_valor == carta_oponente_valor and carta_desafiante_naipe == carta_oponente_naipe:
             carta_oponente_naipe = random.choice(naipes)
 
-        # Calcula quem ganhou (A é maior, 2 é menor)
         peso_desafiante = valores.index(carta_desafiante_valor)
         peso_oponente = valores.index(carta_oponente_valor)
 
@@ -250,13 +327,11 @@ class Games(commands.Cog):
             perdedor = ctx.author
             resultado_txt = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou o pote de **{aposta} C**."
         else:
-            # Empate: Os dois perdem o dinheiro pra "Banca"
             db.update_value(desafiante_db['row'], 3, int(desafiante_db['data'][2]) - aposta)
             db.update_value(oponente_db['row'], 3, int(oponente_db['data'][2]) - aposta)
             embed.description = f"🤝 **EMPATE!** Vossas cartas têm o mesmo peso.\nAmbos perdem a aposta de **{aposta} C** para o Cassino!"
             return await ctx.send(embed=embed)
 
-        # Atualiza os saldos em caso de vitória/derrota
         v_db = db.get_user_data(str(vencedor.id))
         p_db = db.get_user_data(str(perdedor.id))
         db.update_value(v_db['row'], 3, int(v_db['data'][2]) + aposta)
@@ -268,7 +343,6 @@ class Games(commands.Cog):
     # --- NOVO MINIGAME: CRASH DO CIPÓ (FOGUETINHO) ---
     @commands.command(aliases=["cipo", "foguetinho"])
     async def crash(self, ctx, aposta: int):
-        """Jogue o Crash do Cipó! Digite 'parar' antes que arrebente."""
         if aposta <= 0:
             return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
 
@@ -276,19 +350,13 @@ class Games(commands.Cog):
         if not user or int(user['data'][2]) < aposta:
             return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
-        # Desconta a aposta na largada
         db.update_value(user['row'], 3, int(user['data'][2]) - aposta)
 
-        # Lógica matemática do Crash (Mais chance de quebrar cedo, menos chance de ir longe)
         chance = random.random()
-        if chance < 0.05:
-            crash_point = 1.0  # 5% de chance de dar Instakill
-        elif chance < 0.65:
-            crash_point = random.uniform(1.1, 2.0)
-        elif chance < 0.90:
-            crash_point = random.uniform(2.0, 4.0)
-        else:
-            crash_point = random.uniform(4.0, 10.0)
+        if chance < 0.05: crash_point = 1.0 
+        elif chance < 0.65: crash_point = random.uniform(1.1, 2.0)
+        elif chance < 0.90: crash_point = random.uniform(2.0, 4.0)
+        else: crash_point = random.uniform(4.0, 10.0)
         
         crash_point = round(crash_point, 1)
         current_mult = 1.0
@@ -300,61 +368,42 @@ class Games(commands.Cog):
         )
         msg = await ctx.send(embed=embed)
 
-        # Se quebrou no 1.0x (Instakill)
         if crash_point == 1.0:
             await asyncio.sleep(1)
             embed.color = disnake.Color.red()
             embed.description = f"💥 **ARREBENTOU INSTANTANEAMENTE!**\nO cipó rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} perdeu **{aposta} C** direto na lama."
             await msg.edit(embed=embed)
-            
-            # Tracker: Queda Livre
-            if 'queda_livre' not in self.bot.tracker_emblemas:
-                self.bot.tracker_emblemas['queda_livre'] = set()
+            if 'queda_livre' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['queda_livre'] = set()
             self.bot.tracker_emblemas['queda_livre'].add(str(ctx.author.id))
             return
 
-        # Evento para ouvir o "parar" enquanto o multiplicador sobe
         stop_event = asyncio.Event()
-
         async def listen_for_parar():
             def check(m): return m.author == ctx.author and m.content.lower() == 'parar' and m.channel == ctx.channel
             try:
                 await self.bot.wait_for('message', check=check, timeout=30.0)
                 stop_event.set()
-            except asyncio.TimeoutError:
-                pass
+            except asyncio.TimeoutError: pass
 
-        # Inicia a escuta em segundo plano
         listen_task = self.bot.loop.create_task(listen_for_parar())
 
-        # Loop de subida do multiplicador
         while current_mult < crash_point:
             try:
-                # Aguarda 1.5s ou até o jogador digitar parar
                 await asyncio.wait_for(stop_event.wait(), timeout=1.5)
                 break
             except asyncio.TimeoutError:
-                # Sobe o multiplicador de forma gradual
                 current_mult += round(random.uniform(0.1, 0.4), 1)
                 current_mult = round(current_mult, 1)
-                
-                if current_mult > crash_point:
-                    current_mult = crash_point
+                if current_mult > crash_point: current_mult = crash_point
 
                 embed.description = f"{ctx.author.mention} apostou **{aposta} C**!\n\n🌿 Subindo alto...\n**Multiplicador:** `{current_mult}x`\n\n⚠️ *Digite `parar` no chat para pular!*"
-                
-                try:
-                    await msg.edit(embed=embed)
-                except:
-                    pass
+                try: await msg.edit(embed=embed)
+                except: pass
 
-        # Cancela a escuta para não vazar memória
         listen_task.cancel()
-
         user_atual = db.get_user_data(str(ctx.author.id))
 
         if stop_event.is_set():
-            # Jogador digitou parar a tempo!
             ganho = int(aposta * current_mult)
             lucro = ganho - aposta
             db.update_value(user_atual['row'], 3, int(user_atual['data'][2]) + ganho)
@@ -363,13 +412,10 @@ class Games(commands.Cog):
             embed.description = f"✅ **PULOU A TEMPO!**\nO macaco soltou o cipó no `{current_mult}x`.\n\n💰 {ctx.author.mention} faturou **{ganho} C** (Lucro: `+{lucro} C`)!"
             await msg.edit(embed=embed)
             
-            # Tracker: Astronauta de Cipó
             if current_mult >= 5.0:
-                if 'astronauta_cipo' not in self.bot.tracker_emblemas:
-                    self.bot.tracker_emblemas['astronauta_cipo'] = set()
+                if 'astronauta_cipo' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['astronauta_cipo'] = set()
                 self.bot.tracker_emblemas['astronauta_cipo'].add(str(ctx.author.id))
         else:
-            # O Cipó arrebentou!
             embed.color = disnake.Color.red()
             embed.description = f"💥 **ARREBENTOU!**\nO cipó não aguentou o peso e rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} caiu na lama e perdeu **{aposta} C**."
             await msg.edit(embed=embed)
@@ -754,45 +800,6 @@ class Games(commands.Cog):
 
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
         await ctx.send(f"🎰 **CASSINO AKTrovão** 🎰\n**[ {res[0]} | {res[1]} | {res[2]} ]**\n{ctx.author.mention}, {status_msg}!")
-
-    @commands.command(aliases=["bj", "21"])
-    async def blackjack(self, ctx, aposta: int):
-        """Inicia uma mesa de Blackjack multiplayer."""
-        if aposta <= 0: return await ctx.send("❌ Aposta inválida!")
-        u_c = db.get_user_data(str(ctx.author.id))
-        if not u_c or int(u_c['data'][2]) < aposta: return await ctx.send("❌ Saldo insuficiente!")
-        
-        db.update_value(u_c['row'], 3, int(u_c['data'][2]) - aposta)
-        players = [ctx.author]
-        msg = await ctx.send(f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta} C`\n👥 **Jogadores (1):** {ctx.author.display_name}\n\nDigite `!entrar` para participar!\n{ctx.author.mention}, digite **`começar`** para iniciar o jogo!")
-
-        def check(m): return m.channel == ctx.channel and (m.content.lower() == '!entrar' or (m.author == ctx.author and m.content.lower() == 'começar'))
-        
-        start = False
-        while True:
-            try:
-                m = await self.bot.wait_for('message', check=check, timeout=60.0)
-                if m.content.lower() == 'começar':
-                    start = True
-                    break
-                if m.content.lower() == '!entrar' and m.author not in players:
-                    u_db = db.get_user_data(str(m.author.id))
-                    if u_db and int(u_db['data'][2]) >= aposta:
-                        db.update_value(u_db['row'], 3, int(u_db['data'][2]) - aposta)
-                        players.append(m.author)
-                        await msg.edit(content=msg.content.replace(f"Jogadores ({len(players)-1})", f"Jogadores ({len(players)})") + f", {m.author.display_name}")
-            except asyncio.TimeoutError: break
-
-        if not start:
-            for p in players:
-                p_db = db.get_user_data(str(p.id))
-                db.update_value(p_db['row'], 3, int(p_db['data'][2]) + aposta)
-            return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
-
-        view = BlackjackView(ctx, self.bot, aposta, players)
-        view.dealer_hand = [view.deck.pop(), view.deck.pop()]
-        for p_id in view.player_ids: view.players_data[p_id]["hand"] = [view.deck.pop(), view.deck.pop()]
-        await ctx.send(embed=await view.atualizar_embed(), view=view)
 
 def setup(bot):
     bot.add_cog(Games(bot))
