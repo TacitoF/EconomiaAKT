@@ -98,8 +98,8 @@ class General(commands.Cog):
     async def patchnotes(self, ctx):
         """Envia o anúncio de atualização do bot (Apenas Admin)."""
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA: A Era das Conquistas! 🏆🐒 (V3.0)",
-            description="O Gerente Conguito instalou um sistema de troféus para separar os verdadeiros reis da selva dos macacos de imitação! Confiram as novidades:",
+            title="📢 ATUALIZAÇÃO DA SELVA: Novos Jogos & Conquistas! 🏆🎰 (V3.1)",
+            description="O Gerente Conguito trouxe novos vícios para a selva e instalou um sistema de troféus para separar os verdadeiros reis dos macacos de imitação! Confiram as novidades:",
             color=disnake.Color.brand_red()
         )
 
@@ -117,7 +117,7 @@ class General(commands.Cog):
         
         embed.add_field(
             name="🤫 3. SEGREDOS DA SELVA", 
-            value="O guia possui uma área de Conquistas Secretas (???). Elas são desbloqueadas através de azar absurdo ou sorte extrema. Testem os limites dos comandos!", 
+            value="O guia possui uma área de Conquistas Secretas (???). Elas são desbloqueadas através de azar absurdo ou sorte extrema. Testem os limites dos comandos e descubram!", 
             inline=False
         )
 
@@ -127,12 +127,24 @@ class General(commands.Cog):
             inline=False
         )
 
-        embed.set_footer(text="A caça aos troféus começou! Digite !conquistas e boa sorte.")
+        embed.add_field(
+            name="🚀 5. NOVO JOGO: CRASH DO CIPÓ", 
+            value="O foguetinho chegou na selva! Use `!crash <valor>`. O macaco vai subir e o multiplicador de dinheiro vai aumentar. Digite **`parar`** no chat antes que o cipó arrebente para garantir seu lucro!", 
+            inline=False
+        )
+
+        embed.add_field(
+            name="🥥 6. NOVO JOGO: COCO EXPLOSIVO", 
+            value="Roleta mortal multiplayer! Inicie com `!coco <valor>`. Os outros macacos têm 1 minuto para entrar usando `!entrar_coco`. O coco vai passar de mão em mão até explodir. O último que sobreviver leva o dinheiro de todo mundo!", 
+            inline=False
+        )
+
+        embed.set_footer(text="A caça aos troféus (e o vício) começou! Digite !ajuda para ver tudo.")
         
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        await ctx.send(content="🚨 **NOVA MECÂNICA LIBERADA!** 🚨", embed=embed)
+        await ctx.send(content="🚨 **ATUALIZAÇÃO DE JOGOS E CONQUISTAS LIBERADA!** 🚨\n", embed=embed)
         
         # Apaga o seu comando '!patchnotes' do chat para ficar limpo
         await ctx.message.delete()
