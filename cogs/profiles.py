@@ -82,7 +82,7 @@ class Profiles(commands.Cog):
 
         if saldo >= 20000: emblemas.append("💎 **Magnata**")
         if cargo == "Gorila": emblemas.append("👑 **Rei da Selva**")
-        if "Pé de Cabra" in inv_list: emblemas.append("🕵️ **Invasor**") # Atualizado para ler a lista
+        if "Pé de Cabra" in inv_list: emblemas.append("🕵️ **Invasor**")
         if saldo < 100: emblemas.append("📉 **Falência Técnica**")
         if saldo == 0: emblemas.append("🦴 **Passa fome**")
 
@@ -143,15 +143,16 @@ class Profiles(commands.Cog):
             name="🛡️ Equipamentos (Acumulativos)", 
             value="🛡️ **Escudo** (800 C): Evita que você seja roubado 1 vez.\n"
                   "🕵️ **Pé de Cabra** (1.200 C): Aumenta sua chance de roubo para 70%.\n"
-                  "📄 **Seguro** (1.500 C): Se for roubado, o banco te devolve 60% do valor.", 
+                  "📄 **Seguro** (1.000 C): Se for roubado, o banco te devolve 60% do valor.", 
             inline=False
         )
 
+        # TEXTO ATUALIZADO AQUI
         embed.add_field(
             name="😈 Itens de Sabotagem (Acumulativos)", 
-            value="🍌 **Casca de Banana** (500 C): Faz o próximo trabalho ou roubo da vítima falhar `!casca @user`.\n"
-                  "🦍 **Imposto do Gorila** (2.500 C): Roube 25% do próximo trabalho do alvo `!taxar @user`.\n"
-                  "🪄 **Troca de Nick** (4.000 C): Altera o apelido de alguém no servidor por 30min `!apelidar @user <nick>`.", 
+            value="🍌 **Casca de Banana** (300 C): Faz o próximo trabalho/roubo do alvo falhar `!casca @user`.\n"
+                  "🦍 **Imposto do Gorila** (1.500 C): Roube 25% de todo trabalho do alvo por **24 horas** `!taxar @user`.\n"
+                  "🪄 **Troca de Nick** (2.500 C): Altera o apelido de alguém no servidor por 30min `!apelidar @user <nick>`.", 
             inline=False
         )
         
@@ -171,10 +172,10 @@ class Profiles(commands.Cog):
             "escudo": {"nome": "Escudo", "preco": 800, "tipo": "item"},
             "pé de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"},
             "pe de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"},
-            "seguro": {"nome": "Seguro", "preco": 1500, "tipo": "item"},
-            "casca de banana": {"nome": "Casca de Banana", "preco": 500, "tipo": "item"},
-            "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 2500, "tipo": "item"},
-            "troca de nick": {"nome": "Troca de Nick", "preco": 4000, "tipo": "item"}
+            "seguro": {"nome": "Seguro", "preco": 1000, "tipo": "item"},
+            "casca de banana": {"nome": "Casca de Banana", "preco": 300, "tipo": "item"},
+            "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1500, "tipo": "item"},
+            "troca de nick": {"nome": "Troca de Nick", "preco": 2500, "tipo": "item"}
         }
 
         escolha = item.lower()
@@ -184,21 +185,18 @@ class Profiles(commands.Cog):
         saldo = int(user['data'][2])
         if saldo < item_data["preco"]: return await ctx.send("❌ Saldo insuficiente!")
 
-        # Atualiza Saldo
         db.update_value(user['row'], 3, saldo - item_data["preco"])
 
         if item_data["tipo"] == "cargo":
-            # Cargo substitui o anterior
             db.update_value(user['row'], 4, item_data["nome"])
             await ctx.send(f"✅ {ctx.author.mention} evoluiu para o cargo **{item_data['nome']}**!")
             
         elif item_data["tipo"] == "item":
-            # --- LÓGICA DE INVENTÁRIO INFINITO (Adicionar sem sobrescrever) ---
             inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
             
-            inv_list.append(item_data["nome"]) # Adiciona o novo item na lista
-            novo_inv_str = ", ".join(inv_list) # Junta tudo com vírgula
+            inv_list.append(item_data["nome"])
+            novo_inv_str = ", ".join(inv_list)
             
             db.update_value(user['row'], 6, novo_inv_str)
             await ctx.send(f"🛍️ {ctx.author.mention} comprou **{item_data['nome']}** e guardou no inventário!")

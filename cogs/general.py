@@ -30,18 +30,18 @@ class General(commands.Cog):
             "🏅 `!conquistas` (!emblemas) - Veja o guia de troféus e segredos.\n"
             "🏆 `!rank` (!top) - Veja os primatas mais ricos do servidor.\n"
             "🛒 `!loja` - Ver preços de itens, cargos e castigos.\n"
-            "💳 `!comprar <item>` - Evoluir cargo ou comprar itens (Acumulativos!).\n"
+            "💳 `!comprar <item>` - Evoluir cargo ou comprar itens.\n"
             "💸 `!pagar @user <valor>` (!pix) - Transfira dinheiro para outro macaco."
         )
         embed.add_field(name="💵 ECONOMIA E PERFIL", value=economia_txt, inline=False)
 
-        # Roubos, Caçadas e Sabotagem
+        # Roubos, Caçadas e Sabotagem (ATUALIZADO)
         sabotagem_txt = (
             "🥷 `!roubar @user` - 40% de chance de roubar 20% do saldo do alvo.\n"
             "🚨 `!recompensa @user <valor>` - Coloque a cabeça de alguém a prêmio!\n"
             "📜 `!recompensas` (!procurados) - Veja o mural com todos os procurados.\n"
             "🍌 `!casca @user` - Faz o alvo falhar no próximo trabalho/roubo (Requer item).\n"
-            "🦍 `!taxar @user` - Rouba 25% do próximo trabalho do alvo (Requer item).\n"
+            "🦍 `!taxar @user` - Rouba 25% de todo o trabalho do alvo por **24 horas**! (Requer item).\n"
             "🪄 `!apelidar @user <nick>` - Muda o apelido de alguém por 30min (Requer item)."
         )
         embed.add_field(name="😈 ROUBOS, CAÇADAS E SABOTAGEM", value=sabotagem_txt, inline=False)
@@ -115,11 +115,12 @@ class General(commands.Cog):
             color=disnake.Color.brand_red()
         )
 
+        # TEXTO ATUALIZADO AQUI TAMBÉM
         embed.add_field(
             name="😈 1. NOVOS ITENS DE SABOTAGEM", 
             value="Chegou a hora de infernizar a vida dos seus amigos (Compre na `!loja`):\n"
                   "🍌 **Casca de Banana:** Use `!casca @user` e faça o próximo trabalho ou roubo do alvo dar completamente errado!\n"
-                  "🦍 **Imposto do Gorila:** Use `!taxar @user` e confisque 25% do próximo pagamento de trabalho da vítima direto para seu bolso.\n"
+                  "🦍 **Imposto do Gorila:** Use `!taxar @user` e extorqua 25% de todo o dinheiro que a vítima ganhar trabalhando durante **24 horas** diretas!\n"
                   "🪄 **Troca de Nick:** Use `!apelidar @user <novo_nome>` para humilhar alguém mudando o apelido dele no servidor por 30 minutos.", 
             inline=False
         )
