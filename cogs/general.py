@@ -30,7 +30,7 @@ class General(commands.Cog):
             "🏆 `!rank` (!top) - Veja os primatas mais ricos do servidor.\n"
             "🛒 `!loja` - Ver preços de itens (Pé de Cabra, Escudo), cargos e castigos.\n"
             "💳 `!comprar <item>` - Evoluir cargo ou comprar itens de proteção/ação.\n"
-            "🥷 `!roubar @user` - Rouba 20% do saldo do alvo.\n"
+            "🥷 `!roubar @user` - 40% de chance de roubar 20% do saldo do alvo.\n"
             "💸 `!pagar @user <valor>` (!pix) - Transfira dinheiro para outro macaco.\n"
             "🚨 `!recompensa @user <valor>` - Coloque a cabeça de um macaco a prêmio!"
         )
@@ -53,7 +53,7 @@ class General(commands.Cog):
             "🥊 `!briga @user <valor>` - Desafie alguém para PvP!\n"
             "🎫 `!loteria` (!bilhete) - Compre um bilhete (500 C) para o sorteio acumulado!\n"
             "💰 `!pote` (!premio) - Veja o valor total acumulado na loteria.\n"
-            "💡 *Use os jogos no canal #🎰・akbet (Loteria também funciona no banco)*"
+            "💡 *Use os jogos no canal #🎰・akbet*"
         )
         embed.add_field(name="🎲 AK-BET JOGOS & EVENTOS", value=jogos_txt, inline=False)
 
@@ -63,7 +63,7 @@ class General(commands.Cog):
             "🎧 `!castigo surdo <tempo> @user` - Ensurdece alguém.\n"
             "🤐 `!castigo surdomudo <tempo> @user` - Combo Total.\n"
             "⏱️ *Tempos: 1, 5 ou 10 minutos.*\n"
-            "👟 `!desconectar` (@kick) - Chuta o usuário da call."
+            "👟 `!desconectar` (!kick) - Chuta o usuário da call."
         )
         embed.add_field(name="🤐 CASTIGOS DE VOZ", value=castigos_txt, inline=False)
 
