@@ -8,10 +8,11 @@ class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.owner_id = 757752617722970243
+        # Dicionário para rastrear roubos recebidos: {user_id: [timestamp1, timestamp2]}
+        self.roubos_recebidos = {}
 
     async def cog_before_invoke(self, ctx):
         """Restringe comandos de economia ao canal #🐒・conguitos, exceto o comando !jogos e !rank."""
-        # Adicionado 'rank' e 'top' para serem permitidos fora do canal de economia se necessário
         if ctx.command.name in ['jogos', 'rank', 'top']:
             return
 
@@ -24,15 +25,12 @@ class Economy(commands.Cog):
     @commands.command(aliases=["top", "ricos", "placar"])
     async def rank(self, ctx):
         """Exibe o ranking dos usuários mais ricos do servidor."""
-        # Busca todos os dados da planilha
         all_data = db.sheet.get_all_records()
         
         if not all_data:
             return await ctx.send("❌ Não há dados suficientes para gerar o ranking.")
 
-        # Ordena os dados pelo saldo (Coluna 'Saldo')
         try:
-            # Converte para int para garantir a ordenação numérica correta
             sorted_users = sorted(all_data, key=lambda x: int(x['saldo']), reverse=True)
         except Exception as e:
             return await ctx.send(f"⚠️ Erro ao processar o ranking: {e}")
@@ -44,20 +42,16 @@ class Economy(commands.Cog):
         )
 
         lista_rank = ""
-        # Pega apenas os 10 primeiros
         for i, user in enumerate(sorted_users[:10]):
             nome = user.get('nome', 'Desconhecido')
             saldo = user.get('saldo', 0)
             
             if i == 0:
-                medalha = "🥇"
-                linha = f"{medalha} **{nome}** — `{saldo} C`"
+                linha = f"🥇 **{nome}** — `{saldo} C`"
             elif i == 1:
-                medalha = "🥈"
-                linha = f"{medalha} **{nome}** — `{saldo} C`"
+                linha = f"🥈 **{nome}** — `{saldo} C`"
             elif i == 2:
-                medalha = "🥉"
-                linha = f"{medalha} **{nome}** — `{saldo} C`"
+                linha = f"🥉 **{nome}** — `{saldo} C`"
             else:
                 linha = f"**{i+1}.** {nome} — `{saldo} C`"
             
@@ -65,7 +59,6 @@ class Economy(commands.Cog):
 
         embed.add_field(name="Top 10 Jogadores", value=lista_rank, inline=False)
         embed.set_footer(text="Trabalhe e suba no ranking! 🐒")
-        
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -94,7 +87,6 @@ class Economy(commands.Cog):
             ),
             inline=False
         )
-
         embed.set_footer(text="Lembre-se: A casa sempre ganha! 🐒")
         await ctx.send(embed=embed)
 
@@ -175,8 +167,9 @@ class Economy(commands.Cog):
             name="🥷 INTERAÇÃO (Roubos)",
             value=(
                 "💰 **Comando**: `!roubar @user`\n"
+                "⏱️ Atenção: Cooldown de 2 horas.\n"
                 "⚠️ **Risco**: 40% de sucesso. Se falhar, paga multa para o alvo.\n"
-                "⏱️ **Atenção**: Cooldown de 2 horas.\n"
+                "🛡️ **Anti-Foco**: Limite de 2 roubos recebidos a cada 2 horas.\n"
                 "------------------------------------------------------------------"
             ),
             inline=False
@@ -239,44 +232,58 @@ class Economy(commands.Cog):
     async def roubar(self, ctx, vitima: disnake.Member):
         if vitima.id == ctx.author.id: return await ctx.send("🐒 Não pode roubar de si mesmo!")
         
-        ladrao = db.get_user_data(str(ctx.author.id))
-        alvo = db.get_user_data(str(vitima.id))
-        if not ladrao or not alvo: return await ctx.send("❌ Conta não encontrada!")
+        ladrao_data = db.get_user_data(str(ctx.author.id))
+        alvo_data = db.get_user_data(str(vitima.id))
+        if not ladrao_data or not alvo_data: return await ctx.send("❌ Conta não encontrada!")
 
         agora = time.time()
-        ultimo_roubo = float(ladrao['data'][6]) if len(ladrao['data']) > 6 and ladrao['data'][6] else 0
+        intervalo_foco = 7200 # 2 horas
 
+        # --- REGRA ANTI-FOCO ---
+        vitima_id = str(vitima.id)
+        if vitima_id not in self.roubos_recebidos:
+            self.roubos_recebidos[vitima_id] = []
+        
+        # Remove timestamps com mais de 2 horas
+        self.roubos_recebidos[vitima_id] = [t for t in self.roubos_recebidos[vitima_id] if agora - t < intervalo_foco]
+
+        if len(self.roubos_recebidos[vitima_id]) >= 2:
+            return await ctx.send(f"🛡️ {vitima.mention} já foi alvo de muitos roubos recentemente! Tente outro alvo.")
+
+        # Cooldown do próprio ladrão (2 horas)
+        ultimo_roubo = float(ladrao_data['data'][6]) if len(ladrao_data['data']) > 6 and ladrao_data['data'][6] else 0
         if agora - ultimo_roubo < 7200:
             restante = int((7200 - (agora - ultimo_roubo)) / 60)
             return await ctx.send(f"👮 Espere **{restante} minutos** para roubar novamente.")
 
-        if "Escudo" in alvo['data'][5]:
-            db.update_value(alvo['row'], 6, "")
-            db.update_value(ladrao['row'], 7, agora)
+        # Verifica Escudo
+        if "Escudo" in alvo_data['data'][5]:
+            db.update_value(alvo_data['row'], 6, "")
+            db.update_value(ladrao_data['row'], 7, agora)
+            self.roubos_recebidos[vitima_id].append(agora) # Conta como tentativa
             return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um Escudo!")
 
         if random.randint(1, 100) <= 40:
-            valor = int(int(alvo['data'][2]) * 0.2)
-            db.update_value(ladrao['row'], 3, int(ladrao['data'][2]) + valor)
-            db.update_value(alvo['row'], 3, int(alvo['data'][2]) - valor)
-            db.update_value(ladrao['row'], 7, agora)
+            valor = int(int(alvo_data['data'][2]) * 0.2)
+            db.update_value(ladrao_data['row'], 3, int(ladrao_data['data'][2]) + valor)
+            db.update_value(alvo_data['row'], 3, int(alvo_data['data'][2]) - valor)
+            db.update_value(ladrao_data['row'], 7, agora)
+            self.roubos_recebidos[vitima_id].append(agora) # Registra o sucesso
             await ctx.send(f"🥷 **SUCESSO!** Roubou **{valor} C** de {vitima.mention}!")
         else:
-            multa = int(int(ladrao['data'][2]) * 0.15)
-            db.update_value(ladrao['row'], 3, int(ladrao['data'][2]) - multa)
-            db.update_value(alvo['row'], 3, int(alvo['data'][2]) + multa)
-            db.update_value(ladrao['row'], 7, agora)
+            multa = int(int(ladrao_data['data'][2]) * 0.15)
+            db.update_value(ladrao_data['row'], 3, int(ladrao_data['data'][2]) - multa)
+            db.update_value(alvo_data['row'], 3, int(alvo_data['data'][2]) + multa)
+            db.update_value(ladrao_data['row'], 7, agora)
+            self.roubos_recebidos[vitima_id].append(agora) # Registra a falha
             await ctx.send(f"👮 **PRESO!** Pagou **{multa} C** de multa.")
 
     @commands.command()
     async def setar(self, ctx, membro: disnake.Member, valor: int):
         if ctx.author.id != self.owner_id:
             return await ctx.send(f"❌ {ctx.author.mention}, você não tem permissão!")
-
         user = db.get_user_data(str(membro.id))
-        if not user:
-            return await ctx.send("❌ Usuário não encontrado!")
-
+        if not user: return await ctx.send("❌ Usuário não encontrado!")
         db.update_value(user['row'], 3, valor)
         await ctx.send(f"✅ O saldo de {membro.mention} foi definido para **{valor} C**.")
 
@@ -284,7 +291,6 @@ class Economy(commands.Cog):
     async def wipe(self, ctx):
         if ctx.author.id != self.owner_id:
             return await ctx.send(f"❌ {ctx.author.mention}, você não tem permissão!")
-
         await ctx.send("🧹 Iniciando o reset da economia...")
         try:
             db.wipe_database() 
