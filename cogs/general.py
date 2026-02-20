@@ -147,6 +147,12 @@ class General(commands.Cog):
             inline=False
         )
 
+        embed.add_field(
+            name="♠️ 8. NOVO JOGO: BLACK JACK (21)", 
+            value="Teste sua sorte contra o dealer! Use `!21 <valor>`. Tente chegar o mais próximo possível de 21 sem passar. Se vencer, ganha o dobro do valor apostado!", 
+            inline=False
+        )
+
         embed.set_footer(text="A caça aos troféus (e o vício) começou! Digite !ajuda para ver tudo.")
         
         if self.bot.user.display_avatar:
