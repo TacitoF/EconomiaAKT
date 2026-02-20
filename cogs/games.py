@@ -120,7 +120,7 @@ class Games(commands.Cog):
         await ctx.send(status)
 
     # --- 4. BRIGA DE MACACO (PvP) ---
-    @commands.command(name="briga")
+    @commands.command(aliases=["briga", "brigar", "luta", "lutar", "x1"])
     async def briga_macaco(self, ctx, vitima: disnake.Member, aposta: int):
         if vitima.id == ctx.author.id: return await ctx.send(f"🐒 {ctx.author.mention}, não brigue consigo mesmo!")
         
@@ -149,14 +149,35 @@ class Games(commands.Cog):
         await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e levou o pote de **{aposta} C**!")
 
     # --- 5. MOEDA E CASSINO ---
-    @commands.command(name="moeda")
+    @commands.command(name="moeda", aliases=["cara_coroa", "coinflip", "cf"])
     async def cara_coroa(self, ctx, lado: str, aposta: int):
         user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0: return
+        
+        # Verificações básicas
+        if not user or aposta > int(user['data'][2]) or aposta <= 0:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, você não tem Conguitos suficientes ou a aposta é inválida!")
+
+        lado = lado.lower()
+        if lado not in ["cara", "coroa"]:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, escolha entre `cara` ou `coroa`!")
+
         res = random.choice(["cara", "coroa"])
-        ganho = aposta if lado.lower() == res else -aposta
-        db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
-        await ctx.send(f"🪙 {ctx.author.mention} | Caiu {res.upper()}! {'✅ Ganhou' if ganho > 0 else '❌ Perdeu'}.")
+        venceu = (lado == res)
+        
+        # Calcula o novo saldo e a mensagem
+        if venceu:
+            ganho = aposta  # Ele recebe o que apostou de volta + o prêmio (dobro)
+            msg = f"✅ **Ganhou, +{aposta} C!**"
+            cor = "Ganhou"
+        else:
+            ganho = -aposta
+            msg = f"❌ **Perdeu, -{aposta} C!**"
+            cor = "Perdeu"
+
+        novo_saldo = int(user['data'][2]) + ganho
+        db.update_value(user['row'], 3, novo_saldo)
+
+        await ctx.send(f"🪙 {ctx.author.mention} | Caiu **{res.upper()}**! {msg}")
 
     @commands.command(name="cassino")
     async def cassino_slots(self, ctx, aposta: int):

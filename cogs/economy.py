@@ -10,8 +10,9 @@ class Economy(commands.Cog):
         self.owner_id = 757752617722970243
 
     async def cog_before_invoke(self, ctx):
-        """Restringe comandos de economia ao canal #🐒・conguitos, exceto o comando !jogos."""
-        if ctx.command.name == 'jogos':
+        """Restringe comandos de economia ao canal #🐒・conguitos, exceto o comando !jogos e !rank."""
+        # Adicionado 'rank' e 'top' para serem permitidos fora do canal de economia se necessário
+        if ctx.command.name in ['jogos', 'rank', 'top']:
             return
 
         if ctx.channel.name != '🐒・conguitos':
@@ -19,6 +20,53 @@ class Economy(commands.Cog):
             mencao = canal.mention if canal else "#🐒・conguitos"
             await ctx.send(f"⚠️ {ctx.author.mention}, assuntos de dinheiro e perfil são apenas no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
+
+    @commands.command(aliases=["top", "ricos", "placar"])
+    async def rank(self, ctx):
+        """Exibe o ranking dos usuários mais ricos do servidor."""
+        # Busca todos os dados da planilha
+        all_data = db.sheet.get_all_records()
+        
+        if not all_data:
+            return await ctx.send("❌ Não há dados suficientes para gerar o ranking.")
+
+        # Ordena os dados pelo saldo (Coluna 'Saldo')
+        try:
+            # Converte para int para garantir a ordenação numérica correta
+            sorted_users = sorted(all_data, key=lambda x: int(x['saldo']), reverse=True)
+        except Exception as e:
+            return await ctx.send(f"⚠️ Erro ao processar o ranking: {e}")
+
+        embed = disnake.Embed(
+            title="🏆 Ranking de Conguitos - AKTrovão",
+            description="Estes são os primatas mais ricos da selva!",
+            color=disnake.Color.gold()
+        )
+
+        lista_rank = ""
+        # Pega apenas os 10 primeiros
+        for i, user in enumerate(sorted_users[:10]):
+            nome = user.get('nome', 'Desconhecido')
+            saldo = user.get('saldo', 0)
+            
+            if i == 0:
+                medalha = "🥇"
+                linha = f"{medalha} **{nome}** — `{saldo} C`"
+            elif i == 1:
+                medalha = "🥈"
+                linha = f"{medalha} **{nome}** — `{saldo} C`"
+            elif i == 2:
+                medalha = "🥉"
+                linha = f"{medalha} **{nome}** — `{saldo} C`"
+            else:
+                linha = f"**{i+1}.** {nome} — `{saldo} C`"
+            
+            lista_rank += linha + "\n"
+
+        embed.add_field(name="Top 10 Jogadores", value=lista_rank, inline=False)
+        embed.set_footer(text="Trabalhe e suba no ranking! 🐒")
+        
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def jogos(self, ctx):
@@ -38,10 +86,10 @@ class Economy(commands.Cog):
             name="🎮 Comandos Disponíveis",
             value=(
                 "🎰 **!cassino <valor>** - Caça-níquel.\n"
-                "🐒 **!corrida <animal> <valor>** - Aposte entre ""Macaquinho"", ""Gorila"" ou ""Orangutango"".\n"
+                "🐒 **!corrida <animal> <valor>** - Aposte entre \"Macaquinho\", \"Gorila\" ou \"Orangutango\".\n"
                 "🪙 **!moeda <cara/coroa> <valor>** - Dobro ou nada.\n"
-                "🦁 **!bicho <animal> <valor>** - escolha entre ""Leao"", ""Cobra"", ""Jacare"", ""Arara"", ""Elefante"".\n"
-                "💣 **!minas <bombas> <valor>** - escolha entre 1 e 5 bombas.\n"
+                "🦁 **!bicho <animal> <valor>** - Escolha entre \"Leao\", \"Cobra\", \"Jacare\", \"Arara\", \"Elefante\".\n"
+                "💣 **!minas <bombas> <valor>** - Escolha entre 1 e 5 bombas.\n"
                 "⚔️ **!briga @user <valor>** - Desafie alguém para PvP!"
             ),
             inline=False
@@ -75,7 +123,7 @@ class Economy(commands.Cog):
         
         await ctx.send(f"✅ {ctx.author.mention}, como **{cargo}**, você ganhou **{ganho} conguitos**!")
 
-    @commands.command()
+    @commands.command(aliases=["p", "status", "pefil", "perfil_privado"])
     async def perfil(self, ctx, membro: disnake.Member = None):
         membro = membro or ctx.author
         user_id = str(membro.id)
@@ -93,9 +141,9 @@ class Economy(commands.Cog):
         embed.add_field(name="🎒 Inventário", value=f"`{inventario}`", inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.command(aliases=["shop", "mercado", "itens"])
     async def loja(self, ctx):
-        """Lista os itens e serviços disponíveis conforme a imagem solicitada."""
+        """Lista os itens e serviços disponíveis."""
         embed = disnake.Embed(
             title="🛒 Loja de Itens e Maldades AKTrovão",
             description="Use seu saldo para evoluir ou se proteger!",
@@ -128,7 +176,7 @@ class Economy(commands.Cog):
             value=(
                 "💰 **Comando**: `!roubar @user`\n"
                 "⚠️ **Risco**: 40% de sucesso. Se falhar, paga multa para o alvo.\n"
-                "⏱️ **Atenção**: Cooldown de 2 horas (mesmo se falhar).\n"
+                "⏱️ **Atenção**: Cooldown de 2 horas.\n"
                 "------------------------------------------------------------------"
             ),
             inline=False
@@ -150,9 +198,7 @@ class Economy(commands.Cog):
             name="📝 Como usar?",
             value=(
                 "• Para comprar: `!comprar <nome_do_item>`\n"
-                "• Para roubar: `!roubar @user`\n"
-                "• Para castigar: `!castigo <tipo> <tempo> @user`\n"
-                "• Para desconectar: `!desconectar @user`"
+                "• Para ranking: `!rank` ou `!top`"
             ),
             inline=False
         )
@@ -189,7 +235,7 @@ class Economy(commands.Cog):
         db.update_value(user['row'], coluna, item_data["nome"])
         await ctx.send(f"✅ {ctx.author.mention} comprou **{item_data['nome']}**!")
 
-    @commands.command()
+    @commands.command(aliases=["assaltar", "furtar", "rob"])
     async def roubar(self, ctx, vitima: disnake.Member):
         if vitima.id == ctx.author.id: return await ctx.send("🐒 Não pode roubar de si mesmo!")
         
@@ -224,32 +270,27 @@ class Economy(commands.Cog):
 
     @commands.command()
     async def setar(self, ctx, membro: disnake.Member, valor: int):
-        """Modifica a quantidade de conguitos de um usuário. Apenas para o dono."""
         if ctx.author.id != self.owner_id:
-            return await ctx.send(f"❌ {ctx.author.mention}, você não tem permissão para usar este comando!")
+            return await ctx.send(f"❌ {ctx.author.mention}, você não tem permissão!")
 
         user = db.get_user_data(str(membro.id))
         if not user:
-            return await ctx.send("❌ Usuário não encontrado no banco de dados!")
+            return await ctx.send("❌ Usuário não encontrado!")
 
-        try:
-            db.update_value(user['row'], 3, valor)
-            await ctx.send(f"✅ O saldo de {membro.mention} foi definido para **{valor} C** por {ctx.author.mention}!")
-        except Exception as e:
-            await ctx.send(f"⚠️ Erro ao atualizar: {e}")
+        db.update_value(user['row'], 3, valor)
+        await ctx.send(f"✅ O saldo de {membro.mention} foi definido para **{valor} C**.")
 
     @commands.command()
     async def wipe(self, ctx):
-        """Reseta toda a economia. Comando exclusivo do dono."""
         if ctx.author.id != self.owner_id:
-            return await ctx.send(f"❌ {ctx.author.mention}, você não tem permissão para usar este comando!")
+            return await ctx.send(f"❌ {ctx.author.mention}, você não tem permissão!")
 
-        await ctx.send("🧹 Iniciando a limpeza total da planilha de economia...")
+        await ctx.send("🧹 Iniciando o reset da economia...")
         try:
             db.wipe_database() 
-            await ctx.send("✅ **WIPE CONCLUÍDO!** Todos os saldos, cargos e inventários foram resetados.")
+            await ctx.send("✅ **WIPE CONCLUÍDO!**")
         except Exception as e:
-            await ctx.send(f"⚠️ Ocorreu um erro ao tentar limpar a planilha: {e}")
+            await ctx.send(f"⚠️ Erro: {e}")
 
 def setup(bot):
     bot.add_cog(Economy(bot))
