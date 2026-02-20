@@ -94,7 +94,7 @@ class General(commands.Cog):
     async def patchnotes(self, ctx):
         """Envia o anúncio de atualização do bot (Apenas Admin)."""
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA: A Era das Conquistas! 🏆🐒",
+            title="📢 ATUALIZAÇÃO DA SELVA: A Era das Conquistas! 🏆🐒 (V3.0)",
             description="O Gerente Conguito instalou um sistema de troféus para separar os verdadeiros reis da selva dos macacos de imitação! Confiram as novidades:",
             color=disnake.Color.brand_red()
         )
@@ -128,7 +128,7 @@ class General(commands.Cog):
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        await ctx.send(content="@everyone 🚨 **NOVA MECÂNICA LIBERADA!** 🚨", embed=embed)
+        await ctx.send(content="🚨 **NOVA MECÂNICA LIBERADA!** 🚨", embed=embed)
         
         # Apaga o seu comando '!patchnotes' do chat para ficar limpo
         await ctx.message.delete()
