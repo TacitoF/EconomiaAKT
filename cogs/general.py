@@ -26,7 +26,8 @@ class General(commands.Cog):
         # Economia & Interação
         economia_txt = (
             "💰 `!trabalhar` - Ganhe conguitos (1h cooldown).\n"
-            "👤 `!perfil [@user]` - Ver saldo, cargo, inventário e **🏅 Badges**.\n"
+            "👤 `!perfil [@user]` - Ver saldo, cargo, inventário e **🏆 Conquistas**.\n"
+            "🏅 `!conquistas` (!emblemas) - Veja o guia completo de troféus e segredos da selva.\n"
             "🏆 `!rank` (!top) - Veja os primatas mais ricos do servidor.\n"
             "🛒 `!loja` - Ver preços de itens (Pé de Cabra, Escudo), cargos e castigos.\n"
             "💳 `!comprar <item>` - Evoluir cargo ou comprar itens de proteção/ação.\n"
@@ -67,7 +68,7 @@ class General(commands.Cog):
         )
         embed.add_field(name="🤐 CASTIGOS DE VOZ", value=castigos_txt, inline=False)
 
-        embed.set_footer(text="Dúvidas? Procure Administração! 🐒")
+        embed.set_footer(text="Dúvidas? Procure a Administração! 🐒")
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
         
