@@ -237,9 +237,18 @@ class Games(commands.Cog):
         
         db.update_value(u_c['row'], 3, int(u_c['data'][2]) - aposta)
         players = [ctx.author]
+
+        # --- NOVA FUNÇÃO PARA FORMATAR O TEXTO CORRETAMENTE ---
+        def gerar_texto_lobby(lista_jogadores):
+            nomes = ", ".join([p.display_name for p in lista_jogadores])
+            qtd = len(lista_jogadores)
+            return (f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta} C`\n"
+                    f"👥 **Jogadores ({qtd}):** {nomes}\n\n"
+                    f"Digite `!entrar` para participar!\n"
+                    f"{ctx.author.mention}, digite **`começar`** para iniciar o jogo!")
         
-        # --- AJUSTE DE TEXTO DE LOBBY ---
-        msg = await ctx.send(f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta} C`\n👥 **Jogadores (1):** {ctx.author.display_name}\n\nDigite `!entrar` para participar!\n{ctx.author.mention}, digite **`começar`** para iniciar o jogo!")
+        # Envia a primeira mensagem usando a formatação acima
+        msg = await ctx.send(gerar_texto_lobby(players))
 
         def check(m): return m.channel == ctx.channel and (m.content.lower() == '!entrar' or (m.author == ctx.author and m.content.lower() == 'começar'))
         
@@ -256,13 +265,20 @@ class Games(commands.Cog):
                         db.update_value(u_db['row'], 3, int(u_db['data'][2]) - aposta)
                         players.append(m.author)
                         
-                        # --- AJUSTE DE ATUALIZAÇÃO DA LISTA DE JOGADORES ---
-                        lista_nomes = ", ".join([p.display_name for p in players])
-                        qtd = len(players)
-                        novo_texto = f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta} C`\n👥 **Jogadores ({qtd}):** {lista_nomes}\n\nDigite `!entrar` para participar!\n{ctx.author.mention}, digite **`começar`** para iniciar o jogo!"
-                        
-                        await msg.edit(content=novo_texto)
+                        # Atualiza a mensagem recriando o texto limpo
+                        await msg.edit(content=gerar_texto_lobby(players))
             except asyncio.TimeoutError: break
+
+        if not start:
+            for p in players:
+                p_db = db.get_user_data(str(p.id))
+                db.update_value(p_db['row'], 3, int(p_db['data'][2]) + aposta)
+            return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
+
+        view = BlackjackView(ctx, self.bot, aposta, players)
+        view.dealer_hand = [view.deck.pop(), view.deck.pop()]
+        for p_id in view.player_ids: view.players_data[p_id]["hand"] = [view.deck.pop(), view.deck.pop()]
+        await ctx.send(embed=await view.atualizar_embed(), view=view)
 
         if not start:
             for p in players:
