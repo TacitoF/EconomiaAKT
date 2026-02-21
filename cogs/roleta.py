@@ -37,7 +37,7 @@ class Roleta(commands.Cog):
 
         embed_abertura = disnake.Embed(
             title="🎰 A MESA DE ROLETA ABRIU!",
-            description=f"O Croupier abriu a mesa! Vocês têm **30 segundos** para fazer as vossas apostas.\n\n**Como jogar:**\n`!apostar <valor> <opção>`\n*Opções: vermelho (2x), preto (2x), par (2x), impar (2x), 0 a 36 (36x)*",
+            description=f"O Chimpanzézio abriu a mesa! Vocês têm **30 segundos** para fazer as suas apostas.\n\n**Como jogar:**\n`!apostar <valor> <opção>`\n*Opções: vermelho (2x), preto (2x), par (2x), impar (2x), 0 a 36 (36x)*",
             color=disnake.Color.gold()
         )
         await ctx.send(embed=embed_abertura)
@@ -48,16 +48,17 @@ class Roleta(commands.Cog):
         self.roleta_aberta = False
 
         if not self.apostas:
-            return await ctx.send("🦗 Ninguém apostou... O Croupier fechou a mesa por falta de macacos.")
+            return await ctx.send("🦗 Ninguém apostou... O Chimpanzézio fechou a mesa por falta de macacos.")
 
         # --- FASE 1: FECHOU A MESA ---
         total_apostado = sum(a['valor'] for a in self.apostas)
         embed_giro = disnake.Embed(
             title="🛑 APOSTAS ENCERRADAS!",
-            description=f"Temos **{len(self.apostas)} apostas** na mesa totalizando **{total_apostado} C**!\n\n🌀 **O Croupier girou a roleta...**",
+            description=f"Temos **{len(self.apostas)} apostas** na mesa totalizando **{total_apostado} C**!\n\n🌀 **O Chimpanzézio girou a roleta...**",
             color=disnake.Color.orange()
         )
-        msg = await ctx.send(embed_giro)
+        # CORREÇÃO: Adicionado o "embed=" que estava faltando e causando o bug visual
+        msg = await ctx.send(embed=embed_giro) 
         await asyncio.sleep(2)
 
         # --- FASE 2: SUSPENSE ---
@@ -127,6 +128,7 @@ class Roleta(commands.Cog):
         embed_final.add_field(name="💰 VENCEDORES", value=vencedores_txt, inline=False)
         embed_final.add_field(name="💸 PERDEDORES", value=perdedores_txt, inline=False)
         
+        # O embed substitui perfeitamente a mensagem de suspense
         await msg.edit(embed=embed_final)
 
     @commands.command()
@@ -153,6 +155,8 @@ class Roleta(commands.Cog):
         
         # Adiciona na mesa
         self.apostas.append({'user': ctx.author, 'valor': valor, 'tipo': aposta_em})
+        
+        # Confirmação simples para não poluir
         await ctx.send(f"🪙 {ctx.author.mention} apostou **{valor} C** em `{aposta_em.upper()}`!")
 
 def setup(bot):
