@@ -16,6 +16,7 @@ class Games(commands.Cog):
         self.coco_players = []
         self.coco_aposta = 0
 
+        # Mantido para as diárias (trabalho/roubo) que resetam no dia
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {
                 'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {},
@@ -24,6 +25,17 @@ class Games(commands.Cog):
                 'briga_de_bar': set(), 'ima_desgraca': set(), 'veterano_coco': set(),
                 'queda_livre': set(), 'astronauta_cipo': set() 
             }
+
+    async def save_achievement(self, user_data, slug):
+        """Função auxiliar para salvar conquistas na Coluna J (Índice 9) da planilha."""
+        conquistas_atuais = str(user_data['data'][9]) if len(user_data['data']) > 9 else ""
+        lista = [c.strip() for c in conquistas_atuais.split(',') if c.strip()]
+
+        if slug not in lista:
+            lista.append(slug)
+            db.update_value(user_data['row'], 10, ", ".join(lista))
+            return True
+        return False
 
     async def cog_before_invoke(self, ctx):
         if ctx.command.name in ['investir', 'banco', 'depositar', 'loteria', 'bilhete', 'loto', 'sortear_loteria', 'pote', 'premio', 'acumulado']:
@@ -37,7 +49,6 @@ class Games(commands.Cog):
             mencao = canal.mention if canal else "#🎰・akbet"
             await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal {mencao}.")
             raise commands.CommandError("Canal de apostas incorreto.")
-
 
     # --- NOVO MINIGAME: MAIOR CARTA (DUELO PVP) ---
     @commands.command(aliases=["cartas", "duelo_carta", "draw"])
@@ -136,8 +147,7 @@ class Games(commands.Cog):
             embed.color = disnake.Color.red()
             embed.description = f"💥 **ARREBENTOU INSTANTANEAMENTE!**\nO cipó rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} perdeu **{aposta} C** direto na lama."
             await msg.edit(embed=embed)
-            if 'queda_livre' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['queda_livre'] = set()
-            self.bot.tracker_emblemas['queda_livre'].add(str(ctx.author.id))
+            await self.save_achievement(user, "queda_livre")
             return
 
         stop_event = asyncio.Event()
@@ -176,8 +186,7 @@ class Games(commands.Cog):
             await msg.edit(embed=embed)
             
             if current_mult >= 5.0:
-                if 'astronauta_cipo' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['astronauta_cipo'] = set()
-                self.bot.tracker_emblemas['astronauta_cipo'].add(str(ctx.author.id))
+                await self.save_achievement(user_atual, "astronauta_cipo")
         else:
             embed.color = disnake.Color.red()
             embed.description = f"💥 **ARREBENTOU!**\nO cipó não aguentou o peso e rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} caiu na lama e perdeu **{aposta} C**."
@@ -337,8 +346,8 @@ class Games(commands.Cog):
             await ctx.send(f"💥 **KABOOOM!** O coco explodiu na cara do {eliminado.mention}! Fora da roda.")
 
             if rodada == 1 and total_jogadores >= 4:
-                if 'ima_desgraca' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['ima_desgraca'] = set()
-                self.bot.tracker_emblemas['ima_desgraca'].add(str(eliminado.id))
+                m_db = db.get_user_data(str(eliminado.id))
+                if m_db: await self.save_achievement(m_db, "ima_desgraca")
             rodada += 1
 
         vencedor = jogadores[0]
@@ -349,8 +358,7 @@ class Games(commands.Cog):
         await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} foi o único que não perdeu a cabeça e faturou sozinho o pote de **{pote} C**!")
 
         if total_jogadores >= 5:
-            if 'veterano_coco' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['veterano_coco'] = set()
-            self.bot.tracker_emblemas['veterano_coco'].add(str(vencedor.id))
+            await self.save_achievement(v_db, "veterano_coco")
             
         self.coco_players = []
         self.coco_aposta = 0
@@ -476,20 +484,16 @@ class Games(commands.Cog):
         await asyncio.sleep(1.5)
 
         if random.randint(1, 10) > (bombas * 1.5):
-            if bombas == 5:
-                if 'esquadrao_suicida' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['esquadrao_suicida'] = set()
-                self.bot.tracker_emblemas['esquadrao_suicida'].add(str(ctx.author.id))
-                
             mult = 1.5 + (bombas * 0.5)
             ganho = int(aposta * mult)
             status = f"🚩 **LIMPO!** {ctx.author.mention} ganhou **{ganho} conguitos**! ({mult}x)"
+            if bombas == 5: 
+                await self.save_achievement(user, "esquadrao_suicida")
         else:
             ganho = -aposta
             status = f"💥 **BOOOOM!** {ctx.author.mention} pisou em uma mina e perdeu **{aposta} C**."
-            
-            if bombas == 1:
-                if 'escorregou_banana' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['escorregou_banana'] = set()
-                self.bot.tracker_emblemas['escorregou_banana'].add(str(ctx.author.id))
+            if bombas == 1: 
+                await self.save_achievement(user, "escorregou_banana")
 
         db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
         await ctx.send(status)
@@ -504,8 +508,7 @@ class Games(commands.Cog):
         if not ladrao or not alvo or int(alvo['data'][2]) < aposta or int(ladrao['data'][2]) < aposta: return await ctx.send(f"❌ {ctx.author.mention}, alguém não tem saldo para essa briga!")
 
         if aposta == 1:
-            if 'briga_de_bar' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['briga_de_bar'] = set()
-            self.bot.tracker_emblemas['briga_de_bar'].add(str(ctx.author.id))
+            await self.save_achievement(ladrao, "briga_de_bar")
 
         await ctx.send(f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma briga por **{aposta} C**! Digite `aceitar` para lutar!")
 
@@ -552,8 +555,7 @@ class Games(commands.Cog):
         if res[0] == res[1] == res[2]:
             ganho = aposta * 10
             status_msg = f"🎰 **JACKPOT!** 🎰\nVocê ganhou **+{ganho} C**"
-            if 'filho_da_sorte' not in self.bot.tracker_emblemas: self.bot.tracker_emblemas['filho_da_sorte'] = set()
-            self.bot.tracker_emblemas['filho_da_sorte'].add(str(ctx.author.id))
+            await self.save_achievement(user, "filho_da_sorte")
         elif res[0] == res[1] or res[1] == res[2] or res[0] == res[2]:
             ganho = aposta * 2
             status_msg = f"Você ganhou **+{ganho} C**"

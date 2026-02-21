@@ -1,12 +1,41 @@
 import disnake
 from disnake.ext import commands
 import database as db
-import time
 
 class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.owner_id = 757752617722970243
+
+    @commands.command()
+    async def dar_conquista(self, ctx, membro: disnake.Member, slug: str):
+        if ctx.author.id != self.owner_id: return await ctx.send("❌ Sem permissão!")
+        u = db.get_user_data(str(membro.id))
+        if not u: return await ctx.send("❌ Usuário não encontrado!")
+
+        conquistas_atuais = str(u['data'][9]) if len(u['data']) > 9 else ""
+        lista = [c.strip() for c in conquistas_atuais.split(',') if c.strip()]
+
+        if slug in lista: return await ctx.send(f"⚠️ {membro.display_name} já possui esta conquista!")
+
+        lista.append(slug)
+        db.update_value(u['row'], 10, ", ".join(lista))
+        await ctx.send(f"🏆 Conquista `{slug}` gravada na planilha para {membro.mention}!")
+
+    @commands.command()
+    async def remover_conquista(self, ctx, membro: disnake.Member, slug: str):
+        if ctx.author.id != self.owner_id: return await ctx.send("❌ Sem permissão!")
+        u = db.get_user_data(str(membro.id))
+        if not u: return await ctx.send("❌ Usuário não encontrado!")
+
+        conquistas_atuais = str(u['data'][9]) if len(u['data']) > 9 else ""
+        lista = [c.strip() for c in conquistas_atuais.split(',') if c.strip()]
+
+        if slug not in lista: return await ctx.send(f"❌ {membro.display_name} não possui essa conquista.")
+
+        lista.remove(slug)
+        db.update_value(u['row'], 10, ", ".join(lista))
+        await ctx.send(f"🧹 Conquista `{slug}` removida de {membro.mention}!")
 
     @commands.command()
     async def setar(self, ctx, membro: disnake.Member, valor: int):
@@ -15,40 +44,6 @@ class Admin(commands.Cog):
         if not u: return await ctx.send("❌ Usuário não encontrado!")
         db.update_value(u['row'], 3, valor)
         await ctx.send(f"✅ Saldo de {membro.mention} setado para **{valor} C**.")
-
-    @commands.command()
-    async def dar_conquista(self, ctx, membro: disnake.Member, slug: str):
-        """
-        Adiciona manualmente uma conquista ao rastreador do bot.
-        Slugs: palhaco, filho_da_sorte, escorregou_banana, pix_irritante, 
-               casca_grossa, briga_de_bar, ima_desgraca, veterano_coco, 
-               queda_livre, astronauta_cipo, esquadrao_suicida
-        """
-        if ctx.author.id != self.owner_id: 
-            return await ctx.send("❌ Sem permissão!")
-
-        if not hasattr(self.bot, 'tracker_emblemas'):
-            return await ctx.send("❌ O sistema de rastreio de conquistas não está carregado.")
-
-        tr = self.bot.tracker_emblemas
-        user_id = str(membro.id)
-
-        # Trata conquistas baseadas em SET (maioria das secretas/ações)
-        if slug in tr and isinstance(tr[slug], set):
-            tr[slug].add(user_id)
-            await ctx.send(f"🏆 Conquista `{slug}` concedida a {membro.mention}!")
-        
-        # Trata progressos baseados em DICIONÁRIOS (trabalhos e roubos)
-        elif slug in tr and isinstance(tr[slug], dict):
-            if user_id not in tr[slug]: tr[slug][user_id] = []
-            # Adiciona 5 registros para garantir o desbloqueio imediato no perfil
-            agora = time.time()
-            for _ in range(5):
-                tr[slug][user_id].append(agora)
-            await ctx.send(f"📈 Progresso de `{slug}` finalizado para {membro.mention}!")
-        
-        else:
-            await ctx.send(f"❌ Slug `{slug}` inválido! Verifique a lista de nomes.")
 
     @commands.command()
     async def wipe(self, ctx):
@@ -74,13 +69,43 @@ class Admin(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def patchnotes(self, ctx):
-        embed = disnake.Embed(title="📢 ATUALIZAÇÃO DA SELVA: A Era da Sabotagem! 😈🍌 (V4.0)", color=disnake.Color.brand_red())
-        embed.add_field(name="😈 1. SABOTAGEM", value="🍌 **Casca:** `!casca @user` (Alvo falha trabalho/roubo)\n🦍 **Imposto:** `!taxar @user` (Rouba 25% dos trabalhos por 24h)\n🪄 **Nick:** `!apelidar @user <nick>` (Muda nick por 30min)", inline=False)
-        embed.add_field(name="🛡️ 2. SEGURO", value="Compre Seguro na loja. Se for roubado, banco devolve 60%!", inline=False)
-        embed.add_field(name="📜 3. CAÇADAS", value="Recompensas (`!recompensa`) agora acumulam valores! Veja em `!recompensas`.", inline=False)
-        embed.add_field(name="🎒 4. INVENTÁRIO INFINITO", value="Acumule múltiplos itens repetidos (ex: 3x Escudo)!", inline=False)
-        embed.set_footer(text="Digite !ajuda para ver tudo.")
-        await ctx.send(content="🚨 **ATUALIZAÇÃO DE MERCADO NEGRO E SABOTAGEM LIBERADA!** 🚨\n", embed=embed)
+        """Envia o anúncio de atualização do bot para a v4.1."""
+        embed = disnake.Embed(
+            title="📢 ATUALIZAÇÃO DA SELVA: Memória Eterna e Enigmas! 🐒💾 (V4.1)",
+            description="O Gerente Conguito instalou novos servidores! Suas glórias agora são imortais. Confira os detalhes:",
+            color=disnake.Color.blue()
+        )
+
+        embed.add_field(
+            name="💾 1. CONQUISTAS PERSISTENTES", 
+            value="Chega de perder medalhas! Todas as suas conquistas secretas e de ação agora são **salvas permanentemente na planilha**. Mesmo que o bot reinicie, seu legado continua no seu `!perfil`.", 
+            inline=False
+        )
+
+        embed.add_field(
+            name="🌑 2. MURAL DE ENIGMAS", 
+            value="O comando `!conquistas` foi reformulado. As medalhas comuns continuam claras, mas os segredos foram selados com **charadas enigmáticas**. Você consegue decifrar como ganhar cada uma?", 
+            inline=False
+        )
+
+        embed.add_field(
+            name="🦍 3. REFORMA TRIBUTÁRIA", 
+            value="O **Imposto do Gorila** ficou mais cruel! Agora, ao taxar alguém, o efeito dura **24 horas seguidas**. O alvo verá quanto tempo de 'escravidão' ainda resta toda vez que tentar trabalhar.", 
+            inline=False
+        )
+
+        embed.add_field(
+            name="📉 4. ECONOMIA ESTÁVEL", 
+            value="Os preços da `!loja` foram reduzidos para facilitar o caos e a diversão. Além disso, corrigimos o bug que permitia criar mesas duplicadas de Blackjack.", 
+            inline=False
+        )
+
+        embed.set_footer(text="A selva nunca esquece. Digite !ajuda para ver as novidades! 🍌")
+        
+        if self.bot.user.display_avatar:
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+
+        await ctx.send(content="🚨 **BEEP BOOP! NOVA ATUALIZAÇÃO DISPONÍVEL!** 🚨\n", embed=embed)
         await ctx.message.delete()
 
 def setup(bot):

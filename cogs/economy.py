@@ -82,8 +82,12 @@ class Economy(commands.Cog):
     async def roubar(self, ctx, vitima: disnake.Member):
         ladrao_id = str(ctx.author.id)
         if vitima.id == ctx.author.id: 
-            self.bot.tracker_emblemas['palhaco'].add(ladrao_id)
-            return await ctx.send("🐒 Achou que eu não ia perceber? Ganhou a conquista de Palhaço por tentar se roubar!")
+            # Verifica se já tem a conquista na planilha
+            conquistas_atuais = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
+            if "palhaco" not in conquistas_atuais:
+                nova_lista = f"{conquistas_atuais}, palhaco".strip(", ")
+                db.update_value(ladrao_data['row'], 10, nova_lista)
+            return await ctx.send("🐒 Achou que eu não ia perceber? Palhaço!")
         
         ladrao_data = db.get_user_data(ladrao_id)
         alvo_data = db.get_user_data(str(vitima.id))
