@@ -4,6 +4,16 @@ import database as db
 import random
 import asyncio
 
+def get_limite_bj(cargo):
+    """Função auxiliar para retornar o limite de aposta baseado no cargo."""
+    limites = {
+        "Macaquinho": 500,
+        "Chimpanzé": 2000,
+        "Orangutango": 10000,
+        "Gorila": 50000
+    }
+    return limites.get(cargo, 500)
+
 class BlackjackView(disnake.ui.View):
     def __init__(self, ctx, bot, aposta_base, players):
         super().__init__(timeout=120)
@@ -67,11 +77,20 @@ class BlackjackView(disnake.ui.View):
             res_txt = ""
             
             if self.terminado:
-                if p_p > 21 and d_p > 21: res_txt = "\n🤝 **EMPATE (Ambos Estouraram)**"
-                elif p_p > 21: res_txt = "\n❌ **ESTOUROU**"
-                elif d_p > 21 or p_p > d_p: res_txt = f"\n🏆 **VENCEU! (+{p['aposta']*2} C)**"
-                elif p_p == d_p: res_txt = "\n🤝 **EMPATE**"
-                else: res_txt = "\n💀 **PERDEU**"
+                if p_p > 21 and d_p > 21: 
+                    res_txt = "\n🤝 **EMPATE (Ambos Estouraram)**"
+                elif p_p > 21: 
+                    res_txt = "\n❌ **ESTOUROU**"
+                elif d_p > 21 or p_p > d_p: 
+                    lucro_bruto = p["aposta"]
+                    taxa = int(lucro_bruto * 0.15)
+                    lucro_liquido = lucro_bruto - taxa
+                    ganho_total = p["aposta"] + lucro_liquido
+                    res_txt = f"\n🏆 **VENCEU! (+{ganho_total} C)**\n*(Cassino reteve {taxa} C)*"
+                elif p_p == d_p: 
+                    res_txt = "\n🤝 **EMPATE**"
+                else: 
+                    res_txt = "\n💀 **PERDEU**"
 
             embed.add_field(
                 name=f"{status_emoji} {p['member'].display_name}", 
@@ -80,7 +99,7 @@ class BlackjackView(disnake.ui.View):
             )
             
         if self.terminado:
-            embed.set_footer(text="Partida finalizada! Prêmios entregues.")
+            embed.set_footer(text="Partida finalizada! Prêmios e impostos aplicados.")
 
         if inter:
             await inter.response.edit_message(embed=embed, view=None if self.terminado else self)
@@ -168,14 +187,18 @@ class BlackjackView(disnake.ui.View):
         for p_id, p in self.players_data.items():
             p_p = self.calcular_pontos(p["hand"])
             u_db = db.get_user_data(str(p_id))
+            saldo_atual = int(u_db['data'][2])
             
             if p_p > 21 and d_p > 21: # Ambos estouraram
-                db.update_value(u_db['row'], 3, int(u_db['data'][2]) + p["aposta"])
+                db.update_value(u_db['row'], 3, saldo_atual + p["aposta"])
             elif p_p <= 21:
                 if d_p > 21 or p_p > d_p: # Ganhou
-                    db.update_value(u_db['row'], 3, int(u_db['data'][2]) + (p["aposta"] * 2))
+                    lucro_bruto = p["aposta"]
+                    taxa = int(lucro_bruto * 0.15)
+                    lucro_liquido = lucro_bruto - taxa
+                    db.update_value(u_db['row'], 3, saldo_atual + p["aposta"] + lucro_liquido)
                 elif p_p == d_p: # Empatou
-                    db.update_value(u_db['row'], 3, int(u_db['data'][2]) + p["aposta"])
+                    db.update_value(u_db['row'], 3, saldo_atual + p["aposta"])
 
 
 class BlackjackCog(commands.Cog):
@@ -193,8 +216,17 @@ class BlackjackCog(commands.Cog):
     async def blackjack(self, ctx, aposta: int):
         """Inicia uma mesa de Blackjack multiplayer."""
         if aposta <= 0: return await ctx.send("❌ Aposta inválida!")
+        
         u_c = db.get_user_data(str(ctx.author.id))
-        if not u_c or int(u_c['data'][2]) < aposta: return await ctx.send("❌ Saldo insuficiente!")
+        if not u_c: return await ctx.send("❌ Conta não encontrada!")
+
+        cargo = u_c['data'][3]
+        limite = get_limite_bj(cargo)
+
+        if aposta > limite:
+            return await ctx.send(f"🚫 **LIMITE DE CARGO!** Como **{cargo}**, seu limite para abrir ou entrar em mesas é de **{limite} C**.")
+
+        if int(u_c['data'][2]) < aposta: return await ctx.send("❌ Saldo insuficiente!")
         
         db.update_value(u_c['row'], 3, int(u_c['data'][2]) - aposta)
         players = [ctx.author]
@@ -220,10 +252,19 @@ class BlackjackCog(commands.Cog):
                     break
                 if m.content.lower() == '!entrar' and m.author not in players:
                     u_db = db.get_user_data(str(m.author.id))
-                    if u_db and int(u_db['data'][2]) >= aposta:
-                        db.update_value(u_db['row'], 3, int(u_db['data'][2]) - aposta)
-                        players.append(m.author)
-                        await msg.edit(content=gerar_texto_lobby(players))
+                    if u_db:
+                        cargo_p = u_db['data'][3]
+                        limite_p = get_limite_bj(cargo_p)
+                        if aposta > limite_p:
+                            await ctx.send(f"🚫 {m.author.mention}, a aposta da mesa excede seu limite de **{cargo_p}** ({limite_p} C).", delete_after=6)
+                            continue
+                            
+                        if int(u_db['data'][2]) >= aposta:
+                            db.update_value(u_db['row'], 3, int(u_db['data'][2]) - aposta)
+                            players.append(m.author)
+                            await msg.edit(content=gerar_texto_lobby(players))
+                        else:
+                            await ctx.send(f"❌ {m.author.mention}, saldo insuficiente para entrar!", delete_after=6)
             except asyncio.TimeoutError: break
 
         if not start:

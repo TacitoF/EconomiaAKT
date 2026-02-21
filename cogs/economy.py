@@ -46,9 +46,17 @@ class Economy(commands.Cog):
             db.update_value(user['row'], 5, agora)
             return await ctx.send(f"🍌 **SPLASH!** {ctx.author.mention} escorregou numa casca de banana a caminho do trabalho, caiu na lama e não ganhou nada!")
 
+        # --- NOVA LÓGICA DE SALÁRIOS RESTRITOS ---
         cargo = user['data'][3]
-        mults = {"Macaquinho": 1.0, "Chimpanzé": 1.5, "Orangutango": 2.5, "Gorila": 4.0}
-        ganho = int(random.randint(100, 300) * mults.get(cargo, 1.0))
+        salarios = {
+            "Macaquinho": (50, 150),
+            "Chimpanzé": (200, 450),
+            "Orangutango": (600, 1100),
+            "Gorila": (1200, 2500)
+        }
+        
+        min_ganho, max_ganho = salarios.get(cargo, (50, 150))
+        ganho = random.randint(min_ganho, max_ganho)
         
         imposto_msg = ""
         if user_id in self.bot.impostos:
@@ -82,11 +90,12 @@ class Economy(commands.Cog):
     async def roubar(self, ctx, vitima: disnake.Member):
         ladrao_id = str(ctx.author.id)
         if vitima.id == ctx.author.id: 
-            # Verifica se já tem a conquista na planilha
-            conquistas_atuais = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
-            if "palhaco" not in conquistas_atuais:
-                nova_lista = f"{conquistas_atuais}, palhaco".strip(", ")
-                db.update_value(ladrao_data['row'], 10, nova_lista)
+            ladrao_data = db.get_user_data(ladrao_id)
+            if ladrao_data:
+                conquistas_atuais = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
+                if "palhaco" not in conquistas_atuais:
+                    nova_lista = f"{conquistas_atuais}, palhaco".strip(", ")
+                    db.update_value(ladrao_data['row'], 10, nova_lista)
             return await ctx.send("🐒 Achou que eu não ia perceber? Palhaço!")
         
         ladrao_data = db.get_user_data(ladrao_id)

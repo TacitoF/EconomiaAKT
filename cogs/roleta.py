@@ -10,6 +10,23 @@ class Roleta(commands.Cog):
         self.roleta_aberta = False
         self.apostas = [] # Vai guardar dicionários: {'user': ctx.author, 'valor': aposta, 'tipo': aposta_em}
 
+    # --- SISTEMAS DE SEGURANÇA E ECONOMIA ---
+    async def get_limite(self, cargo):
+        """Retorna o limite de aposta baseado no cargo."""
+        limites = {
+            "Macaquinho": 500,
+            "Chimpanzé": 2000,
+            "Orangutango": 10000,
+            "Gorila": 50000
+        }
+        return limites.get(cargo, 500)
+
+    async def taxar_premio(self, valor_lucro):
+        """Aplica a taxa de 15% do cassino sobre o lucro para controle de inflação."""
+        taxa = int(valor_lucro * 0.15)
+        liquido = valor_lucro - taxa
+        return liquido, taxa
+
     async def save_achievement(self, user_data, slug):
         conquistas_atuais = str(user_data['data'][9]) if len(user_data['data']) > 9 else ""
         lista = [c.strip() for c in conquistas_atuais.split(',') if c.strip()]
@@ -57,7 +74,6 @@ class Roleta(commands.Cog):
             description=f"Temos **{len(self.apostas)} apostas** na mesa totalizando **{total_apostado} C**!\n\n🌀 **O Chimpanzézio girou a roleta...**",
             color=disnake.Color.orange()
         )
-        # CORREÇÃO: Adicionado o "embed=" que estava faltando e causando o bug visual
         msg = await ctx.send(embed=embed_giro) 
         await asyncio.sleep(2)
 
@@ -107,9 +123,13 @@ class Roleta(commands.Cog):
                 multiplicador = 2
 
             if ganhou:
-                ganho_total = valor * multiplicador
-                if user_db: db.update_value(user_db['row'], 3, int(user_db['data'][2]) + ganho_total)
-                vencedores_txt += f"🎉 {jogador.mention} apostou em `{aposta_em.upper()}` e ganhou **{ganho_total} C**!\n"
+                premio_bruto = valor * multiplicador
+                lucro_bruto = premio_bruto - valor
+                lucro_liquido, taxa = await self.taxar_premio(lucro_bruto)
+                retorno_final = valor + lucro_liquido
+                
+                if user_db: db.update_value(user_db['row'], 3, int(user_db['data'][2]) + retorno_final)
+                vencedores_txt += f"🎉 {jogador.mention} apostou em `{aposta_em.upper()}` e lucrou **{lucro_liquido} C** (Taxa: `{taxa} C`)!\n"
                 
                 # Conquista de Sorte se acertar o número em cheio
                 if multiplicador == 36 and user_db:
@@ -119,7 +139,7 @@ class Roleta(commands.Cog):
 
         # --- RESULTADO FINAL NO CHAT ---
         if not vencedores_txt: vencedores_txt = "Nenhum macaco teve sorte..."
-        if not perdedores_txt: perdedores_txt = "O casino tomou prejuízo, ninguém perdeu!"
+        if not perdedores_txt: perdedores_txt = "A casa tomou prejuízo, ninguém perdeu!"
 
         embed_final = disnake.Embed(
             title=f"🎰 A ROLETA PAROU NO: {emoji} {resultado_num} ({cor.upper()})",
@@ -128,7 +148,6 @@ class Roleta(commands.Cog):
         embed_final.add_field(name="💰 VENCEDORES", value=vencedores_txt, inline=False)
         embed_final.add_field(name="💸 PERDEDORES", value=perdedores_txt, inline=False)
         
-        # O embed substitui perfeitamente a mensagem de suspense
         await msg.edit(embed=embed_final)
 
     @commands.command()
@@ -144,6 +163,21 @@ class Roleta(commands.Cog):
         if not user or int(user['data'][2]) < valor:
             return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
+        # --- NOVA TRAVA DE LIMITES POR CARGO ---
+        cargo = user['data'][3]
+        limite = await self.get_limite(cargo)
+        
+        # Soma o quanto o usuário já apostou nesta rodada para evitar flood de apostas que burlem o limite
+        apostado_atual = sum(a['valor'] for a in self.apostas if a['user'] == ctx.author)
+        
+        if (apostado_atual + valor) > limite:
+            restante = limite - apostado_atual
+            if restante > 0:
+                return await ctx.send(f"🚫 {ctx.author.mention}, como **{cargo}** seu limite é **{limite} C** por rodada. Você só pode apostar mais **{restante} C** agora.")
+            else:
+                return await ctx.send(f"🚫 {ctx.author.mention}, você já atingiu o seu limite de aposta de **{limite} C** para esta rodada!")
+        # ----------------------------------------
+
         aposta_em = aposta_em.lower()
         opcoes_validas = ['vermelho', 'preto', 'par', 'impar'] + [str(i) for i in range(37)]
         
@@ -156,7 +190,6 @@ class Roleta(commands.Cog):
         # Adiciona na mesa
         self.apostas.append({'user': ctx.author, 'valor': valor, 'tipo': aposta_em})
         
-        # Confirmação simples para não poluir
         await ctx.send(f"🪙 {ctx.author.mention} apostou **{valor} C** em `{aposta_em.upper()}`!")
 
 def setup(bot):

@@ -69,26 +69,32 @@ class Admin(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def patchnotes(self, ctx):
-        """Envia o anúncio de atualização do bot para a v4.2."""
+        """Envia o anúncio de atualização do bot para a v4.3."""
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA (V4.2): A Era da Sabotagem! 🍌🎭",
-            description="O Gerente Conguito enlouqueceu de vez! Novas formas de extorquir, enganar e humilhar seus amigos chegaram à selva.",
-            color=disnake.Color.dark_green()
+            title="📢 ATUALIZAÇÃO DA SELVA (V4.3): A Grande Reforma! 📉🦍",
+            description="O Banco Central da Selva interveio! A inflação foi controlada e os cargos de respeito agora importam mais do que nunca.",
+            color=disnake.Color.dark_red()
         )
 
         embed.add_field(
-            name="🍌 1. A MALDIÇÃO SÍMIA (!amaldicoar)", 
-            value="Tem alguém falando muito no chat? Pague 500 C e jogue uma maldição! Durante 1 minuto, todas as mensagens da vítima serão interceptadas e transformadas em sons de macaco (UH, AH, 🍌).", 
+            name="💼 1. NOVOS SALÁRIOS (!trabalhar)", 
+            value="Os ganhos foram reajustados para valorizar a hierarquia. Macaquinhos iniciantes ganham o básico para sobreviver (50 a 150 C), enquanto os Gorilas dominam o mercado ganhando até 2.500 C por hora!", 
             inline=False
         )
 
         embed.add_field(
-            name="🎭 2. FALSIDADE IDEOLÓGICA (!impostor)", 
-            value="Quer causar intriga? Pague 500 C, escolha um alvo e escreva uma mensagem. O bot vai criar um clone perfeito da pessoa (nome e foto) e enviar a mensagem no chat como se fosse ela!", 
+            name="🚫 2. LIMITES DE APOSTA", 
+            value="Chega de novatos quebrarem a banca com sorte! O seu Cargo da `!loja` agora dita o limite de quanto você pode apostar nos jogos do cassino. (Ex: Macaquinho = 500 C | Gorila = 50.000 C).", 
             inline=False
         )
 
-        embed.set_footer(text="A selva está mais perigosa do que nunca. Digite !ajuda para ver as novidades! 🐒")
+        embed.add_field(
+            name="🏦 3. A TAXA DA SELVA (15%)", 
+            value="A casa sempre ganha! Para manter o equilíbrio da economia, o cassino agora retém **15% de imposto apenas sobre o seu LUCRO** em qualquer aposta ganha. Parte do dinheiro volta para o servidor.", 
+            inline=False
+        )
+
+        embed.set_footer(text="Quer lucrar alto? Trabalhe e compre o cargo de Gorila na !loja! 📈")
         
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
