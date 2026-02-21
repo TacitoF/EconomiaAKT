@@ -46,16 +46,21 @@ class Economy(commands.Cog):
             db.update_value(user['row'], 5, agora)
             return await ctx.send(f"🍌 **SPLASH!** {ctx.author.mention} escorregou numa casca de banana a caminho do trabalho, caiu na lama e não ganhou nada!")
 
-        # --- NOVA LÓGICA DE SALÁRIOS RESTRITOS ---
+        # --- NOVA LÓGICA DE SALÁRIOS RESTRITOS (v4.4) ---
         cargo = user['data'][3]
         salarios = {
-            "Macaquinho": (50, 150),
-            "Chimpanzé": (200, 450),
-            "Orangutango": (600, 1100),
-            "Gorila": (1200, 2500)
+            "Lêmure": (40, 100),
+            "Macaquinho": (120, 250),
+            "Babuíno": (300, 650),
+            "Chimpanzé": (700, 1400),
+            "Orangutango": (1600, 3200),
+            "Gorila": (4500, 9000),
+            "Ancestral": (12000, 22000),
+            "Rei Símio": (35000, 70000)
         }
         
-        min_ganho, max_ganho = salarios.get(cargo, (50, 150))
+        # O default para caso não encontre ou seja um usuário muito antigo não catalogado é o Lêmure
+        min_ganho, max_ganho = salarios.get(cargo, (40, 100))
         ganho = random.randint(min_ganho, max_ganho)
         
         imposto_msg = ""

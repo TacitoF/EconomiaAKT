@@ -69,38 +69,38 @@ class Admin(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def patchnotes(self, ctx):
-        """Envia o anúncio de atualização do bot para a v4.3."""
+        """Envia o anúncio de atualização do bot para a v4.4."""
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA (V4.3): A Grande Reforma! 📉🦍",
-            description="O Banco Central da Selva interveio! A inflação foi controlada e os cargos de respeito agora importam mais do que nunca.",
+            title="📢 ATUALIZAÇÃO DA SELVA (V4.4): A Escada da Evolução! 🦍👑",
+            description="O sistema econômico da selva expandiu! Agora temos uma nova jornada de progressão e novas formas de atormentar seus amigos.",
             color=disnake.Color.dark_red()
         )
 
         embed.add_field(
-            name="💼 1. NOVOS SALÁRIOS (!trabalhar)", 
-            value="Os ganhos foram reajustados para valorizar a hierarquia. Macaquinhos iniciantes ganham o básico para sobreviver (50 a 150 C), enquanto os Gorilas dominam o mercado ganhando até 2.500 C por hora!", 
+            name="🪜 1. A NOVA HIERARQUIA (8 CARGOS)", 
+            value="A `!loja` foi atualizada com uma nova escada social! Comece como um humilde **Lêmure** e evolua até se tornar o lendário **Rei Símio**!", 
             inline=False
         )
 
         embed.add_field(
-            name="🚫 2. LIMITES DE APOSTA", 
-            value="Chega de novatos quebrarem a banca com sorte! O seu Cargo da `!loja` agora dita o limite de quanto você pode apostar nos jogos do cassino. (Ex: Macaquinho = 500 C | Gorila = 50.000 C).", 
+            name="💼 2. SALÁRIOS E LIMITES END-GAME", 
+            value="Cada novo cargo aumenta consideravelmente seu limite de apostas no Cassino e seus ganhos no `!trabalhar`. O Rei Símio tem um limite de aposta de impressionantes **1.000.000 C** e pode faturar até **70.000 C** por hora de trabalho!", 
             inline=False
         )
 
         embed.add_field(
-            name="🏦 3. A TAXA DA SELVA (15%)", 
-            value="A casa sempre ganha! Para manter o equilíbrio da economia, o cassino agora retém **15% de imposto apenas sobre o seu LUCRO** em qualquer aposta ganha. Parte do dinheiro volta para o servidor.", 
+            name="⚡ 3. SABOTAGENS INSTANTÂNEAS", 
+            value="A **Maldição Símia** (`!amaldicoar`) e o **Impostor** (`!impostor`) agora são comandos diretos! Custam **500 C** e cobram na hora direto do seu saldo, sem precisar comprar e guardar no inventário antes. Pagou, usou!", 
             inline=False
         )
 
         embed.add_field(
-            name="🃏 4. AJUSTE FINO NO BLACKJACK", 
-            value="O Chimpanzézio aprendeu a contar! Agora você pode usar o **Dividir (Split)** em qualquer par de cartas que valham 10 pontos (ex: um 10 e um Valete). Mais risco, mais lucro!", 
+            name="💣 4. CAMPO MINADO RECALIBRADO", 
+            value="O `!minas` agora tem um risco/recompensa inteligente! Jogar com 1 bomba é super seguro e dá um lucro de formiguinha (1.1x), mas se você tiver coragem de colocar 5 bombas... o multiplicador sobe e a selva pega fogo! (Lembrando: a taxa de 15% do Cassino só morde o seu lucro).", 
             inline=False
         )
 
-        embed.set_footer(text="Quer lucrar alto? Trabalhe e compre o cargo de Gorila na !loja! 📈")
+        embed.set_footer(text="A corrida para se tornar o primeiro Rei Símio começou! Boa sorte! 👑")
         
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)

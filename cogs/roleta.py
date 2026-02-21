@@ -12,14 +12,18 @@ class Roleta(commands.Cog):
 
     # --- SISTEMAS DE SEGURANÇA E ECONOMIA ---
     async def get_limite(self, cargo):
-        """Retorna o limite de aposta baseado no cargo."""
+        """Retorna o limite de aposta baseado no cargo (v4.4)."""
         limites = {
-            "Macaquinho": 500,
-            "Chimpanzé": 2000,
-            "Orangutango": 10000,
-            "Gorila": 50000
+            "Lêmure": 250,
+            "Macaquinho": 750,
+            "Babuíno": 2500,
+            "Chimpanzé": 6000,
+            "Orangutango": 15000,
+            "Gorila": 40000,
+            "Ancestral": 120000,
+            "Rei Símio": 1000000
         }
-        return limites.get(cargo, 500)
+        return limites.get(cargo, 250)
 
     async def taxar_premio(self, valor_lucro):
         """Aplica a taxa de 15% do cassino sobre o lucro para controle de inflação."""

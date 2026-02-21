@@ -29,12 +29,16 @@ class Games(commands.Cog):
     async def get_limite(self, cargo):
         """Retorna o limite de aposta baseado no cargo."""
         limites = {
-            "Macaquinho": 500,
-            "Chimpanzé": 2000,
-            "Orangutango": 10000,
-            "Gorila": 50000
+            "Lêmure": 250,
+            "Macaquinho": 750,
+            "Babuíno": 2500,
+            "Chimpanzé": 6000,
+            "Orangutango": 15000,
+            "Gorila": 40000,
+            "Ancestral": 120000,
+            "Rei Símio": 1000000
         }
-        return limites.get(cargo, 500)
+        return limites.get(cargo, 250)
 
     async def taxar_premio(self, valor_lucro):
         """Aplica a taxa de 15% do cassino sobre o lucro para controle de inflação."""
@@ -481,15 +485,20 @@ class Games(commands.Cog):
 
     @commands.command(name="minas")
     async def campo_minado(self, ctx, bombas: int, aposta: int):
-        if not (1 <= bombas <= 5): return await ctx.send(f"❌ {ctx.author.mention}, escolha entre 1 e 5 bombas.")
+        # Validação inicial
+        if not (1 <= bombas <= 5): 
+            return await ctx.send(f"❌ {ctx.author.mention}, escolha entre 1 e 5 bombas.")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+        if not user or aposta > int(user['data'][2]) or aposta <= 0: 
+            return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
         cargo = user['data'][3]
         limite = await self.get_limite(cargo)
-        if aposta > limite: return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{limite} C**!")
+        if aposta > limite: 
+            return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{limite} C**!")
 
+        # Retira o dinheiro antes de começar
         db.update_value(user['row'], 3, int(user['data'][2]) - aposta)
 
         await ctx.send(f"💣 {ctx.author.mention} entrando no campo com {bombas} bombas...")
@@ -497,18 +506,36 @@ class Games(commands.Cog):
 
         user_atual = db.get_user_data(str(ctx.author.id))
 
-        if random.randint(1, 10) > (bombas * 1.5):
-            mult = 1.5 + (bombas * 0.5)
+        # --- NOVO SISTEMA DE PROBABILIDADE E MULTIPLICADOR ---
+        # 1 Bomba: 88% de chance | Mult: 1.1x 
+        # 5 Bombas: 60% de chance | Mult: 1.6x
+        # (Isso garante que o bot não quebre e o lucro seja justo)
+        
+        chance_vitoria = 95 - (bombas * 7) # Ex: 1 bomba = 88% de chance
+        sorteio = random.randint(1, 100)
+        
+        if sorteio <= chance_vitoria:
+            # Cálculo de multiplicador sustentável
+            if bombas == 1:
+                mult = 1.1  # Lucro de 10% para baixo risco
+            else:
+                mult = 1.0 + (bombas * 0.12) # Ex: 5 bombas = 1.6x
+                
             ganho_total = int(aposta * mult)
             lucro_bruto = ganho_total - aposta
+            
+            # Sistema de taxas que você já possui
             lucro_liquido, taxa = await self.taxar_premio(lucro_bruto)
             retorno_final = aposta + lucro_liquido
             
             db.update_value(user_atual['row'], 3, int(user_atual['data'][2]) + retorno_final)
             
+            # Conquistas
             if bombas == 5: await self.save_achievement(user_atual, "esquadrao_suicida")
-            await ctx.send(f"🚩 **LIMPO!** {ctx.author.mention} lucrou **{lucro_liquido} C**! ({mult}x - Taxa: `{taxa} C`)")
+            
+            await ctx.send(f"🚩 **LIMPO!** {ctx.author.mention} lucrou **{lucro_liquido} C**! (`{mult}x` - Taxa: `{taxa} C`)")
         else:
+            # Perdeu
             if bombas == 1: await self.save_achievement(user_atual, "escorregou_banana")
             await ctx.send(f"💥 **BOOOOM!** {ctx.author.mention} pisou em uma mina e perdeu **{aposta} C**.")
 

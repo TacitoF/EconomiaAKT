@@ -5,14 +5,18 @@ import random
 import asyncio
 
 def get_limite_bj(cargo):
-    """Função auxiliar para retornar o limite de aposta baseado no cargo."""
+    """Função auxiliar para retornar o limite de aposta baseado no cargo (v4.4)."""
     limites = {
-        "Macaquinho": 500,
-        "Chimpanzé": 2000,
-        "Orangutango": 10000,
-        "Gorila": 50000
+        "Lêmure": 250,
+        "Macaquinho": 750,
+        "Babuíno": 2500,
+        "Chimpanzé": 6000,
+        "Orangutango": 15000,
+        "Gorila": 40000,
+        "Ancestral": 120000,
+        "Rei Símio": 1000000
     }
-    return limites.get(cargo, 500)
+    return limites.get(cargo, 250)
 
 class BlackjackView(disnake.ui.View):
     def __init__(self, ctx, bot, aposta_base, players):
@@ -57,19 +61,20 @@ class BlackjackView(disnake.ui.View):
         d_p = self.calcular_pontos(self.dealer_hand)
         status_dealer = f"Pontos: {d_p}" if self.terminado else "Pontos: ?"
         embed.add_field(name="🏦 Dealer (Bot)", value=f"Mão: `{self.formatar_mao(self.dealer_hand, not self.terminado)}`\n{status_dealer}", inline=False)
-            # Pega o ID do jogador do turno atual
+        
+        # Pega o ID do jogador do turno atual
         p_atual_id = self.player_ids[self.current_player_idx] if self.current_player_idx < len(self.player_ids) else None
         
         if p_atual_id and not self.terminado:
             p_atual_data = self.players_data[p_atual_id]
             
-            # --- NOVA LÓGICA DE SPLIT POR VALOR ---
-            # Calculamos o valor individual de cada uma das duas cartas
-            v1 = self.calcular_pontos([p_atual_data["hand"][0]])
-            v2 = self.calcular_pontos([p_atual_data["hand"][1]])
-            
-            # Agora ele permite split se os PONTOS forem iguais (ex: 10 e J)
-            pode_split = len(p_atual_data["hand"]) == 2 and v1 == v2 and not p_atual_data["splitted"]
+            # --- LÓGICA DE SPLIT POR VALOR ---
+            if len(p_atual_data["hand"]) == 2 and not p_atual_data["splitted"]:
+                v1 = self.calcular_pontos([p_atual_data["hand"][0]])
+                v2 = self.calcular_pontos([p_atual_data["hand"][1]])
+                pode_split = (v1 == v2)
+            else:
+                pode_split = False
             # --------------------------------------
 
             for child in self.children:
@@ -283,7 +288,6 @@ class BlackjackCog(commands.Cog):
                 db.update_value(p_db['row'], 3, int(p_db['data'][2]) + aposta)
             return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
 
-        # --- CORREÇÃO DO BUG DAS DUAS MESAS (CHAMADA ÚNICA AQUI) ---
         view = BlackjackView(ctx, self.bot, aposta, players)
         view.dealer_hand = [view.deck.pop(), view.deck.pop()]
         for p_id in view.player_ids: 

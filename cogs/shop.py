@@ -19,7 +19,15 @@ class Shop(commands.Cog):
         
         embed.add_field(
             name="📈 Cargos (Aumenta Salário e Limite de Aposta)", 
-            value="🐒 **Chimpanzé** (1.500 C) - *Aposta Max: 2.000 C*\n🦧 **Orangutango** (5.000 C) - *Aposta Max: 10.000 C*\n🦍 **Gorila** (15.000 C) - *Aposta Max: 50.000 C*", 
+            value=(
+                "🐒 **Macaquinho** (1.200 C) - *Aposta Max: 750 C*\n"
+                "🐒 **Babuíno** (4.000 C) - *Aposta Max: 2.500 C*\n"
+                "🦧 **Chimpanzé** (10.000 C) - *Aposta Max: 6.000 C*\n"
+                "🦧 **Orangutango** (25.000 C) - *Aposta Max: 15.000 C*\n"
+                "🦍 **Gorila** (60.000 C) - *Aposta Max: 40.000 C*\n"
+                "🗿 **Ancestral** (150.000 C) - *Aposta Max: 120.000 C*\n"
+                "👑 **Rei Símio** (450.000 C) - *Aposta Max: 1.000.000 C*"
+            ), 
             inline=False
         )
         
@@ -38,7 +46,8 @@ class Shop(commands.Cog):
                 "🪄 **Troca de Nick** (2.500 C): Altera o nick do alvo por 30min `!apelidar @user <nick>`.\n\n"
                 "⚡ **Comandos Diretos (Pagou, usou!):**\n"
                 "🙊 **Maldição Símia** (500 C): O alvo fala como macaco por 1min `!amaldicoar @user`.\n"
-                "🎭 **Impostor** (500 C): Envia uma mensagem falsa como o alvo `!impostor @user <msg>`."
+                "🎭 **Impostor** (500 C): Envia uma mensagem falsa como o alvo `!impostor @user <msg>`.\n\n"
+                "*O **Chimpanzézio** cobra os comandos diretos na hora!*"
             ), 
             inline=False
         )
@@ -52,11 +61,24 @@ class Shop(commands.Cog):
         if not user: return await ctx.send("❌ Use `!trabalhar` primeiro!")
 
         loja = {
-            "chimpanzé": {"nome": "Chimpanzé", "preco": 1500, "tipo": "cargo"}, "chimpanze": {"nome": "Chimpanzé", "preco": 1500, "tipo": "cargo"},
-            "orangutango": {"nome": "Orangutango", "preco": 5000, "tipo": "cargo"}, "gorila": {"nome": "Gorila", "preco": 15000, "tipo": "cargo"},
-            "escudo": {"nome": "Escudo", "preco": 800, "tipo": "item"}, "pé de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"}, "pe de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"},
-            "seguro": {"nome": "Seguro", "preco": 1000, "tipo": "item"}, "casca de banana": {"nome": "Casca de Banana", "preco": 300, "tipo": "item"},
-            "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1500, "tipo": "item"}, "troca de nick": {"nome": "Troca de Nick", "preco": 2500, "tipo": "item"}
+            "macaquinho": {"nome": "Macaquinho", "preco": 1200, "tipo": "cargo"},
+            "babuíno": {"nome": "Babuíno", "preco": 4000, "tipo": "cargo"}, 
+            "babuino": {"nome": "Babuíno", "preco": 4000, "tipo": "cargo"},
+            "chimpanzé": {"nome": "Chimpanzé", "preco": 10000, "tipo": "cargo"}, 
+            "chimpanze": {"nome": "Chimpanzé", "preco": 10000, "tipo": "cargo"},
+            "orangutango": {"nome": "Orangutango", "preco": 25000, "tipo": "cargo"}, 
+            "gorila": {"nome": "Gorila", "preco": 60000, "tipo": "cargo"},
+            "ancestral": {"nome": "Ancestral", "preco": 150000, "tipo": "cargo"},
+            "rei símio": {"nome": "Rei Símio", "preco": 450000, "tipo": "cargo"}, 
+            "rei simio": {"nome": "Rei Símio", "preco": 450000, "tipo": "cargo"},
+            
+            "escudo": {"nome": "Escudo", "preco": 800, "tipo": "item"}, 
+            "pé de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"}, 
+            "pe de cabra": {"nome": "Pé de Cabra", "preco": 1200, "tipo": "item"},
+            "seguro": {"nome": "Seguro", "preco": 1000, "tipo": "item"}, 
+            "casca de banana": {"nome": "Casca de Banana", "preco": 300, "tipo": "item"},
+            "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1500, "tipo": "item"}, 
+            "troca de nick": {"nome": "Troca de Nick", "preco": 2500, "tipo": "item"}
         }
 
         escolha = item.lower()
@@ -79,4 +101,4 @@ class Shop(commands.Cog):
             await ctx.send(f"🛍️ {ctx.author.mention} comprou **{item_data['nome']}** e guardou no inventário!")
 
 def setup(bot):
-    bot.add_cog(Shop(bot))
+    bot.add_cog(Shop(bot))  
