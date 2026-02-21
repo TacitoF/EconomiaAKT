@@ -504,7 +504,7 @@ class Games(commands.Cog):
         user = db.get_user_data(str(ctx.author.id))
         if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"⚠️ {ctx.author.mention}, saldo insuficiente!")
 
-        emojis = ["🍌", "🐒", "⚡", "🥥", "💎", "🦍", "🌴", "🌊", "🦧"]
+        emojis = ["🍌", "🐒", "⚡", "🥥", "💎", "🦍", "🌴", "🌊", "🦧", "🌞"]
         res = [random.choice(emojis) for _ in range(3)]
         
         if res[0] == res[1] == res[2]:
