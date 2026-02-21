@@ -355,10 +355,14 @@ class Games(commands.Cog):
                 "🥥 **!coco <valor>** - Crie uma Roleta do Coco Explosivo.\n"
                 "🏃 **!entrar_coco** - Entre na roda antes do tempo acabar!\n"
                 "🐒 **!corrida <animal> <valor>** - Aposte no Macaquinho, Gorila ou Orangutango.\n"
-                "🪙 **!moeda <cara/coroa> <valor>** - Dobro ou nada.\n"
                 "🦁 **!bicho <animal> <valor>** - Aposte em: Leao, Cobra, Jacare, Arara, Elefante.\n"
                 "💣 **!minas <bombas> <valor>** - Escolha entre 1 e 5 bombas.\n"
-                "⚔️ **!briga @user <valor>** - Desafie alguém para PvP!"
+                "⚔️ **!briga @user <valor>** - Desafie alguém para PvP!\n"
+                "🎫 **!loteria** - Compre um bilhete por 500 C para concorrer ao pote acumulado.\n"
+                "💰 **!pote** - Veja o valor atual do pote da loteria."
+                "🎰 **!roleta** - Abre a mesa de Roleta Multiplayer! (30s de apostas)\n"
+                "🪙 **!apostar <valor> <opção>** - Entre na rodada atual da Roleta.\n"
+                "   ↳ *Cores ou Par/Ímpar pagam **2x** | Números exatos pagam **36x**!* 🎯\n"
             ),
             inline=False
         )
@@ -483,28 +487,12 @@ class Games(commands.Cog):
         db.update_value(p_db['row'], 3, int(p_db['data'][2]) - aposta)
         await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e levou o pote de **{aposta} C**!")
 
-    @commands.command(name="moeda", aliases=["cara_coroa", "coinflip", "cf"])
-    async def cara_coroa(self, ctx, lado: str, aposta: int):
-        user = db.get_user_data(str(ctx.author.id))
-        if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"⚠️ {ctx.author.mention}, saldo insuficiente!")
-
-        lado = lado.lower()
-        if lado not in ["cara", "coroa"]: return await ctx.send(f"⚠️ {ctx.author.mention}, escolha entre `cara` ou `coroa`!")
-
-        res = random.choice(["cara", "coroa"])
-        venceu = (lado == res)
-        ganho = aposta if venceu else -aposta
-        msg = f"✅ **Ganhou, +{aposta} C!**" if venceu else f"❌ **Perdeu, -{aposta} C!**"
-
-        db.update_value(user['row'], 3, int(user['data'][2]) + ganho)
-        await ctx.send(f"🪙 {ctx.author.mention} | Caiu **{res.upper()}**! {msg}")
-
     @commands.command(name="cassino")
     async def cassino_slots(self, ctx, aposta: int):
         user = db.get_user_data(str(ctx.author.id))
         if not user or aposta > int(user['data'][2]) or aposta <= 0: return await ctx.send(f"⚠️ {ctx.author.mention}, saldo insuficiente!")
 
-        emojis = ["🍌", "🐒", "⚡", "🥥", "💎", "🦍", "🌴", "🌊", "🦧", "🌞"]
+        emojis = ["🍌", "🐒", "⚡", "🥥", "💎", "🦍", "🌴", "🌊"]
         res = [random.choice(emojis) for _ in range(3)]
         
         if res[0] == res[1] == res[2]:
