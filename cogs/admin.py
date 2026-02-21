@@ -71,42 +71,53 @@ class Admin(commands.Cog):
     async def patchnotes(self, ctx):
         """Envia o anúncio de atualização do bot para a v4.1."""
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA: Memória Eterna e Enigmas! 🐒💾 (V4.1)",
-            description="O Gerente Conguito instalou novos servidores! Suas glórias agora são imortais. Confira os detalhes:",
+            title="📢 ATUALIZAÇÃO DA SELVA (V4.1): A Era do Cassino! 🎰🐒",
+            description="O Gerente Conguito reformou o cassino, atualizou os servidores e trouxe novidades quentes! Confira os detalhes:",
             color=disnake.Color.blue()
         )
 
         embed.add_field(
-            name="💾 1. CONQUISTAS PERSISTENTES", 
-            value="Chega de perder medalhas! Todas as suas conquistas secretas e de ação agora são **salvas permanentemente na planilha**. Mesmo que o bot reinicie, seu legado continua no seu `!perfil`.", 
+            name="💾 1. CONQUISTAS PERSISTENTES & ENIGMAS", 
+            value="Suas medalhas agora são **salvas permanentemente na planilha** (não somem mais ao reiniciar). Além disso, o comando `!conquistas` virou um **Mural de Enigmas** para você decifrar os segredos da selva!", 
             inline=False
         )
 
         embed.add_field(
-            name="🌑 2. MURAL DE ENIGMAS", 
-            value="O comando `!conquistas` foi reformulado. As medalhas comuns continuam claras, mas os segredos foram selados com **charadas enigmáticas**. Você consegue decifrar como ganhar cada uma?", 
+            name="🎰 2. NOVA ROLETA MULTIPLAYER", 
+            value="O novo comando `!roleta` chegou! A mesa abre por 30 segundos e todos os macacos podem usar `!apostar` ao mesmo tempo. Aposte em cores (paga 2x) ou arrisque num número em cheio para ganhar **36x** o valor! 🎯", 
             inline=False
         )
 
         embed.add_field(
-            name="🦍 3. REFORMA TRIBUTÁRIA", 
-            value="O **Imposto do Gorila** ficou mais cruel! Agora, ao taxar alguém, o efeito dura **24 horas seguidas**. O alvo verá quanto tempo de 'escravidão' ainda resta toda vez que tentar trabalhar.", 
+            name="🎰 3. REFORMA NO CASSINO (SLOTS)", 
+            value="A máquina de caça-níqueis (`!cassino`) foi balanceada matematicamente! Agora jogamos com **8 emojis** na roleta, deixando a máquina mais justa e aumentando suas chances de forrar com duplas e jackpots!", 
             inline=False
         )
 
         embed.add_field(
-            name="📉 4. ECONOMIA ESTÁVEL", 
-            value="Os preços da `!loja` foram reduzidos para facilitar o caos e a diversão. Além disso, corrigimos o bug que permitia criar mesas duplicadas de Blackjack.", 
+            name="🪙 4. ADEUS, CARA OU COROA", 
+            value="Para dar espaço às novas mesas de luxo e modernizar a nossa economia, o velho e enferrujado jogo de Cara ou Coroa (`!moeda`) foi oficialmente aposentado da selva.", 
             inline=False
         )
 
-        embed.set_footer(text="A selva nunca esquece. Digite !ajuda para ver as novidades! 🍌")
+        embed.add_field(
+            name="🦍 5. ECONOMIA ESTÁVEL & IMPOSTOS", 
+            value="Os preços da `!loja` foram reduzidos para facilitar o caos. Mas cuidado: o **Imposto do Gorila** ficou cruel e agora dura 24 horas seguidas travando o seu trabalho!", 
+            inline=False
+        )
+
+        embed.set_footer(text="A selva nunca esquece. Digite !jogos para ver a nova lista! 🍌")
         
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await ctx.send(content="🚨 **BEEP BOOP! NOVA ATUALIZAÇÃO DISPONÍVEL!** 🚨\n", embed=embed)
-        await ctx.message.delete()
-
+        
+        # Tenta apagar a mensagem original de quem chamou o comando
+        try:
+            await ctx.message.delete()
+        except disnake.Forbidden:
+            pass
+        
 def setup(bot):
     bot.add_cog(Admin(bot))
