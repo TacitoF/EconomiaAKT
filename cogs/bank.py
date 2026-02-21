@@ -58,7 +58,7 @@ class Bank(commands.Cog):
 
             db.update_value(user_atual['row'], 3, int(user_atual['data'][2]) + retorno)
             if lucro > 0: await ctx.send(f"🚀 **ALTA NO MERCADO!** A MacacoCoin valorizou! {ctx.author.mention} recebeu **{retorno} C** (`+{lucro} C`).")
-            else: await ctx.send(f"📉 **CRASH NO MERCADO!** A MacacoCoin desabou... {ctx.author.mention} recebeu **{retorno} C** (`{lucro} C`).")
+            else: await ctx.send(f"📉 **CRASH NO MERCADO!** A MacacoCoin desabou... {ctx.author.mention} recebeu -**{retorno} C** (`{lucro} C`).")
 
 def setup(bot):
     bot.add_cog(Bank(bot))
