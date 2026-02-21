@@ -16,9 +16,25 @@ class Shop(commands.Cog):
     @commands.command(aliases=["shop", "mercado"])
     async def loja(self, ctx):
         embed = disnake.Embed(title="🛒 Loja de Itens e Maldades", description="Compre usando `!comprar <nome do item>`", color=disnake.Color.blue())
-        embed.add_field(name="📈 Cargos (Mais dinheiro no !trabalhar)", value="🐒 **Chimpanzé:** 1.500 C\n🦧 **Orangutango:** 5.000 C\n🦍 **Gorila:** 15.000 C", inline=False)
-        embed.add_field(name="🛡️ Equipamentos (Acumulativos)", value="🛡️ **Escudo** (800 C): Evita que você seja roubado 1 vez.\n🕵️ **Pé de Cabra** (1.200 C): Aumenta chance de roubo para 70%.\n📄 **Seguro** (1.000 C): Banco te devolve 60% se for roubado.", inline=False)
-        embed.add_field(name="😈 Itens de Sabotagem (Acumulativos)", value="🍌 **Casca de Banana** (300 C): Próximo trabalho/roubo do alvo falha `!casca @user`.\n🦍 **Imposto do Gorila** (1.500 C): Roube 25% dos trabalhos do alvo por 24h `!taxar @user`.\n🪄 **Troca de Nick** (2.500 C): Altera apelido do alvo por 30min `!apelidar @user <nick>`.", inline=False)
+        
+        embed.add_field(
+            name="📈 Cargos (Aumenta Salário e Limite de Aposta)", 
+            value="🐒 **Chimpanzé** (1.500 C) - *Aposta Max: 2.000 C*\n🦧 **Orangutango** (5.000 C) - *Aposta Max: 10.000 C*\n🦍 **Gorila** (15.000 C) - *Aposta Max: 50.000 C*", 
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🛡️ Equipamentos (Acumulativos no Inventário)", 
+            value="🛡️ **Escudo** (800 C): Evita que você seja roubado 1 vez.\n🕵️ **Pé de Cabra** (1.200 C): Aumenta chance de roubo para 70%.\n📄 **Seguro** (1.000 C): Banco te devolve 60% se for roubado.", 
+            inline=False
+        )
+        
+        embed.add_field(
+            name="😈 Itens de Sabotagem (Acumulativos no Inventário)", 
+            value="🍌 **Casca de Banana** (300 C): Próximo trabalho/roubo do alvo falha `!casca @user`.\n🦍 **Imposto do Gorila** (1.500 C): Roube 25% dos ganhos do alvo por 24h `!taxar @user`.\n🪄 **Troca de Nick** (2.500 C): Altera apelido do alvo por 30min `!apelidar @user <nick>`.\n*(Nota: A Maldição e o Impostor custam 500 C diretamente nos comandos!)*", 
+            inline=False
+        )
+        
         await ctx.send(embed=embed)
 
     @commands.command()

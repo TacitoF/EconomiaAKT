@@ -36,7 +36,7 @@ class General(commands.Cog):
         
         embed.add_field(
             name="🎲 JOGOS (Canal #🎰・akbet)", 
-            value="🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida` | 🦁 `!bicho` | 💣 `!minas` | 🥊 `!briga` | 🎫 `!loteria` | 💰 `!pote` | 🃏 `!carta` | ♠️ `!bj`", 
+            value="🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida` | 🦁 `!bicho` | 💣 `!minas` | 🥊 `!briga` | 🎫 `!loteria` | 💰 `!pote` | 🃏 `!carta` | ♠️ `!21`", 
             inline=False
         )
         

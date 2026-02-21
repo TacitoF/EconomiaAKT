@@ -94,6 +94,12 @@ class Admin(commands.Cog):
             inline=False
         )
 
+        embed.add_field(
+            name="🃏 4. AJUSTE FINO NO BLACKJACK", 
+            value="O Chimpanzézio aprendeu a contar! Agora você pode usar o **Dividir (Split)** em qualquer par de cartas que valham 10 pontos (ex: um 10 e um Valete). Mais risco, mais lucro!", 
+            inline=False
+        )
+
         embed.set_footer(text="Quer lucrar alto? Trabalhe e compre o cargo de Gorila na !loja! 📈")
         
         if self.bot.user.display_avatar:

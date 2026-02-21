@@ -57,11 +57,21 @@ class BlackjackView(disnake.ui.View):
         d_p = self.calcular_pontos(self.dealer_hand)
         status_dealer = f"Pontos: {d_p}" if self.terminado else "Pontos: ?"
         embed.add_field(name="🏦 Dealer (Bot)", value=f"Mão: `{self.formatar_mao(self.dealer_hand, not self.terminado)}`\n{status_dealer}", inline=False)
-        
+            # Pega o ID do jogador do turno atual
         p_atual_id = self.player_ids[self.current_player_idx] if self.current_player_idx < len(self.player_ids) else None
+        
         if p_atual_id and not self.terminado:
             p_atual_data = self.players_data[p_atual_id]
-            pode_split = len(p_atual_data["hand"]) == 2 and p_atual_data["hand"][0]["valor"] == p_atual_data["hand"][1]["valor"] and not p_atual_data["splitted"]
+            
+            # --- NOVA LÓGICA DE SPLIT POR VALOR ---
+            # Calculamos o valor individual de cada uma das duas cartas
+            v1 = self.calcular_pontos([p_atual_data["hand"][0]])
+            v2 = self.calcular_pontos([p_atual_data["hand"][1]])
+            
+            # Agora ele permite split se os PONTOS forem iguais (ex: 10 e J)
+            pode_split = len(p_atual_data["hand"]) == 2 and v1 == v2 and not p_atual_data["splitted"]
+            # --------------------------------------
+
             for child in self.children:
                 if child.label == "Dividir (Split)":
                     child.disabled = not pode_split
