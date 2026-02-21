@@ -30,12 +30,16 @@ class Shop(commands.Cog):
         )
         
         embed.add_field(
-            name="😈 Itens de Sabotagem (Acumulativos no Inventário)", 
-            value="🍌 **Casca de Banana** (300 C): Próximo trabalho/roubo falha `!casca @user`.\n"
-                  "🦍 **Imposto do Gorila** (1.500 C): Roube 25% dos ganhos do alvo por 24h `!taxar @user`.\n"
-                  "🪄 **Troca de Nick** (2.500 C): Altera apelido do alvo por 30min `!apelidar @user <nick>`.\n"
-                  "🙊 **Maldição Símia** (500 C): Faz o alvo falar como macaco por 1min `!amaldicoar @user`.\n"
-                  "🎭 **Disfarce de Impostor** (500 C): Envia mensagem falsa como se fosse o alvo `!impostor @user <msg>`.", 
+            name="😈 Sabotagens e Maldades", 
+            value=(
+                "🛒 **Itens (Compre na loja para usar):**\n"
+                "🍌 **Casca de Banana** (300 C): Próximo trabalho/roubo falha `!casca @user`.\n"
+                "🦍 **Imposto do Gorila** (1.500 C): Roube 25% do alvo por 24h `!taxar @user`.\n"
+                "🪄 **Troca de Nick** (2.500 C): Altera o nick do alvo por 30min `!apelidar @user <nick>`.\n\n"
+                "⚡ **Comandos Diretos (Pagou, usou!):**\n"
+                "🙊 **Maldição Símia** (500 C): O alvo fala como macaco por 1min `!amaldicoar @user`.\n"
+                "🎭 **Impostor** (500 C): Envia uma mensagem falsa como o alvo `!impostor @user <msg>`."
+            ), 
             inline=False
         )
         
