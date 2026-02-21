@@ -77,10 +77,12 @@ class Profiles(commands.Cog):
         saldo = int(user['data'][2])
         cargo = user['data'][3]
         
+        # Correção do Inventário: Filtra o "Nenhum" e strings vazias
         inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
-        inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
+        inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != 'nenhum']
         
-        if not inv_list: inv_formatado = "Nenhum item"
+        if not inv_list: 
+            inv_formatado = "Nenhum item"
         else:
             contagem = {}
             for item in inv_list: contagem[item] = contagem.get(item, 0) + 1
