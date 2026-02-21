@@ -62,7 +62,7 @@ class Roleta(commands.Cog):
         await asyncio.sleep(2)
 
         # --- FASE 2: SUSPENSE ---
-        embed_giro.description = f"Temos **{len(self.apostas)} apostas** na mesa totalizando **{total_apostado} C**!\n\n⚪ *A bolinha está a saltar e a perder força...*"
+        embed_giro.description = f"Temos **{len(self.apostas)} apostas** na mesa totalizando **{total_apostado} C**!\n\n⚪ *A bolinha está pulando e perdendo força...*"
         await msg.edit(embed=embed_giro)
         await asyncio.sleep(2)
 
