@@ -4,17 +4,17 @@ import database as db
 import random
 import asyncio
 
+LIMITES_CARGO = {
+    "Lêmure": 250, "Macaquinho": 800, "Babuíno": 2000, "Chimpanzé": 6000,
+    "Orangutango": 15000, "Gorila": 45000, "Ancestral": 150000, "Rei Símio": 1500000
+}
+
 def get_limite(cargo):
-    """Limites da V4.4 para os jogos"""
-    limites = {
-        "Lêmure": 250, "Macaquinho": 800, "Babuíno": 2000, "Chimpanzé": 6000,
-        "Orangutango": 15000, "Gorila": 45000, "Ancestral": 150000, "Rei Símio": 1500000
-    }
-    return limites.get(cargo, 250)
+    return LIMITES_CARGO.get(cargo, 250)
 
 def save_achievement(user_data, slug):
-    conquistas_atuais = str(user_data['data'][9]) if len(user_data['data']) > 9 else ""
-    lista = [c.strip() for c in conquistas_atuais.split(',') if c.strip()]
+    conquistas = str(user_data['data'][9]) if len(user_data['data']) > 9 else ""
+    lista = [c.strip() for c in conquistas.split(',') if c.strip()]
     if slug not in lista:
         lista.append(slug)
         db.update_value(user_data['row'], 10, ", ".join(lista))
@@ -30,139 +30,139 @@ class PvP(commands.Cog):
             await ctx.send(f"🐒 Ei {ctx.author.mention}, resolva suas rixas no canal {mencao}.")
             raise commands.CommandError("Canal incorreto.")
 
-    # --- 🃏 DUELO DE CARTAS ---
     @commands.command(aliases=["cartas", "duelo_carta", "draw"])
     async def carta(self, ctx, oponente: disnake.Member = None, aposta: float = None):
-        # MENSAGEM DE AJUDA
         if oponente is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, formato incorreto!\nUse: `!carta @usuario <valor>`")
-
-        if oponente.id == ctx.author.id: 
-            return await ctx.send(f"🃏 {ctx.author.mention}, você não pode jogar cartas contra o espelho!")
-            
-        if aposta <= 0: return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!carta @usuario <valor>`")
+        if oponente.id == ctx.author.id:
+            return await ctx.send(f"🃏 {ctx.author.mention}, você não pode jocar contra o espelho!")
+        if aposta <= 0:
+            return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
         aposta = round(aposta, 2)
 
-        desafiante_db = db.get_user_data(str(ctx.author.id))
-        oponente_db = db.get_user_data(str(oponente.id))
+        try:
+            desafiante_db = db.get_user_data(str(ctx.author.id))
+            oponente_db = db.get_user_data(str(oponente.id))
+            if not desafiante_db or not oponente_db:
+                return await ctx.send("❌ Uma das contas não foi encontrada!")
 
-        if not desafiante_db or not oponente_db:
-            return await ctx.send("❌ Uma das contas não foi encontrada no banco da selva!")
+            saldo_d = db.parse_float(desafiante_db['data'][2])
+            saldo_o = db.parse_float(oponente_db['data'][2])
 
-        if float(oponente_db['data'][2]) < aposta or float(desafiante_db['data'][2]) < aposta: 
-            return await ctx.send(f"❌ {ctx.author.mention}, alguém na mesa não tem saldo para cobrir essa aposta!")
+            if saldo_d < aposta or saldo_o < aposta:
+                return await ctx.send(f"❌ Alguém não tem saldo suficiente para cobrir a aposta!")
 
-        limite = get_limite(desafiante_db['data'][3])
-        if aposta > limite: 
-            return await ctx.send(f"🚫 Limite de aposta para **{desafiante_db['data'][3]}** é de **{limite} C**!")
+            cargo_d = desafiante_db['data'][3] if len(desafiante_db['data']) > 3 else "Lêmure"
+            if aposta > get_limite(cargo_d):
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo_d}** é de **{get_limite(cargo_d)} C**!")
 
-        await ctx.send(f"🃏 {oponente.mention}, você foi desafiado por {ctx.author.mention} para um Duelo de Cartas valendo **{aposta:.2f} C**! Digite `comprar` no chat para aceitar e sacar sua carta!")
+            await ctx.send(f"🃏 {oponente.mention}, você foi desafiado por {ctx.author.mention} para um Duelo de Cartas valendo **{aposta:.2f} C**! Digite `comprar` para aceitar!")
 
-        def check(m): return m.author == oponente and m.content.lower() == 'comprar' and m.channel == ctx.channel
-        
-        try: 
-            await self.bot.wait_for('message', check=check, timeout=30.0)
-        except asyncio.TimeoutError: 
-            return await ctx.send(f"⏱️ {oponente.mention} demorou demais. O duelo foi cancelado!")
+            def check(m): return m.author == oponente and m.content.lower() == 'comprar' and m.channel == ctx.channel
+            try:
+                await self.bot.wait_for('message', check=check, timeout=30.0)
+            except asyncio.TimeoutError:
+                return await ctx.send(f"⏱️ {oponente.mention} demorou demais. Duelo cancelado!")
 
-        # Re-checagem de saldo anti-fraude
-        d_db_atual = db.get_user_data(str(ctx.author.id))
-        o_db_atual = db.get_user_data(str(oponente.id))
-        if float(d_db_atual['data'][2]) < aposta or float(o_db_atual['data'][2]) < aposta:
-            return await ctx.send("🚨 Fraude detectada! Alguém gastou o dinheiro antes do duelo começar. Partida cancelada.")
+            # Re-checagem de saldo para evitar gastos entre o aceite e o início
+            d_atual = db.get_user_data(str(ctx.author.id))
+            o_atual = db.get_user_data(str(oponente.id))
+            if db.parse_float(d_atual['data'][2]) < aposta or db.parse_float(o_atual['data'][2]) < aposta:
+                return await ctx.send("🚨 Fraude detectada! Saldo insuficiente após aceite. Partida cancelada.")
 
-        valores = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
-        naipes = ["♠️", "♥️", "♦️", "♣️"]
-        
-        carta_desafiante_valor = random.choice(valores)
-        carta_oponente_valor = random.choice(valores)
-        carta_desafiante_naipe = random.choice(naipes)
-        carta_oponente_naipe = random.choice(naipes)
-        
-        while carta_desafiante_valor == carta_oponente_valor and carta_desafiante_naipe == carta_oponente_naipe:
-            carta_oponente_naipe = random.choice(naipes)
+            valores = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+            naipes = ["♠️", "♥️", "♦️", "♣️"]
+            c_d_val, c_o_val = random.choice(valores), random.choice(valores)
+            c_d_nai, c_o_nai = random.choice(naipes), random.choice(naipes)
+            while c_d_val == c_o_val and c_d_nai == c_o_nai:
+                c_o_nai = random.choice(naipes)
 
-        peso_desafiante = valores.index(carta_desafiante_valor)
-        peso_oponente = valores.index(carta_oponente_valor)
+            embed = disnake.Embed(title="🃏 DUELO DE CARTAS 🃏", color=disnake.Color.dark_theme())
+            embed.add_field(name=f"Sacado por {ctx.author.display_name}:", value=f"**{c_d_val}** {c_d_nai}", inline=True)
+            embed.add_field(name=f"Sacado por {oponente.display_name}:", value=f"**{c_o_val}** {c_o_nai}", inline=True)
 
-        embed = disnake.Embed(title="🃏 DUELO DE CARTAS 🃏", color=disnake.Color.dark_theme())
-        embed.add_field(name=f"Sacado por {ctx.author.display_name}:", value=f"**{carta_desafiante_valor}** {carta_desafiante_naipe}", inline=True)
-        embed.add_field(name=f"Sacado por {oponente.display_name}:", value=f"**{carta_oponente_valor}** {carta_oponente_naipe}", inline=True)
+            peso_d = valores.index(c_d_val)
+            peso_o = valores.index(c_o_val)
 
-        if peso_desafiante == peso_oponente:
-            db.update_value(d_db_atual['row'], 3, round(float(d_db_atual['data'][2]) - aposta, 2))
-            db.update_value(o_db_atual['row'], 3, round(float(o_db_atual['data'][2]) - aposta, 2))
-            embed.description = f"🤝 **EMPATE!** Vossas cartas têm o mesmo peso.\nAmbos perdem a aposta de **{aposta:.2f} C** para o Cassino!"
-            return await ctx.send(embed=embed)
+            if peso_d == peso_o:
+                db.update_value(d_atual['row'], 3, round(db.parse_float(d_atual['data'][2]) - aposta, 2))
+                db.update_value(o_atual['row'], 3, round(db.parse_float(o_atual['data'][2]) - aposta, 2))
+                embed.description = f"🤝 **EMPATE!** Ambos perdem **{aposta:.2f} C** para o Cassino!"
+                return await ctx.send(embed=embed)
 
-        vencedor = ctx.author if peso_desafiante > peso_oponente else oponente
-        perdedor = oponente if peso_desafiante > peso_oponente else ctx.author
+            vencedor_db = d_atual if peso_d > peso_o else o_atual
+            perdedor_db = o_atual if peso_d > peso_o else d_atual
+            vencedor = ctx.author if peso_d > peso_o else oponente
+            perdedor = oponente if peso_d > peso_o else ctx.author
 
-        v_db = db.get_user_data(str(vencedor.id))
-        p_db = db.get_user_data(str(perdedor.id))
-        
-        # O vencedor lucra o valor da aposta (isento de taxas), o perdedor perde a aposta
-        db.update_value(v_db['row'], 3, round(float(v_db['data'][2]) + aposta, 2))
-        db.update_value(p_db['row'], 3, round(float(p_db['data'][2]) - aposta, 2))
+            db.update_value(vencedor_db['row'], 3, round(db.parse_float(vencedor_db['data'][2]) + aposta, 2))
+            db.update_value(perdedor_db['row'], 3, round(db.parse_float(perdedor_db['data'][2]) - aposta, 2))
+            embed.description = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou **{aposta:.2f} C** de lucro!"
+            await ctx.send(embed=embed)
 
-        embed.description = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou **{aposta:.2f} C** de lucro (Livre de taxas!)."
-        await ctx.send(embed=embed)
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !carta de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-    # --- 🥊 BRIGA DE MACACO ---
     @commands.command(aliases=["briga", "brigar", "luta", "lutar", "x1"])
     async def briga_macaco(self, ctx, vitima: disnake.Member = None, aposta: float = None):
-        # MENSAGEM DE AJUDA
         if vitima is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, formato incorreto!\nUse: `!briga @usuario <valor>`")
-
-        if vitima.id == ctx.author.id: 
+            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!briga @usuario <valor>`")
+        if vitima.id == ctx.author.id:
             return await ctx.send(f"🐒 {ctx.author.mention}, não brigue consigo mesmo!")
-        
-        if aposta <= 0: return await ctx.send("❌ Aposta inválida!")
+        if aposta <= 0:
+            return await ctx.send("❌ Aposta inválida!")
         aposta = round(aposta, 2)
-        
-        ladrao = db.get_user_data(str(ctx.author.id))
-        alvo = db.get_user_data(str(vitima.id))
 
-        if not ladrao or not alvo:
-            return await ctx.send("❌ Uma das contas não foi encontrada!")
-
-        if float(alvo['data'][2]) < aposta or float(ladrao['data'][2]) < aposta: 
-            return await ctx.send(f"❌ {ctx.author.mention}, alguém não tem saldo para essa briga!")
-
-        limite = get_limite(ladrao['data'][3])
-        if aposta > limite: 
-            return await ctx.send(f"🚫 Limite de aposta para **{ladrao['data'][3]}** é de **{limite} C**!")
-
-        if aposta == 1.0:
-            save_achievement(ladrao, "briga_de_bar")
-
-        await ctx.send(f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma briga por **{aposta:.2f} C**! Digite `aceitar` para lutar!")
-
-        def check(m): return m.author == vitima and m.content.lower() == 'aceitar' and m.channel == ctx.channel
-        
         try:
-            await self.bot.wait_for('message', check=check, timeout=30.0)
-        except asyncio.TimeoutError:
-            return await ctx.send(f"⏱️ {vitima.mention} amarelou e fugiu da briga!")
+            ladrao = db.get_user_data(str(ctx.author.id))
+            alvo = db.get_user_data(str(vitima.id))
+            if not ladrao or not alvo:
+                return await ctx.send("❌ Uma das contas não foi encontrada!")
 
-        # Re-checagem anti-fraude
-        l_db_atual = db.get_user_data(str(ctx.author.id))
-        a_db_atual = db.get_user_data(str(vitima.id))
-        if float(l_db_atual['data'][2]) < aposta or float(a_db_atual['data'][2]) < aposta:
-            return await ctx.send("🚨 Fraude detectada! Alguém gastou o dinheiro antes da porrada comer. Briga cancelada.")
+            saldo_l = db.parse_float(ladrao['data'][2])
+            saldo_a = db.parse_float(alvo['data'][2])
 
-        vencedor = random.choice([ctx.author, vitima])
-        perdedor = vitima if vencedor == ctx.author else ctx.author
-        
-        v_db = db.get_user_data(str(vencedor.id))
-        p_db = db.get_user_data(str(perdedor.id))
+            if saldo_l < aposta or saldo_a < aposta:
+                return await ctx.send(f"❌ Alguém não tem saldo para essa briga!")
 
-        # O vencedor lucra o valor da aposta (isento de taxas), o perdedor perde a aposta
-        db.update_value(v_db['row'], 3, round(float(v_db['data'][2]) + aposta, 2))
-        db.update_value(p_db['row'], 3, round(float(p_db['data'][2]) - aposta, 2))
-        
-        await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e lucrou **{aposta:.2f} C** (Livre de taxas!)")
+            cargo = ladrao['data'][3] if len(ladrao['data']) > 3 else "Lêmure"
+            if aposta > get_limite(cargo):
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+
+            if aposta == 1.0:
+                save_achievement(ladrao, "briga_de_bar")
+
+            await ctx.send(f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma briga por **{aposta:.2f} C**! Digite `aceitar` para lutar!")
+
+            def check(m): return m.author == vitima and m.content.lower() == 'aceitar' and m.channel == ctx.channel
+            try:
+                await self.bot.wait_for('message', check=check, timeout=30.0)
+            except asyncio.TimeoutError:
+                return await ctx.send(f"⏱️ {vitima.mention} amarelou e fugiu da briga!")
+
+            # Re-checagem de saldo após aceite
+            l_atual = db.get_user_data(str(ctx.author.id))
+            a_atual = db.get_user_data(str(vitima.id))
+            if db.parse_float(l_atual['data'][2]) < aposta or db.parse_float(a_atual['data'][2]) < aposta:
+                return await ctx.send("🚨 Fraude detectada! Briga cancelada.")
+
+            vencedor = random.choice([ctx.author, vitima])
+            perdedor = vitima if vencedor == ctx.author else ctx.author
+            v_db = l_atual if vencedor == ctx.author else a_atual
+            p_db = a_atual if vencedor == ctx.author else l_atual
+
+            db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + aposta, 2))
+            db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) - aposta, 2))
+            await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e lucrou **{aposta:.2f} C**!")
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !briga de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(PvP(bot))

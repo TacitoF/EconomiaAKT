@@ -16,9 +16,8 @@ class Shop(commands.Cog):
     @commands.command(aliases=["shop", "mercado"])
     async def loja(self, ctx):
         embed = disnake.Embed(title="🛒 Loja de Itens e Maldades", description="Compre usando `!comprar <nome do item>`", color=disnake.Color.blue())
-        
         embed.add_field(
-            name="📈 Cargos (Aumenta Salário e Limite de Aposta)", 
+            name="📈 Cargos (Aumenta Salário e Limite de Aposta)",
             value=(
                 "🐒 **Macaquinho** (600 C) - *Aposta Max: 800 C*\n"
                 "🐒 **Babuíno** (3.000 C) - *Aposta Max: 2.000 C*\n"
@@ -27,86 +26,86 @@ class Shop(commands.Cog):
                 "🦍 **Gorila** (65.000 C) - *Aposta Max: 45.000 C*\n"
                 "🗿 **Ancestral** (150.000 C) - *Aposta Max: 150.000 C*\n"
                 "👑 **Rei Símio** (500.000 C) - *Aposta Max: 1.500.000 C*"
-            ), 
-            inline=False
+            ), inline=False
         )
-        
         embed.add_field(
-            name="🛡️ Equipamentos (Acumulativos no Inventário)", 
-            value="🛡️ **Escudo** (800 C): Evita que você seja roubado 1 vez.\n🕵️ **Pé de Cabra** (1.200 C): Aumenta chance de roubo para 70%.\n📄 **Seguro** (1.000 C): Banco te devolve 60% se for roubado.", 
-            inline=False
-        )
-        
-        embed.add_field(
-            name="😈 Sabotagens e Maldades", 
+            name="🛡️ Equipamentos",
             value=(
-                "🛒 **Itens (Compre na loja para usar):**\n"
-                "🍌 **Casca de Banana** (300 C): Próximo trabalho/roubo falha `!casca @user`.\n"
-                "🦍 **Imposto do Gorila** (1.500 C): Roube 25% do alvo por 24h `!taxar @user`.\n"
-                "🪄 **Troca de Nick** (2.500 C): Altera o nick do alvo por 30min `!apelidar @user <nick>`.\n\n"
-                "⚡ **Comandos Diretos (Pagou, usou!):**\n"
-                "🙊 **Maldição Símia** (500 C): O alvo fala como macaco por 1min `!amaldicoar @user`.\n"
-                "🎭 **Impostor** (500 C): Envia uma mensagem falsa como o alvo `!impostor @user <msg>`.\n\n"
-                "*O **Chimpanzézio** cobra os comandos diretos na hora!*"
-            ), 
-            inline=False
+                "🛡️ **Escudo** (800 C): Evita que você seja roubado 1 vez.\n"
+                "🕵️ **Pé de Cabra** (1.200 C): Aumenta chance de roubo para 70%.\n"
+                "📄 **Seguro** (1.000 C): Banco te devolve 60% se for roubado."
+            ), inline=False
         )
-        
+        embed.add_field(
+            name="😈 Sabotagens e Maldades",
+            value=(
+                "🍌 **Casca de Banana** (300 C): Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
+                "🦍 **Imposto do Gorila** (1.500 C): Rouba 25% do trabalho do alvo por 24h. `!taxar @user`\n"
+                "🪄 **Troca de Nick** (2.500 C): Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
+                "⚡ **Comandos Diretos:**\n"
+                "🙊 **Maldição Símia** (500 C): Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
+                "🎭 **Impostor** (500 C): Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
+            ), inline=False
+        )
         await ctx.send(embed=embed)
 
     @commands.command()
     async def comprar(self, ctx, *, item: str = None):
-        # MENSAGEM DE AJUDA
         if item is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, você esqueceu de dizer o que quer comprar!\nUse: `!comprar <nome do item>`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!comprar <nome do item>`")
 
-        user_id = str(ctx.author.id)
-        user = db.get_user_data(user_id)
-        if not user: return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
+        try:
+            user_id = str(ctx.author.id)
+            user = db.get_user_data(user_id)
+            if not user:
+                return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
-        # DICIONÁRIO ATUALIZADO COM OS NOVOS CUSTOS DA TABELA
-        loja = {
-            "macaquinho": {"nome": "Macaquinho", "preco": 600.0, "tipo": "cargo"},
-            "babuíno": {"nome": "Babuíno", "preco": 3000.0, "tipo": "cargo"}, 
-            "babuino": {"nome": "Babuíno", "preco": 3000.0, "tipo": "cargo"},
-            "chimpanzé": {"nome": "Chimpanzé", "preco": 10000.0, "tipo": "cargo"}, 
-            "chimpanze": {"nome": "Chimpanzé", "preco": 10000.0, "tipo": "cargo"},
-            "orangutango": {"nome": "Orangutango", "preco": 25000.0, "tipo": "cargo"}, 
-            "gorila": {"nome": "Gorila", "preco": 65000.0, "tipo": "cargo"},
-            "ancestral": {"nome": "Ancestral", "preco": 150000.0, "tipo": "cargo"},
-            "rei símio": {"nome": "Rei Símio", "preco": 500000.0, "tipo": "cargo"}, 
-            "rei simio": {"nome": "Rei Símio", "preco": 500000.0, "tipo": "cargo"},
-            
-            "escudo": {"nome": "Escudo", "preco": 800.0, "tipo": "item"}, 
-            "pé de cabra": {"nome": "Pé de Cabra", "preco": 1200.0, "tipo": "item"}, 
-            "pe de cabra": {"nome": "Pé de Cabra", "preco": 1200.0, "tipo": "item"},
-            "seguro": {"nome": "Seguro", "preco": 1000.0, "tipo": "item"}, 
-            "casca de banana": {"nome": "Casca de Banana", "preco": 300.0, "tipo": "item"},
-            "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1500.0, "tipo": "item"}, 
-            "troca de nick": {"nome": "Troca de Nick", "preco": 2500.0, "tipo": "item"}
-        }
+            loja = {
+                "macaquinho":        {"nome": "Macaquinho",       "preco": 600.0,    "tipo": "cargo"},
+                "babuíno":           {"nome": "Babuíno",          "preco": 3000.0,   "tipo": "cargo"},
+                "babuino":           {"nome": "Babuíno",          "preco": 3000.0,   "tipo": "cargo"},
+                "chimpanzé":         {"nome": "Chimpanzé",        "preco": 10000.0,  "tipo": "cargo"},
+                "chimpanze":         {"nome": "Chimpanzé",        "preco": 10000.0,  "tipo": "cargo"},
+                "orangutango":       {"nome": "Orangutango",      "preco": 25000.0,  "tipo": "cargo"},
+                "gorila":            {"nome": "Gorila",           "preco": 65000.0,  "tipo": "cargo"},
+                "ancestral":         {"nome": "Ancestral",        "preco": 150000.0, "tipo": "cargo"},
+                "rei símio":         {"nome": "Rei Símio",        "preco": 500000.0, "tipo": "cargo"},
+                "rei simio":         {"nome": "Rei Símio",        "preco": 500000.0, "tipo": "cargo"},
+                "escudo":            {"nome": "Escudo",           "preco": 800.0,    "tipo": "item"},
+                "pé de cabra":       {"nome": "Pé de Cabra",      "preco": 1200.0,   "tipo": "item"},
+                "pe de cabra":       {"nome": "Pé de Cabra",      "preco": 1200.0,   "tipo": "item"},
+                "seguro":            {"nome": "Seguro",           "preco": 1000.0,   "tipo": "item"},
+                "casca de banana":   {"nome": "Casca de Banana",  "preco": 300.0,    "tipo": "item"},
+                "imposto do gorila": {"nome": "Imposto do Gorila","preco": 1500.0,   "tipo": "item"},
+                "troca de nick":     {"nome": "Troca de Nick",    "preco": 2500.0,   "tipo": "item"},
+            }
 
-        escolha = item.lower()
-        if escolha not in loja: 
-            return await ctx.send("❌ Item inválido! Digite exatamente como está na loja (ex: `!comprar macaquinho`).")
-        
-        item_data = loja[escolha]
-        saldo = float(user['data'][2])
-        if saldo < item_data["preco"]: 
-            return await ctx.send(f"❌ Saldo insuficiente! Você precisa de **{item_data['preco']:.2f} C**.")
+            escolha = item.lower()
+            if escolha not in loja:
+                return await ctx.send("❌ Item inválido! Digite exatamente como está na `!loja`.")
 
-        # Debita o valor em decimais
-        db.update_value(user['row'], 3, round(saldo - item_data["preco"], 2))
+            item_data = loja[escolha]
+            saldo = db.parse_float(user['data'][2])
+            if saldo < item_data["preco"]:
+                return await ctx.send(f"❌ Saldo insuficiente! Você precisa de **{item_data['preco']:.2f} C**.")
 
-        if item_data["tipo"] == "cargo":
-            db.update_value(user['row'], 4, item_data["nome"])
-            await ctx.send(f"✅ {ctx.author.mention} evoluiu para o cargo **{item_data['nome']}**!")
-        elif item_data["tipo"] == "item":
-            inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
-            inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
-            inv_list.append(item_data["nome"])
-            db.update_value(user['row'], 6, ", ".join(inv_list))
-            await ctx.send(f"🛍️ {ctx.author.mention} comprou **{item_data['nome']}** e guardou no inventário!")
+            db.update_value(user['row'], 3, round(saldo - item_data["preco"], 2))
+
+            if item_data["tipo"] == "cargo":
+                db.update_value(user['row'], 4, item_data["nome"])
+                await ctx.send(f"✅ {ctx.author.mention} evoluiu para o cargo **{item_data['nome']}**!")
+            else:
+                inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
+                inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
+                inv_list.append(item_data["nome"])
+                db.update_value(user['row'], 6, ", ".join(inv_list))
+                await ctx.send(f"🛍️ {ctx.author.mention} comprou **{item_data['nome']}** e guardou no inventário!")
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !comprar de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(Shop(bot))

@@ -15,43 +15,32 @@ class General(commands.Cog):
     @commands.command(name="ajuda", aliases=["comandos", "info"])
     async def ajuda_comando(self, ctx):
         embed = disnake.Embed(
-            title="📖 Guia do Gerente Conguito (V4.4)", 
-            description=f"Olá {ctx.author.mention}, este é o seu manual de sobrevivência na selva!\n\n🪙 **DICA:** Agora a economia suporta **centavos**! Você pode usar valores como `150.50` em todos os comandos de apostas, transferências e banco.", 
+            title="📖 Guia do Gerente Conguito (V4.4)",
+            description=f"Olá {ctx.author.mention}, este é o seu manual de sobrevivência na selva!\n\n🪙 **DICA:** A economia suporta **centavos**! Use valores como `150.50` em todos os comandos.",
             color=disnake.Color.green()
         )
-        
-        embed.add_field(
-            name="💵 ECONOMIA E PERFIL", 
-            value="💰 `!trabalhar`\n👤 `!perfil [@user]`\n🏅 `!conquistas`\n🏆 `!rank`\n🛒 `!loja`\n💳 `!comprar <item>`\n💸 `!pagar @user <valor>`", 
-            inline=False
-        )
-        
-        embed.add_field(
-            name="😈 ROUBOS, CAÇADAS E SABOTAGEM", 
-            value="🥷 `!roubar @user` *(Gera recompensa automática na sua cabeça!)*\n🚨 `!recompensa @user <valor>`\n📜 `!recompensas`\n🍌 `!casca @user`\n🦍 `!taxar @user`\n🪄 `!apelidar @user <nick>`\n🐒 `!amaldicoar @user`\n🎭 `!impostor @user <msg>`", 
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🏦 BANCO E INVESTIMENTOS", 
-            value="🏛️ `!investir fixo <valor>`\n📈 `!investir cripto <valor>`", 
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🎲 JOGOS (Canal #🎰・akbet)", 
-            value="🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida` | 🦁 `!bicho` | 🥊 `!briga` | 🎫 `!loteria` | 💰 `!pote` | 🃏 `!carta`\n💣 `!minas` | ♠️ `!21`", 
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🤐 CASTIGOS DE VOZ", 
-            value="🔇 `!castigo mudo <t> @user`\n🎧 `!castigo surdo <t> @user`\n🤐 `!castigo surdomudo <t> @user`\n👟 `!desconectar @user`", 
-            inline=False
-        )
-
+        embed.add_field(name="💵 ECONOMIA E PERFIL", inline=False, value=(
+            "💰 `!trabalhar`\n👤 `!perfil [@user]`\n🏅 `!conquistas`\n"
+            "🏆 `!rank`\n🛒 `!loja`\n💳 `!comprar <item>`\n💸 `!pagar @user <valor>`"
+        ))
+        embed.add_field(name="😈 ROUBOS, CAÇADAS E SABOTAGEM", inline=False, value=(
+            "🥷 `!roubar @user`\n🚨 `!recompensa @user <valor>`\n📜 `!recompensas`\n"
+            "🍌 `!casca @user`\n🦍 `!taxar @user`\n🪄 `!apelidar @user <nick>`\n"
+            "🐒 `!amaldicoar @user`\n🎭 `!impostor @user <msg>`"
+        ))
+        embed.add_field(name="🏦 BANCO E INVESTIMENTOS", inline=False, value=(
+            "🏛️ `!investir fixo <valor>`\n📈 `!investir cripto <valor>`"
+        ))
+        embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
+            "🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
+            "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!loteria` | 💰 `!pote` | 🃏 `!carta`\n"
+            "💣 `!minas` | ♠️ `!21`"
+        ))
+        embed.add_field(name="🤐 CASTIGOS DE VOZ", inline=False, value=(
+            "🔇 `!castigo mudo <t> @user`\n🎧 `!castigo surdo <t> @user`\n"
+            "🤐 `!castigo surdomudo <t> @user`\n👟 `!desconectar @user`"
+        ))
         embed.set_footer(text="A evolução não para! Jogue com sabedoria. 🦍👑")
-        
         await ctx.send(embed=embed)
 
 def setup(bot):

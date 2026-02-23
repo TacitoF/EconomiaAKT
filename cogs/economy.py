@@ -11,13 +11,7 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'cascas'): bot.cascas = set()
         if not hasattr(bot, 'impostos'): bot.impostos = {}
         if not hasattr(bot, 'tracker_emblemas'):
-            bot.tracker_emblemas = {
-                'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {},
-                'esquadrao_suicida': set(), 'palhaco': set(), 'filho_da_sorte': set(),
-                'escorregou_banana': set(), 'pix_irritante': set(), 'casca_grossa': set(),
-                'briga_de_bar': set(), 'ima_desgraca': set(), 'veterano_coco': set(),
-                'queda_livre': set(), 'astronauta_cipo': set()
-            }
+            bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -29,208 +23,204 @@ class Economy(commands.Cog):
     @commands.command(aliases=["work"])
     async def trabalhar(self, ctx):
         user_id = str(ctx.author.id)
-        user = db.get_user_data(user_id)
-        if not user:
-            db.create_user(user_id, ctx.author.name)
+        try:
             user = db.get_user_data(user_id)
+            if not user:
+                db.create_user(user_id, ctx.author.name)
+                user = db.get_user_data(user_id)
+            if not user:
+                return await ctx.send(f"❌ {ctx.author.mention}, erro ao criar sua conta! Tente novamente.")
 
-        agora = time.time()
-        ultimo_work = float(user['data'][4]) if len(user['data']) > 4 and user['data'][4] else 0
+            agora = time.time()
+            ultimo_work = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
 
-        # Cooldown de 1 Hora (3600 segundos)
-        if agora - ultimo_work < 3600:
-            tempo_liberacao = int(ultimo_work + 3600)
-            return await ctx.send(f"⏳ {ctx.author.mention}, você está exausto! Volte <t:{tempo_liberacao}:R>.")
+            if agora - ultimo_work < 3600:
+                return await ctx.send(f"⏳ {ctx.author.mention}, você está exausto! Volte <t:{int(ultimo_work + 3600)}:R>.")
 
-        if user_id in self.bot.cascas:
-            self.bot.cascas.remove(user_id)
-            db.update_value(user['row'], 5, agora)
-            return await ctx.send(f"🍌 **SPLASH!** {ctx.author.mention} escorregou numa casca de banana a caminho do trabalho, caiu na lama e não ganhou nada!")
+            if user_id in self.bot.cascas:
+                self.bot.cascas.remove(user_id)
+                db.update_value(user['row'], 5, agora)
+                return await ctx.send(f"🍌 **SPLASH!** {ctx.author.mention} escorregou numa casca de banana e não ganhou nada!")
 
-        # --- TABELA DE SALÁRIOS V4.4 ---
-        cargo = user['data'][3]
-        salarios = {
-            "Lêmure": (60, 120),
-            "Macaquinho": (150, 300),
-            "Babuíno": (400, 800),
-            "Chimpanzé": (1000, 2000),
-            "Orangutango": (3000, 5500),
-            "Gorila": (8000, 15000),
-            "Ancestral": (20000, 40000),
-            "Rei Símio": (60000, 120000)
-        }
-        
-        min_ganho, max_ganho = salarios.get(cargo, (60, 120))
-        ganho = round(random.uniform(min_ganho, max_ganho), 2)
-        
-        imposto_msg = ""
-        if user_id in self.bot.impostos:
-            imposto_data = self.bot.impostos[user_id]
-            if agora > imposto_data['fim']:
-                del self.bot.impostos[user_id]
-                imposto_msg = "\n🕊️ O período do seu Imposto do Gorila expirou. Você está livre!"
-            else:
-                taxa = round(ganho * 0.25, 2)
-                ganho = round(ganho - taxa, 2)
-                
-                cobrador_id = imposto_data['cobrador_id']
-                cobrador_db = db.get_user_data(cobrador_id)
-                if cobrador_db:
-                    db.update_value(cobrador_db['row'], 3, round(float(cobrador_db['data'][2]) + taxa, 2))
-                    
-                    tempo_fim_imposto = int(imposto_data['fim'])
-                    cobrador_user = self.bot.get_user(int(cobrador_id))
+            cargo = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
+            salarios = {
+                "Lêmure": (60, 120), "Macaquinho": (150, 300), "Babuíno": (400, 800),
+                "Chimpanzé": (1000, 2000), "Orangutango": (3000, 5500),
+                "Gorila": (8000, 15000), "Ancestral": (20000, 40000), "Rei Símio": (60000, 120000)
+            }
+            min_ganho, max_ganho = salarios.get(cargo, (60, 120))
+            ganho = round(random.uniform(min_ganho, max_ganho), 2)
+
+            imposto_msg = ""
+            if user_id in self.bot.impostos:
+                imposto_data = self.bot.impostos[user_id]
+                if agora > imposto_data['fim']:
+                    del self.bot.impostos[user_id]
+                    imposto_msg = "\n🕊️ Seu Imposto do Gorila expirou. Você está livre!"
+                else:
+                    taxa = round(ganho * 0.25, 2)
+                    ganho = round(ganho - taxa, 2)
+                    cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
+                    if cobrador_db:
+                        db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
+                    cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
                     nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{taxa:.2f} C** do seu suor! *(Expira <t:{tempo_fim_imposto}:R>)*"
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{taxa:.2f} C** do seu suor! *(Expira <t:{int(imposto_data['fim'])}:R>)*"
 
-        db.update_value(user['row'], 3, round(float(user['data'][2]) + ganho, 2))
-        db.update_value(user['row'], 5, agora)
-        
-        if user_id not in self.bot.tracker_emblemas['trabalhos']: self.bot.tracker_emblemas['trabalhos'][user_id] = []
-        self.bot.tracker_emblemas['trabalhos'][user_id] = [t for t in self.bot.tracker_emblemas['trabalhos'][user_id] if agora - t < 86400]
-        self.bot.tracker_emblemas['trabalhos'][user_id].append(agora)
+            saldo_atual = db.parse_float(user['data'][2])
+            db.update_value(user['row'], 3, round(saldo_atual + ganho, 2))
+            db.update_value(user['row'], 5, agora)
 
-        await ctx.send(f"✅ {ctx.author.mention}, como **{cargo}**, você ganhou **{ganho:.2f} conguitos**!{imposto_msg}")
+            tracker = self.bot.tracker_emblemas['trabalhos']
+            if user_id not in tracker: tracker[user_id] = []
+            tracker[user_id] = [t for t in tracker[user_id] if agora - t < 86400]
+            tracker[user_id].append(agora)
+
+            await ctx.send(f"✅ {ctx.author.mention}, como **{cargo}**, você ganhou **{ganho:.2f} conguitos**!{imposto_msg}")
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !trabalhar de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["assaltar", "furtar", "rob"])
     async def roubar(self, ctx, vitima: disnake.Member = None):
         if vitima is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, você esqueceu de dizer quem quer roubar!\nUse: `!roubar @usuario`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!roubar @usuario`")
 
         ladrao_id = str(ctx.author.id)
-        if vitima.id == ctx.author.id: 
+
+        if vitima.id == ctx.author.id:
             ladrao_data = db.get_user_data(ladrao_id)
             if ladrao_data:
-                conquistas_atuais = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
-                if "palhaco" not in conquistas_atuais:
-                    nova_lista = f"{conquistas_atuais}, palhaco".strip(", ")
-                    db.update_value(ladrao_data['row'], 10, nova_lista)
-            return await ctx.send("🐒 Achou que eu não ia perceber? Palhaço! Não pode roubar a si mesmo.")
-        
-        ladrao_data = db.get_user_data(ladrao_id)
-        alvo_data = db.get_user_data(str(vitima.id))
-        
-        if not ladrao_data or not alvo_data: 
-            return await ctx.send("❌ Uma das contas não foi encontrada no banco de dados!")
+                conquistas = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
+                if "palhaco" not in conquistas:
+                    db.update_value(ladrao_data['row'], 10, f"{conquistas}, palhaco".strip(", "))
+            return await ctx.send("🐒 Palhaço! Não pode roubar a si mesmo.")
 
-        if float(ladrao_data['data'][2]) < 50:
-            return await ctx.send("❌ Você precisa ter pelo menos **50 C** na conta para tentar um assalto!")
+        try:
+            ladrao_data = db.get_user_data(ladrao_id)
+            alvo_data = db.get_user_data(str(vitima.id))
+            if not ladrao_data or not alvo_data:
+                return await ctx.send("❌ Uma das contas não foi encontrada!")
 
-        agora = time.time()
-        vitima_id = str(vitima.id)
+            saldo_ladrao = db.parse_float(ladrao_data['data'][2])
+            saldo_alvo = db.parse_float(alvo_data['data'][2])
 
-        # Cooldown de 2 Horas
-        ultimo_roubo = float(ladrao_data['data'][6]) if len(ladrao_data['data']) > 6 and ladrao_data['data'][6] else 0
-        if agora - ultimo_roubo < 7200:
-            tempo_liberacao = int(ultimo_roubo + 7200)
-            return await ctx.send(f"👮 Espere! Você só poderá roubar novamente <t:{tempo_liberacao}:R>.")
+            if saldo_ladrao < 50:
+                return await ctx.send("❌ Você precisa ter pelo menos **50 C** para tentar um assalto!")
 
-        if ladrao_id in self.bot.cascas:
-            self.bot.cascas.remove(ladrao_id)
-            db.update_value(ladrao_data['row'], 7, agora)
-            return await ctx.send(f"🍌 **QUE FASE!** {ctx.author.mention} escorregou numa casca de banana no meio do assalto! Fez barulho e fugiu de mãos vazias.")
+            agora = time.time()
+            vitima_id = str(vitima.id)
 
-        chance_sucesso = 40
-        inv_ladrao_str = str(ladrao_data['data'][5]) if len(ladrao_data['data']) > 5 else ""
-        inv_alvo_str = str(alvo_data['data'][5]) if len(alvo_data['data']) > 5 else ""
-        inv_ladrao = [i.strip() for i in inv_ladrao_str.split(',') if i.strip()]
-        inv_alvo = [i.strip() for i in inv_alvo_str.split(',') if i.strip()]
+            ultimo_roubo = db.parse_float(ladrao_data['data'][6] if len(ladrao_data['data']) > 6 else None)
+            if agora - ultimo_roubo < 7200:
+                return await ctx.send(f"👮 Você só poderá roubar novamente <t:{int(ultimo_roubo + 7200)}:R>.")
 
-        if "Pé de Cabra" in inv_ladrao:
-            chance_sucesso = 70
-            inv_ladrao.remove("Pé de Cabra")
-            db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
-
-        if "Escudo" in inv_alvo:
-            inv_alvo.remove("Escudo")
-            db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
-            db.update_value(ladrao_data['row'], 7, agora)
-            self.bot.tracker_emblemas['casca_grossa'].add(ladrao_id)
-            return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um **Escudo** e você perdeu o seu ataque!")
-
-        if random.randint(1, 100) <= chance_sucesso:
-            # Rebalanceamento: Rouba entre 5% e 12% do saldo do alvo (mais saudável para a economia)
-            percentual_roubo = random.uniform(0.05, 0.12)
-            valor_roubado = round(float(alvo_data['data'][2]) * percentual_roubo, 2)
-            
-            if valor_roubado <= 1:
+            if ladrao_id in self.bot.cascas:
+                self.bot.cascas.remove(ladrao_id)
                 db.update_value(ladrao_data['row'], 7, agora)
-                return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco. Você sentiu pena e foi embora de mãos abanando.")
+                return await ctx.send(f"🍌 **QUE FASE!** {ctx.author.mention} escorregou numa casca de banana e fugiu de mãos vazias.")
 
-            bounty_ganho = self.bot.recompensas.pop(vitima_id) if vitima_id in self.bot.recompensas and self.bot.recompensas[vitima_id] > 0 else 0.0
-            
-            seguro_msg = ""
-            if "Seguro" in inv_alvo:
-                recuperado = round(valor_roubado * 0.6, 2)
-                db.update_value(alvo_data['row'], 3, round(float(alvo_data['data'][2]) - valor_roubado + recuperado, 2))
-                inv_alvo.remove("Seguro")
+            inv_ladrao = [i.strip() for i in str(ladrao_data['data'][5] if len(ladrao_data['data']) > 5 else "").split(',') if i.strip()]
+            inv_alvo = [i.strip() for i in str(alvo_data['data'][5] if len(alvo_data['data']) > 5 else "").split(',') if i.strip()]
+
+            chance_sucesso = 40
+            if "Pé de Cabra" in inv_ladrao:
+                chance_sucesso = 70
+                inv_ladrao.remove("Pé de Cabra")
+                db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
+
+            if "Escudo" in inv_alvo:
+                inv_alvo.remove("Escudo")
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
-                seguro_msg = f"\n📄 **SEGURO ACIONADO:** {vitima.mention} foi roubado, mas o Banco reembolsou **{recuperado:.2f} C**!"
+                db.update_value(ladrao_data['row'], 7, agora)
+                return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!")
+
+            if random.randint(1, 100) <= chance_sucesso:
+                valor_roubado = round(saldo_alvo * random.uniform(0.05, 0.12), 2)
+                if valor_roubado <= 1:
+                    db.update_value(ladrao_data['row'], 7, agora)
+                    return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco.")
+
+                bounty_ganho = self.bot.recompensas.pop(vitima_id, 0.0)
+
+                seguro_msg = ""
+                if "Seguro" in inv_alvo:
+                    recuperado = round(valor_roubado * 0.6, 2)
+                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado + recuperado, 2))
+                    inv_alvo.remove("Seguro")
+                    db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
+                    seguro_msg = f"\n📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{recuperado:.2f} C**!"
+                else:
+                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado, 2))
+
+                db.update_value(ladrao_data['row'], 3, round(saldo_ladrao + valor_roubado + bounty_ganho, 2))
+                db.update_value(ladrao_data['row'], 7, agora)
+
+                # Bounty automático da polícia: 15% do valor roubado, máximo 5000 C
+                bounty_adicionado = min(round(valor_roubado * 0.15, 2), 5000.0)
+                self.bot.recompensas[ladrao_id] = self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado
+
+                tracker = self.bot.tracker_emblemas['roubos_sucesso']
+                if ladrao_id not in tracker: tracker[ladrao_id] = []
+                tracker[ladrao_id].append(agora)
+                self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = 0
+
+                mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} C** de {vitima.mention}!"
+                if chance_sucesso == 70: mensagem += " (Usou Pé de Cabra 🕵️)"
+                if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} C**!"
+                mensagem += seguro_msg
+                mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} C** colocada na sua cabeça!*"
+                await ctx.send(mensagem)
             else:
-                db.update_value(alvo_data['row'], 3, round(float(alvo_data['data'][2]) - valor_roubado, 2))
+                multa = max(round(saldo_ladrao * random.uniform(0.08, 0.15), 2), 10.0)
+                db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
+                db.update_value(alvo_data['row'], 3, round(saldo_alvo + multa, 2))
+                db.update_value(ladrao_data['row'], 7, agora)
+                self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
+                await ctx.send(f"👮 **PRESO!** O roubo falhou e você pagou **{multa:.2f} C** de multa para {vitima.mention}.")
 
-            ganho_total = round(valor_roubado + bounty_ganho, 2)
-            db.update_value(ladrao_data['row'], 3, round(float(ladrao_data['data'][2]) + ganho_total, 2))
-            db.update_value(ladrao_data['row'], 7, agora)
-            
-            # --- SISTEMA DE PROCURADOS AUTOMÁTICO ---
-            # A polícia injeta um bounty na cabeça do ladrão equivalente a 15% do que ele roubou (capado a 5k)
-            bounty_adicionado = round(valor_roubado * 0.15, 2)
-            if bounty_adicionado > 5000: bounty_adicionado = 5000.0
-            self.bot.recompensas[ladrao_id] = self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado
-            
-            if ladrao_id not in self.bot.tracker_emblemas['roubos_sucesso']: self.bot.tracker_emblemas['roubos_sucesso'][ladrao_id] = []
-            self.bot.tracker_emblemas['roubos_sucesso'][ladrao_id].append(agora)
-            self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = 0
-
-            mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} C** de {vitima.mention}!"
-            if chance_sucesso == 70: mensagem += " (Usou Pé de Cabra 🕵️)"
-            if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Você coletou a recompensa extra de **{bounty_ganho:.2f} C**!"
-            mensagem += seguro_msg
-            mensagem += f"\n🚨 *A polícia notou! Uma recompensa automática de **{bounty_adicionado:.2f} C** foi colocada na sua cabeça pelo sistema!*"
-            await ctx.send(mensagem)
-        else:
-            # Rebalanceamento: Multa varia de 8% a 15%
-            percentual_multa = random.uniform(0.08, 0.15)
-            multa = round(float(ladrao_data['data'][2]) * percentual_multa, 2)
-            if multa < 10: multa = 10.0 # Multa mínima
-            
-            db.update_value(ladrao_data['row'], 3, round(float(ladrao_data['data'][2]) - multa, 2))
-            db.update_value(alvo_data['row'], 3, round(float(alvo_data['data'][2]) + multa, 2))
-            db.update_value(ladrao_data['row'], 7, agora)
-            self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
-            await ctx.send(f"👮 **PRESO!** O roubo falhou e você pagou **{multa:.2f} C** de multa/indenização para {vitima.mention}.")
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !roubar de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["pix", "transferir", "pay"])
     async def pagar(self, ctx, recebedor: disnake.Member = None, valor: float = None):
         if recebedor is None or valor is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, formato incorreto!\nUse: `!pagar @usuario <valor>`")
-
-        if recebedor.id == ctx.author.id: 
-            return await ctx.send(f"🐒 {ctx.author.mention}, você não pode fazer um Pix para si mesmo!")
-            
-        if valor <= 0: return await ctx.send("❌ O valor do Pix deve ser maior que zero!")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!pagar @usuario <valor>`")
+        if recebedor.id == ctx.author.id:
+            return await ctx.send(f"🐒 {ctx.author.mention}, não pode fazer Pix para si mesmo!")
+        if valor <= 0:
+            return await ctx.send("❌ O valor deve ser maior que zero!")
         valor = round(valor, 2)
-        
-        pag = db.get_user_data(str(ctx.author.id))
-        if not pag or float(pag['data'][2]) < valor: 
-            return await ctx.send("❌ Saldo insuficiente!")
+        try:
+            pag = db.get_user_data(str(ctx.author.id))
+            saldo_pag = db.parse_float(pag['data'][2]) if pag else 0.0
+            if not pag or saldo_pag < valor:
+                return await ctx.send("❌ Saldo insuficiente!")
 
-        rec = db.get_user_data(str(recebedor.id))
-        if not rec:
-            db.create_user(str(recebedor.id), recebedor.display_name)
             rec = db.get_user_data(str(recebedor.id))
+            if not rec:
+                db.create_user(str(recebedor.id), recebedor.display_name)
+                rec = db.get_user_data(str(recebedor.id))
 
-        db.update_value(pag['row'], 3, round(float(pag['data'][2]) - valor, 2))
-        db.update_value(rec['row'], 3, round(float(rec['data'][2]) + valor, 2))
-        
-        if valor == 1.0: self.bot.tracker_emblemas['pix_irritante'].add(str(ctx.author.id))
-        
-        await ctx.send(embed=disnake.Embed(
-            title="💸 PIX REALIZADO!", 
-            description=f"**{ctx.author.mention}** enviou **{valor:.2f} C** para **{recebedor.mention}**.", 
-            color=disnake.Color.green()
-        ))
+            db.update_value(pag['row'], 3, round(saldo_pag - valor, 2))
+            db.update_value(rec['row'], 3, round(db.parse_float(rec['data'][2]) + valor, 2))
+
+            await ctx.send(embed=disnake.Embed(
+                title="💸 PIX REALIZADO!",
+                description=f"**{ctx.author.mention}** enviou **{valor:.2f} C** para **{recebedor.mention}**.",
+                color=disnake.Color.green()
+            ))
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !pagar de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(Economy(bot))
