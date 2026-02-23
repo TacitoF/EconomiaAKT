@@ -5,16 +5,16 @@ import random
 import asyncio
 
 def get_limite_bj(cargo):
-    """Função auxiliar para retornar o limite de aposta baseado no cargo (v4.4)."""
+    """Limites atualizados para a V4.4"""
     limites = {
         "Lêmure": 250,
-        "Macaquinho": 750,
-        "Babuíno": 2500,
+        "Macaquinho": 800,
+        "Babuíno": 2000,
         "Chimpanzé": 6000,
         "Orangutango": 15000,
-        "Gorila": 40000,
-        "Ancestral": 120000,
-        "Rei Símio": 1000000
+        "Gorila": 45000,
+        "Ancestral": 150000,
+        "Rei Símio": 1500000
     }
     return limites.get(cargo, 250)
 
@@ -23,7 +23,11 @@ class BlackjackView(disnake.ui.View):
         super().__init__(timeout=120)
         self.ctx = ctx
         self.bot = bot
-        self.players_data = {p.id: {"member": p, "hand": [], "status": "jogando", "aposta": aposta_base, "splitted": False} for p in players}
+        # Adicionado o controle de 2 mãos (hand1 e hand2) em formato decimal
+        self.players_data = {
+            p.id: {"member": p, "hand": [], "hand2": [], "status": "jogando", "aposta": round(float(aposta_base), 2), "splitted": False, "current_hand": 1} 
+            for p in players
+        }
         self.dealer_hand = []
         self.deck = self.gerar_baralho()
         self.player_ids = [p.id for p in players]
@@ -62,24 +66,21 @@ class BlackjackView(disnake.ui.View):
         status_dealer = f"Pontos: {d_p}" if self.terminado else "Pontos: ?"
         embed.add_field(name="🏦 Dealer (Bot)", value=f"Mão: `{self.formatar_mao(self.dealer_hand, not self.terminado)}`\n{status_dealer}", inline=False)
         
-        # Pega o ID do jogador do turno atual
         p_atual_id = self.player_ids[self.current_player_idx] if self.current_player_idx < len(self.player_ids) else None
         
         if p_atual_id and not self.terminado:
             p_atual_data = self.players_data[p_atual_id]
+            v1 = self.calcular_pontos([p_atual_data["hand"][0]])
+            v2 = self.calcular_pontos([p_atual_data["hand"][1]])
             
-            # --- LÓGICA DE SPLIT POR VALOR ---
-            if len(p_atual_data["hand"]) == 2 and not p_atual_data["splitted"]:
-                v1 = self.calcular_pontos([p_atual_data["hand"][0]])
-                v2 = self.calcular_pontos([p_atual_data["hand"][1]])
-                pode_split = (v1 == v2)
-            else:
-                pode_split = False
-            # --------------------------------------
-
+            pode_split = len(p_atual_data["hand"]) == 2 and v1 == v2 and not p_atual_data["splitted"]
+            
             for child in self.children:
                 if child.label == "Dividir (Split)":
                     child.disabled = not pode_split
+                # Desativa o Double se o cara splitar para evitar problemas na aposta
+                if child.label == "Dobrar (Double)":
+                    child.disabled = p_atual_data["splitted"]
 
         for p_id in self.player_ids:
             p = self.players_data[p_id]
@@ -89,32 +90,37 @@ class BlackjackView(disnake.ui.View):
             if p["status"] == "parou": status_emoji = "✋"
             
             p_p = self.calcular_pontos(p["hand"])
-            res_txt = ""
             
+            # --- EXIBIÇÃO SE ELE TIVER SPLITADO ---
+            if p["splitted"]:
+                p2_p = self.calcular_pontos(p["hand2"])
+                indicador_m1 = "👉 " if em_turno and p["current_hand"] == 1 else ""
+                indicador_m2 = "👉 " if em_turno and p["current_hand"] == 2 else ""
+                mao_str = f"{indicador_m1}Mão 1: `{self.formatar_mao(p['hand'])}` ({p_p})\n{indicador_m2}Mão 2: `{self.formatar_mao(p['hand2'])}` ({p2_p})"
+            else:
+                mao_str = f"Mão: `{self.formatar_mao(p['hand'])}`\nPontos: `{p_p}`"
+
+            res_txt = ""
             if self.terminado:
-                if p_p > 21 and d_p > 21: 
-                    res_txt = "\n🤝 **EMPATE (Ambos Estouraram)**"
-                elif p_p > 21: 
-                    res_txt = "\n❌ **ESTOUROU**"
-                elif d_p > 21 or p_p > d_p: 
-                    lucro_bruto = p["aposta"]
-                    taxa = int(lucro_bruto * 0.15)
-                    lucro_liquido = lucro_bruto - taxa
-                    ganho_total = p["aposta"] + lucro_liquido
-                    res_txt = f"\n🏆 **VENCEU! (+{ganho_total} C)**\n*(Cassino reteve {taxa} C)*"
-                elif p_p == d_p: 
-                    res_txt = "\n🤝 **EMPATE**"
-                else: 
-                    res_txt = "\n💀 **PERDEU**"
+                def resultado_mao(pontos_mao):
+                    if pontos_mao > 21: return "❌ Estourou"
+                    if d_p > 21 or pontos_mao > d_p: return "🏆 Venceu (+2x)"
+                    if pontos_mao == d_p: return "🤝 Empatou (Devolvido)"
+                    return "💀 Perdeu"
+
+                if p["splitted"]:
+                    res_txt = f"\nResultados:\nMão 1: **{resultado_mao(p_p)}**\nMão 2: **{resultado_mao(p2_p)}**"
+                else:
+                    res_txt = f"\nResultado: **{resultado_mao(p_p)}**"
 
             embed.add_field(
                 name=f"{status_emoji} {p['member'].display_name}", 
-                value=f"Mão: `{self.formatar_mao(p['hand'])}`\nPontos: `{p_p}` | Aposta: `{p['aposta']} C`{res_txt}", 
+                value=f"{mao_str}\nAposta Total: `{p['aposta'] * (2 if p['splitted'] else 1):.2f} C`{res_txt}", 
                 inline=True
             )
             
         if self.terminado:
-            embed.set_footer(text="Partida finalizada! Prêmios e impostos aplicados.")
+            embed.set_footer(text="Partida finalizada! Prêmios entregues (Sem Taxas).")
 
         if inter:
             await inter.response.edit_message(embed=embed, view=None if self.terminado else self)
@@ -128,12 +134,17 @@ class BlackjackView(disnake.ui.View):
             return await inter.send("❌ Não é sua vez!", ephemeral=True)
         
         p = self.players_data[inter.author.id]
-        p["hand"].append(self.deck.pop())
         
-        if self.calcular_pontos(p["hand"]) >= 21:
-            p["status"] = "parou" if self.calcular_pontos(p["hand"]) == 21 else "estourou"
-            await self.proximo_turno()
+        mao_atual = p["hand"] if not p["splitted"] or p["current_hand"] == 1 else p["hand2"]
+        mao_atual.append(self.deck.pop())
         
+        if self.calcular_pontos(mao_atual) >= 21:
+            if p["splitted"] and p["current_hand"] == 1:
+                p["current_hand"] = 2
+            else:
+                p["status"] = "parou"
+                await self.proximo_turno()
+                
         await self.atualizar_embed(inter)
 
     @disnake.ui.button(label="Parar (Stand)", style=disnake.ButtonStyle.grey)
@@ -142,8 +153,14 @@ class BlackjackView(disnake.ui.View):
         if inter.author.id != self.player_ids[self.current_player_idx]:
             return await inter.send("❌ Não é sua vez!", ephemeral=True)
         
-        self.players_data[inter.author.id]["status"] = "parou"
-        await self.proximo_turno()
+        p = self.players_data[inter.author.id]
+        
+        if p["splitted"] and p["current_hand"] == 1:
+            p["current_hand"] = 2 
+        else:
+            p["status"] = "parou"
+            await self.proximo_turno()
+            
         await self.atualizar_embed(inter)
 
     @disnake.ui.button(label="Dobrar (Double)", style=disnake.ButtonStyle.blurple)
@@ -156,15 +173,16 @@ class BlackjackView(disnake.ui.View):
         p = self.players_data[p_id]
         u_db = db.get_user_data(str(p_id))
         
-        if int(u_db['data'][2]) < p["aposta"]:
+        if float(u_db['data'][2]) < p["aposta"]:
             return await inter.send("❌ Saldo insuficiente para dobrar!", ephemeral=True)
         
-        db.update_value(u_db['row'], 3, int(u_db['data'][2]) - p["aposta"])
+        db.update_value(u_db['row'], 3, round(float(u_db['data'][2]) - p["aposta"], 2))
         p["aposta"] *= 2
-        p["hand"].append(self.deck.pop())
-        p["status"] = "parou" if self.calcular_pontos(p["hand"]) <= 21 else "estourou"
         
+        p["hand"].append(self.deck.pop())
+        p["status"] = "parou"
         await self.proximo_turno()
+            
         await self.atualizar_embed(inter)
 
     @disnake.ui.button(label="Dividir (Split)", style=disnake.ButtonStyle.danger, disabled=True)
@@ -177,15 +195,16 @@ class BlackjackView(disnake.ui.View):
         p = self.players_data[p_id]
         u_db = db.get_user_data(str(p_id))
         
-        if int(u_db['data'][2]) < p["aposta"]:
+        if float(u_db['data'][2]) < p["aposta"]:
             return await inter.send("❌ Saldo insuficiente para o Split!", ephemeral=True)
         
-        db.update_value(u_db['row'], 3, int(u_db['data'][2]) - p["aposta"])
-        p["aposta"] *= 2
+        db.update_value(u_db['row'], 3, round(float(u_db['data'][2]) - p["aposta"], 2))
         p["splitted"] = True
         
-        p["hand"].pop()
-        p["hand"].append(self.deck.pop())
+        # O Split Correto
+        carta_separada = p["hand"].pop() 
+        p["hand2"] = [carta_separada, self.deck.pop()] 
+        p["hand"].append(self.deck.pop()) 
         
         await self.atualizar_embed(inter)
 
@@ -199,21 +218,26 @@ class BlackjackView(disnake.ui.View):
 
     async def processar_pagamentos_db(self):
         d_p = self.calcular_pontos(self.dealer_hand)
+        
+        def calcular_lucro_mao(pontos_jogador, aposta_mao):
+            if pontos_jogador > 21: return 0.0
+            if d_p > 21 or pontos_jogador > d_p: 
+                return aposta_mao * 2.0  # TAXA ZERO
+            if pontos_jogador == d_p: 
+                return aposta_mao
+            return 0.0
+
         for p_id, p in self.players_data.items():
-            p_p = self.calcular_pontos(p["hand"])
             u_db = db.get_user_data(str(p_id))
-            saldo_atual = int(u_db['data'][2])
+            saldo_atual = float(u_db['data'][2])
             
-            if p_p > 21 and d_p > 21: # Ambos estouraram
-                db.update_value(u_db['row'], 3, saldo_atual + p["aposta"])
-            elif p_p <= 21:
-                if d_p > 21 or p_p > d_p: # Ganhou
-                    lucro_bruto = p["aposta"]
-                    taxa = int(lucro_bruto * 0.15)
-                    lucro_liquido = lucro_bruto - taxa
-                    db.update_value(u_db['row'], 3, saldo_atual + p["aposta"] + lucro_liquido)
-                elif p_p == d_p: # Empatou
-                    db.update_value(u_db['row'], 3, saldo_atual + p["aposta"])
+            ganho_total = 0.0
+            ganho_total += calcular_lucro_mao(self.calcular_pontos(p["hand"]), p["aposta"])
+            if p["splitted"]:
+                ganho_total += calcular_lucro_mao(self.calcular_pontos(p["hand2"]), p["aposta"])
+            
+            if ganho_total > 0:
+                db.update_value(u_db['row'], 3, round(saldo_atual + ganho_total, 2))
 
 
 class BlackjackCog(commands.Cog):
@@ -224,13 +248,17 @@ class BlackjackCog(commands.Cog):
         if ctx.channel.name != '🎰・akbet':
             canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
-            await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para o canal {mencao}.")
-            raise commands.CommandError("Canal de apostas incorreto.")
+            await ctx.send(f"🐒 Ei {ctx.author.mention}, vai para o canal {mencao}.")
+            raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["bj", "21"])
-    async def blackjack(self, ctx, aposta: int):
-        """Inicia uma mesa de Blackjack multiplayer."""
+    async def blackjack(self, ctx, aposta: float = None):
+        # COMANDO DE AJUDA
+        if aposta is None:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, formato incorreto! Use: `!blackjack <valor>` ou `!21 <valor>`")
+
         if aposta <= 0: return await ctx.send("❌ Aposta inválida!")
+        aposta = round(aposta, 2)
         
         u_c = db.get_user_data(str(ctx.author.id))
         if not u_c: return await ctx.send("❌ Conta não encontrada!")
@@ -239,23 +267,20 @@ class BlackjackCog(commands.Cog):
         limite = get_limite_bj(cargo)
 
         if aposta > limite:
-            return await ctx.send(f"🚫 **LIMITE DE CARGO!** Como **{cargo}**, seu limite para abrir ou entrar em mesas é de **{limite} C**.")
+            return await ctx.send(f"🚫 **LIMITE DE CARGO!** Como **{cargo}**, seu limite é de **{limite} C**.")
 
-        if int(u_c['data'][2]) < aposta: return await ctx.send("❌ Saldo insuficiente!")
+        if float(u_c['data'][2]) < aposta: return await ctx.send("❌ Saldo insuficiente!")
         
-        db.update_value(u_c['row'], 3, int(u_c['data'][2]) - aposta)
+        db.update_value(u_c['row'], 3, round(float(u_c['data'][2]) - aposta, 2))
         players = [ctx.author]
 
         def gerar_texto_lobby(lista_jogadores):
             nomes = ", ".join([p.display_name for p in lista_jogadores])
-            qtd = len(lista_jogadores)
-            return (f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta} C`\n"
-                    f"👥 **Jogadores ({qtd}):** {nomes}\n\n"
-                    f"Digite `!entrar` para participar!\n"
-                    f"{ctx.author.mention}, digite **`começar`** para iniciar o jogo!")
+            return (f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta:.2f} C`\n"
+                    f"👥 **Jogadores ({len(lista_jogadores)}):** {nomes}\n\n"
+                    f"Digite `!entrar` para participar ou **`começar`** para iniciar!")
         
         msg = await ctx.send(gerar_texto_lobby(players))
-
         def check(m): return m.channel == ctx.channel and (m.content.lower() == '!entrar' or (m.author == ctx.author and m.content.lower() == 'começar'))
         
         start = False
@@ -271,21 +296,21 @@ class BlackjackCog(commands.Cog):
                         cargo_p = u_db['data'][3]
                         limite_p = get_limite_bj(cargo_p)
                         if aposta > limite_p:
-                            await ctx.send(f"🚫 {m.author.mention}, a aposta da mesa excede seu limite de **{cargo_p}** ({limite_p} C).", delete_after=6)
+                            await ctx.send(f"🚫 {m.author.mention}, a aposta excede seu limite de **{cargo_p}**.", delete_after=6)
                             continue
-                            
-                        if int(u_db['data'][2]) >= aposta:
-                            db.update_value(u_db['row'], 3, int(u_db['data'][2]) - aposta)
+                        if float(u_db['data'][2]) >= aposta:
+                            db.update_value(u_db['row'], 3, round(float(u_db['data'][2]) - aposta, 2))
                             players.append(m.author)
                             await msg.edit(content=gerar_texto_lobby(players))
                         else:
-                            await ctx.send(f"❌ {m.author.mention}, saldo insuficiente para entrar!", delete_after=6)
-            except asyncio.TimeoutError: break
+                            await ctx.send(f"❌ {m.author.mention}, saldo insuficiente!", delete_after=6)
+            except asyncio.TimeoutError:
+                break
 
         if not start:
             for p in players:
                 p_db = db.get_user_data(str(p.id))
-                db.update_value(p_db['row'], 3, int(p_db['data'][2]) + aposta)
+                db.update_value(p_db['row'], 3, round(float(p_db['data'][2]) + aposta, 2))
             return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
 
         view = BlackjackView(ctx, self.bot, aposta, players)
@@ -293,7 +318,6 @@ class BlackjackCog(commands.Cog):
         for p_id in view.player_ids: 
             view.players_data[p_id]["hand"] = [view.deck.pop(), view.deck.pop()]
         await ctx.send(embed=await view.atualizar_embed(), view=view)
-
 
 def setup(bot):
     bot.add_cog(BlackjackCog(bot))

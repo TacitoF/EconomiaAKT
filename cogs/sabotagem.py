@@ -11,9 +11,13 @@ class Sabotagem(commands.Cog):
         self.amaldicoados = {}
 
     @commands.command()
-    async def impostor(self, ctx, alvo: disnake.Member, *, mensagem: str):
+    async def impostor(self, ctx, alvo: disnake.Member = None, *, mensagem: str = None):
         """Paga 500 C para mandar uma mensagem se passando por outro macaco."""
-        custo = 500
+        # MENSAGEM DE AJUDA
+        if alvo is None or mensagem is None:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, formato incorreto!\nUse: `!impostor @usuario <mensagem falsa>`")
+
+        custo = 500.0
 
         if alvo.id == ctx.author.id:
             return await ctx.send(f"🐒 {ctx.author.mention}, você não pode ser impostor de si mesmo!")
@@ -22,11 +26,11 @@ class Sabotagem(commands.Cog):
             return await ctx.send(f"🤖 {ctx.author.mention}, você não pode falsificar a identidade de um bot!")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or int(user['data'][2]) < custo:
-            return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo} C** para comprar uma identidade falsa!")
+        if not user or float(user['data'][2]) < custo:
+            return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} C** para comprar uma identidade falsa!")
 
         # Cobra o valor
-        db.update_value(user['row'], 3, int(user['data'][2]) - custo)
+        db.update_value(user['row'], 3, round(float(user['data'][2]) - custo, 2))
 
         # Apaga a mensagem original de quem usou o comando para não deixar rastros
         try:
@@ -46,9 +50,13 @@ class Sabotagem(commands.Cog):
             await webhook.delete()
 
     @commands.command(aliases=["maldicao", "macaco"])
-    async def amaldicoar(self, ctx, alvo: disnake.Member):
+    async def amaldicoar(self, ctx, alvo: disnake.Member = None):
         """Paga 500 C para amaldiçoar o chat do alvo com sons de macaco por 1 minuto."""
-        custo = 500
+        # MENSAGEM DE AJUDA
+        if alvo is None:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, você esqueceu de dizer quem vai amaldiçoar!\nUse: `!amaldicoar @usuario`")
+
+        custo = 500.0
 
         if alvo.id == ctx.author.id:
             return await ctx.send(f"🐒 {ctx.author.mention}, não jogue mandingas em si mesmo!")
@@ -57,18 +65,19 @@ class Sabotagem(commands.Cog):
             return await ctx.send(f"🤖 A maldição não afeta máquinas!")
 
         user = db.get_user_data(str(ctx.author.id))
-        if not user or int(user['data'][2]) < custo:
-            return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo} C** para conjurar a Maldição Símia!")
+        if not user or float(user['data'][2]) < custo:
+            return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} C** para conjurar a Maldição Símia!")
 
-        # Cobra o valor
-        db.update_value(user['row'], 3, int(user['data'][2]) - custo)
+        # Cobra o valor em decimais
+        db.update_value(user['row'], 3, round(float(user['data'][2]) - custo, 2))
 
         # Adiciona o alvo ao dicionário de amaldiçoados por 60 segundos (1 minuto)
-        self.amaldicoados[alvo.id] = time.time() + 60
+        tempo_fim = int(time.time() + 60)
+        self.amaldicoados[alvo.id] = tempo_fim
 
         embed = disnake.Embed(
             title="🍌 MALDIÇÃO SÍMIA CONJURADA!",
-            description=f"Magia negra na selva! {ctx.author.mention} amaldiçoou {alvo.mention}.\n\nDurante **1 minuto**, ele não conseguirá falar direito!",
+            description=f"Magia negra na selva! {ctx.author.mention} amaldiçoou {alvo.mention}.\n\nAté <t:{tempo_fim}:R>, ele não conseguirá falar direito!",
             color=disnake.Color.dark_green()
         )
         await ctx.send(embed=embed)
@@ -76,8 +85,8 @@ class Sabotagem(commands.Cog):
     # O "listener" que escuta todas as mensagens do servidor
     @commands.Cog.listener()
     async def on_message(self, message):
-        # Ignora bots
-        if message.author.bot:
+        # Ignora bots e ignora comandos (para não quebrar o bot enquanto o cara tá amaldiçoado)
+        if message.author.bot or message.content.startswith('!'):
             return
 
         # Verifica se o autor está na lista de amaldiçoados
@@ -114,15 +123,18 @@ class Sabotagem(commands.Cog):
             texto_final = " ".join(nova_mensagem)
 
             # Reenvia usando o Webhook com o nome e foto da vítima
-            webhook = await message.channel.create_webhook(name="Maldicao_Simia")
             try:
-                await webhook.send(
-                    content=texto_final,
-                    username=message.author.display_name,
-                    avatar_url=message.author.display_avatar.url
-                )
-            finally:
-                await webhook.delete()
+                webhook = await message.channel.create_webhook(name="Maldicao_Simia")
+                try:
+                    await webhook.send(
+                        content=texto_final,
+                        username=message.author.display_name,
+                        avatar_url=message.author.display_avatar.url
+                    )
+                finally:
+                    await webhook.delete()
+            except disnake.Forbidden:
+                pass # Se o bot não tiver permissão de gerenciar webhooks, ignora
 
 def setup(bot):
     bot.add_cog(Sabotagem(bot))

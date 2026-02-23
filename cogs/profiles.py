@@ -16,7 +16,7 @@ class Profiles(commands.Cog):
 
     @commands.command(aliases=["emblemas"])
     async def conquistas(self, ctx):
-        """Mostra o mural de medalhas com descrições claras e enigmas ocultos."""
+        """Mostra o mural de medalhas atualizado v4.4."""
         embed = disnake.Embed(
             title="🏆 MURAL DE CONQUISTAS DA SELVA", 
             description="Acumule glória e decifre o desconhecido para brilhar no seu `!perfil`!",
@@ -28,13 +28,14 @@ class Profiles(commands.Cog):
             value="• **O Alfa da Selva:** Alcance o Top 1 no `!rank`.\n"
                   "• **Vice-Líder:** Alcance o Top 2 no `!rank`.\n"
                   "• **Bronze de Ouro:** Alcance o Top 3 no `!rank`.\n"
-                  "• **Rei da Selva:** Possua o cargo máximo (**Gorila**).", 
+                  "• **Rei da Selva:** Possua o cargo máximo (**Rei Símio**).", 
             inline=False
         )
 
         embed.add_field(
             name="💰 Fortuna e Miséria", 
-            value="• **Magnata:** Acumule um saldo de **20.000 C** ou mais.\n"
+            value="• **Burguês Safado:** Acumule a fortuna absurda de **500.000 C**.\n"
+                  "• **Magnata:** Acumule um saldo de **100.000 C** ou mais.\n"
                   "• **Falência Técnica:** Tenha um saldo abaixo de **100 C**.\n"
                   "• **Passa Fome:** Zere completamente sua conta (**0 C**).", 
             inline=False
@@ -46,6 +47,13 @@ class Profiles(commands.Cog):
                   "• **Mestre das Sombras:** Realize 5 roubos bem-sucedidos em um único dia.\n"
                   "• **Freguês:** Seja enviado para a prisão 3 vezes consecutivas.\n"
                   "• **Invasor:** Adquira um **Pé de Cabra** na loja.", 
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🚨 Submundo (Novas)", 
+            value="• **Inimigo Público:** Tenha uma recompensa de **5.000 C** ou mais pela sua cabeça.\n"
+                  "• **Rei do Crime:** Seja o macaco mais procurado (Top 1) da selva no momento.", 
             inline=False
         )
 
@@ -74,10 +82,18 @@ class Profiles(commands.Cog):
         user = db.get_user_data(user_id)
         if not user: return await ctx.send(f"❌ {membro.mention} não tem conta!")
 
-        saldo = int(user['data'][2])
+        saldo = float(user['data'][2])
         cargo = user['data'][3]
+        agora = time.time()
         
-        # Correção do Inventário: Filtra o "Nenhum" e strings vazias
+        # Cooldowns Dinâmicos
+        ultimo_work = float(user['data'][4]) if len(user['data']) > 4 and user['data'][4] else 0
+        ultimo_roubo = float(user['data'][6]) if len(user['data']) > 6 and user['data'][6] else 0
+        
+        status_work = "Disponível ✅" if agora - ultimo_work >= 3600 else f"<t:{int(ultimo_work + 3600)}:R>"
+        status_roubo = "Disponível ✅" if agora - ultimo_roubo >= 7200 else f"<t:{int(ultimo_roubo + 7200)}:R>"
+
+        # Inventário
         inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
         inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != 'nenhum']
         
@@ -89,22 +105,24 @@ class Profiles(commands.Cog):
             itens_agrupados = [f"`{qtd}x {item}`" if qtd > 1 else f"`{item}`" for item, qtd in contagem.items()]
             inv_formatado = " | ".join(itens_agrupados)
 
-        # LÓGICA DE CONQUISTAS PERSISTENTES (Coluna J / Índice 9)
+        # Conquistas
         conquistas_db = str(user['data'][9]) if len(user['data']) > 9 else ""
-        lista_conquistas_salvas = [c.strip() for c in conquistas_db.split(',') if c.strip()]
-
+        lista_salva = [c.strip() for c in conquistas_db.split(',') if c.strip()]
         emblemas = []
-        agora = time.time()
 
-        if saldo >= 20000: emblemas.append("💎 **Magnata**")
-        if cargo == "Gorila": emblemas.append("👑 **Rei da Selva**")
+        # Conquistas de Dinheiro e Status
+        if saldo >= 500000: emblemas.append("🤑 **Burguês Safado**")
+        elif saldo >= 100000: emblemas.append("💎 **Magnata**")
+        
+        if cargo == "Rei Símio": emblemas.append("👑 **Rei da Selva**")
         if "Pé de Cabra" in inv_list: emblemas.append("🕵️ **Invasor**")
-        if saldo < 100: emblemas.append("📉 **Falência Técnica**")
-        if saldo == 0: emblemas.append("🦴 **Passa fome**")
+        if saldo < 100 and saldo > 0: emblemas.append("📉 **Falência Técnica**")
+        if saldo <= 0: emblemas.append("🦴 **Passa fome**")
 
+        # Ranking para Medalhas
         all_data = db.sheet.get_all_records()
         if all_data:
-            sorted_users = sorted(all_data, key=lambda x: int(x.get('saldo', 0)), reverse=True)
+            sorted_users = sorted(all_data, key=lambda x: float(str(x.get('saldo', 0)).replace(',', '.')), reverse=True)
             for i, u in enumerate(sorted_users):
                 if str(u.get('id_usuario', '')) == user_id:
                     if i == 0: emblemas.append("🥇 **O Alfa da Selva**")
@@ -112,7 +130,7 @@ class Profiles(commands.Cog):
                     elif i == 2: emblemas.append("🥉 **Bronze de Ouro**")
                     break
 
-        mapa_emblemas = {
+        mapa = {
             "palhaco": "🤡 **Palhaço**", "filho_da_sorte": "🍀 **Sortudo**",
             "escorregou_banana": "🍌 **Desastrado**", "pix_irritante": "💸 **Pix Irritante**",
             "casca_grossa": "🐢 **Casca Grossa**", "briga_de_bar": "🥊 **Briguento**",
@@ -120,25 +138,30 @@ class Profiles(commands.Cog):
             "queda_livre": "📉 **Queda Livre**", "astronauta_cipo": "🚀 **Astronauta**",
             "esquadrao_suicida": "💣 **Esquadrão Suicida**"
         }
+        for slug in lista_salva:
+            if slug in mapa: emblemas.append(mapa[slug])
 
-        for slug in lista_conquistas_salvas:
-            if slug in mapa_emblemas: emblemas.append(mapa_emblemas[slug])
+        # Verificação do Submundo (Bounty)
+        rec = getattr(self.bot, 'recompensas', {}).get(user_id, 0.0)
+        if rec >= 5000: 
+            emblemas.append("🚨 **Inimigo Público**")
+            
+        recompensas_gerais = getattr(self.bot, 'recompensas', {})
+        if recompensas_gerais and max(recompensas_gerais.values() or [0]) > 0:
+            top_procurado = max(recompensas_gerais, key=recompensas_gerais.get)
+            if top_procurado == user_id:
+                emblemas.append("👑 **Rei do Crime**")
 
-        if hasattr(self.bot, 'tracker_emblemas'):
-            tr = self.bot.tracker_emblemas
-            if len([t for t in tr.get('trabalhos', {}).get(user_id, []) if agora - t < 86400]) >= 5: emblemas.append("🐒 **Proletário Padrão**")
-            if len([t for t in tr.get('roubos_sucesso', {}).get(user_id, []) if agora - t < 86400]) >= 5: emblemas.append("🥷 **Mestre das Sombras**")
-            if tr.get('roubos_falha', {}).get(user_id, 0) >= 3: emblemas.append("⛓️ **Freguês**")
-
-        embed = disnake.Embed(title=f"🐒 Perfil AKTrovão", color=disnake.Color.gold())
+        embed = disnake.Embed(title=f"🐒 Perfil de {membro.display_name}", color=disnake.Color.gold())
         embed.set_thumbnail(url=membro.display_avatar.url)
-        embed.add_field(name="💰 Saldo", value=f"{saldo} C", inline=True)
-        embed.add_field(name="💼 Cargo", value=cargo, inline=True)
+        embed.add_field(name="💰 Saldo", value=f"`{saldo:.2f} C`", inline=True)
+        embed.add_field(name="💼 Cargo", value=f"`{cargo}`", inline=True)
+        embed.add_field(name="🔨 Trabalho", value=status_work, inline=True)
+        embed.add_field(name="🔫 Roubo", value=status_roubo, inline=True)
         embed.add_field(name="🎒 Inventário", value=inv_formatado, inline=False)
         embed.add_field(name="🏆 Conquistas", value=" | ".join(emblemas) if emblemas else "Nenhuma", inline=False)
         
-        rec = getattr(self.bot, 'recompensas', {}).get(user_id, 0)
-        if rec > 0: embed.add_field(name="🚨 PROCURADO", value=f"`{rec} C` pela sua cabeça!", inline=False)
+        if rec > 0: embed.add_field(name="🚨 PROCURADO", value=f"`{rec:.2f} C` pela sua cabeça!", inline=False)
 
         await ctx.send(embed=embed)
 
@@ -146,17 +169,21 @@ class Profiles(commands.Cog):
     async def rank(self, ctx):
         all_data = db.sheet.get_all_records()
         if not all_data: return await ctx.send("❌ Sem dados suficientes.")
-        sorted_users = sorted(all_data, key=lambda x: int(x.get('saldo', 0)), reverse=True)
+        
+        # Ordenação decimal precisa
+        sorted_users = sorted(all_data, key=lambda x: float(str(x.get('saldo', 0)).replace(',', '.')), reverse=True)
+        
         embed = disnake.Embed(title="🏆 Ranking de Conguitos", color=disnake.Color.gold())
         lista_rank = ""
         for i, user in enumerate(sorted_users[:10]):
             nome = user.get('nome', 'Desconhecido')
-            saldo = user.get('saldo', 0)
-            if i == 0: linha = f"🥇 **{nome}** — `{saldo} C`"
-            elif i == 1: linha = f"🥈 **{nome}** — `{saldo} C`"
-            elif i == 2: linha = f"🥉 **{nome}** — `{saldo} C`"
-            else: linha = f"**{i+1}.** {nome} — `{saldo} C`"
+            saldo = float(str(user.get('saldo', 0)).replace(',', '.'))
+            if i == 0: linha = f"🥇 **{nome}** — `{saldo:.2f} C`"
+            elif i == 1: linha = f"🥈 **{nome}** — `{saldo:.2f} C`"
+            elif i == 2: linha = f"🥉 **{nome}** — `{saldo:.2f} C`"
+            else: linha = f"**{i+1}.** {nome} — `{saldo:.2f} C`"
             lista_rank += linha + "\n"
+        
         embed.add_field(name="Top 10 Jogadores", value=lista_rank, inline=False)
         await ctx.send(embed=embed)
 
