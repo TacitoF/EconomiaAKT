@@ -73,7 +73,7 @@ class Esportes(commands.Cog):
                     description="Para apostar use: `!palpite <ID> <casa/empate/fora> <valor>`\n*Todos os jogos têm Odd fixa de 1.95x no sistema grátis.*",
                     color=disnake.Color.blue()
                 )
-                
+
                 # Mostra os próximos 10 jogos
                 for match in data['matches'][:10]:
                     match_id = match['id']
@@ -158,9 +158,18 @@ class Esportes(commands.Cog):
         if not apostas_pendentes:
             return # Sai se não houver apostas pendentes
 
+        # Margem de segurança: Busca jogos terminados de 3 dias atrás até hoje
+        agora = datetime.now()
+        data_inicio = (agora - timedelta(days=3)).strftime("%Y-%m-%d")
+        data_fim = agora.strftime("%Y-%m-%d")
+
         async with aiohttp.ClientSession() as session:
-            # Busca todos os jogos que já terminaram (FINISHED)
-            params = {"status": "FINISHED"}
+            # Busca todos os jogos que já terminaram nessa janela de tempo
+            params = {
+                "status": "FINISHED",
+                "dateFrom": data_inicio,
+                "dateTo": data_fim
+            }
             async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
                 data = await resp.json()
                 
