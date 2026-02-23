@@ -9,8 +9,39 @@ class Admin(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def dar_conquista(self, ctx, membro: disnake.Member = None, slug: str = None):
-        if ctx.author.id != OWNER_ID: return await ctx.send("❌ Sem permissão!")
+    async def ajudaadm(self, ctx):
+        if ctx.author.id != OWNER_ID: 
+            return # Silêncio total para não-admins
+
+        embed = disnake.Embed(
+            title="🛠️ Painel de Controle Administrativo",
+            description="Comandos exclusivos para a gerência da selva.",
+            color=disnake.Color.dark_grey()
+        )
+        
+        embed.add_field(
+            name="🏆 Conquistas", 
+            value="`!darconquista @membro slug` - Grava conquista\n`!removerconquista @membro slug` - Remove conquista", 
+            inline=False
+        )
+        
+        embed.add_field(
+            name="💰 Economia", 
+            value="`!setar @membro valor` - Define saldo exato\n`!adicionar @membro valor` - Soma ao saldo\n`!remover @membro valor` - Subtrai do saldo\n`!wipe` - Reseta toda a planilha", 
+            inline=False
+        )
+        
+        embed.add_field(
+            name="⚙️ Sistema & Avisos", 
+            value="`!ligar` / `!desligar` - Trava global de manutenção\n`!postar_regras` - Envia e fixa as regras\n`!patchnotes` - Envia log da versão 4.4", 
+            inline=False
+        )
+
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def darconquista(self, ctx, membro: disnake.Member = None, slug: str = None):
+        if ctx.author.id != OWNER_ID: return 
         if membro is None or slug is None:
             return await ctx.send("⚠️ Use: `!dar_conquista @membro slug_da_conquista`")
 
@@ -27,11 +58,10 @@ class Admin(commands.Cog):
             await ctx.send(f"🏆 Conquista `{slug}` gravada para {membro.mention}!")
         except Exception as e:
             print(f"❌ Erro no !dar_conquista: {e}")
-            await ctx.send("⚠️ Ocorreu um erro. Tente novamente!")
 
     @commands.command()
-    async def remover_conquista(self, ctx, membro: disnake.Member = None, slug: str = None):
-        if ctx.author.id != OWNER_ID: return await ctx.send("❌ Sem permissão!")
+    async def removerconquista(self, ctx, membro: disnake.Member = None, slug: str = None):
+        if ctx.author.id != OWNER_ID: return 
         if membro is None or slug is None:
             return await ctx.send("⚠️ Use: `!remover_conquista @membro slug_da_conquista`")
 
@@ -48,11 +78,10 @@ class Admin(commands.Cog):
             await ctx.send(f"🧹 Conquista `{slug}` removida de {membro.mention}!")
         except Exception as e:
             print(f"❌ Erro no !remover_conquista: {e}")
-            await ctx.send("⚠️ Ocorreu um erro. Tente novamente!")
 
     @commands.command()
     async def setar(self, ctx, membro: disnake.Member = None, valor: float = None):
-        if ctx.author.id != OWNER_ID: return await ctx.send("❌ Sem permissão!")
+        if ctx.author.id != OWNER_ID: return 
         if membro is None or valor is None:
             return await ctx.send("⚠️ Use: `!setar @membro <valor>`")
 
@@ -64,43 +93,43 @@ class Admin(commands.Cog):
             await ctx.send(f"✅ Saldo de {membro.mention} definido em **{valor:.2f} C**.")
         except Exception as e:
             print(f"❌ Erro no !setar: {e}")
-            await ctx.send("⚠️ Ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["add", "dar"])
     async def adicionar(self, ctx, membro: disnake.Member = None, valor: float = None):
-        if ctx.author.id != OWNER_ID: return await ctx.send("❌ Sem permissão!")
+        if ctx.author.id != OWNER_ID: return 
         if membro is None or valor is None:
             return await ctx.send("⚠️ Use: `!adicionar @membro <valor>`")
 
         try:
             u = db.get_user_data(str(membro.id))
             if not u: return await ctx.send("❌ Usuário não encontrado!")
-            novo_saldo = round(db.parse_float(u['data'][2]) + valor, 2)
+            # Convertendo saldo atual com replace para evitar erro de vírgula
+            saldo_atual = float(str(u['data'][2]).replace(',', '.'))
+            novo_saldo = round(saldo_atual + valor, 2)
             db.update_value(u['row'], 3, novo_saldo)
             await ctx.send(f"📈 **+{valor:.2f} C** adicionados para {membro.mention}. (Saldo: `{novo_saldo:.2f} C`)")
         except Exception as e:
             print(f"❌ Erro no !adicionar: {e}")
-            await ctx.send("⚠️ Ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["tirar", "subtrair"])
     async def remover(self, ctx, membro: disnake.Member = None, valor: float = None):
-        if ctx.author.id != OWNER_ID: return await ctx.send("❌ Sem permissão!")
+        if ctx.author.id != OWNER_ID: return 
         if membro is None or valor is None:
             return await ctx.send("⚠️ Use: `!remover @membro <valor>`")
 
         try:
             u = db.get_user_data(str(membro.id))
             if not u: return await ctx.send("❌ Usuário não encontrado!")
-            novo_saldo = max(round(db.parse_float(u['data'][2]) - valor, 2), 0.0)
+            saldo_atual = float(str(u['data'][2]).replace(',', '.'))
+            novo_saldo = max(round(saldo_atual - valor, 2), 0.0)
             db.update_value(u['row'], 3, novo_saldo)
             await ctx.send(f"📉 **-{valor:.2f} C** removidos de {membro.mention}. (Saldo: `{novo_saldo:.2f} C`)")
         except Exception as e:
             print(f"❌ Erro no !remover: {e}")
-            await ctx.send("⚠️ Ocorreu um erro. Tente novamente!")
 
     @commands.command()
     async def wipe(self, ctx):
-        if ctx.author.id != OWNER_ID: return await ctx.send("❌ Sem permissão!")
+        if ctx.author.id != OWNER_ID: return 
         await ctx.send("🧹 Resetando toda a economia da selva...")
         try:
             db.wipe_database()
@@ -109,8 +138,8 @@ class Admin(commands.Cog):
             await ctx.send(f"⚠️ Erro ao realizar wipe: {e}")
 
     @commands.command()
-    @commands.has_permissions(administrator=True)
     async def postar_regras(self, ctx):
+        if ctx.author.id != OWNER_ID: return 
         embed = disnake.Embed(title="🍌 Regras da Selva AKTrovão", color=disnake.Color.gold())
         embed.add_field(name="⚒️ Trabalho", value="`!trabalhar` a cada 1h no #🐒・conguitos.", inline=False)
         embed.add_field(name="🏦 Banco & Pix", value="Multiplique conguitos no banco ou faça Pix.", inline=False)
@@ -121,8 +150,8 @@ class Admin(commands.Cog):
         await msg.pin()
 
     @commands.command()
-    @commands.has_permissions(administrator=True)
     async def patchnotes(self, ctx):
+        if ctx.author.id != OWNER_ID: return 
         embed = disnake.Embed(
             title="📢 ATUALIZAÇÃO DA SELVA (V4.4): A Era de Ouro! 🦍👑",
             description="A selva evoluiu! A economia mudou, os impostos caíram e o crime tem consequências sérias.",

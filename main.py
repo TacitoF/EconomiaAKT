@@ -42,6 +42,8 @@ async def global_maintenance_check(ctx):
 
 @bot.command()
 async def ligar(ctx):
+    try: await ctx.message.delete()
+    except: pass
     if ctx.author.id != 757752617722970243:
         return await ctx.send("❌ Apenas o dono pode destravar o bot!")
     if not bot.is_locked:
@@ -49,14 +51,18 @@ async def ligar(ctx):
     bot.is_locked = False
     await ctx.send("✅ **BOT DESTRAVADO!** A selva está aberta!")
 
+
 @bot.command()
 async def desligar(ctx):
+    try: await ctx.message.delete()
+    except: pass
     if ctx.author.id != 757752617722970243:
         return await ctx.send("❌ Apenas o dono pode travar o bot!")
     if bot.is_locked:
         return await ctx.send("⚠️ O bot já está desligado!")
     bot.is_locked = True
     await ctx.send("🛑 **BOT TRAVADO!** Modo de manutenção ativado.")
+    
 
 @bot.event
 async def on_ready():
