@@ -36,7 +36,7 @@ async def global_maintenance_check(ctx):
     if ctx.command and ctx.command.name in ['ligar', 'desligar']:
         return True
     if bot.is_locked:
-        await ctx.send(f"🛠️ {ctx.author.mention}, o bot está em **manutenção**! Aguarde a gerência liberar o acesso.")
+        await ctx.send(f"🛠️ {ctx.author.mention}, o sistema encontra-se em manutenção programada. Por favor, aguarde a normalização dos serviços para utilizar este comando.")
         raise commands.CheckFailure("Bot em manutenção.")
     return True
 
