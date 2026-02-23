@@ -43,12 +43,38 @@ class Economy(commands.Cog):
                 return await ctx.send(f"🍌 **SPLASH!** {ctx.author.mention} escorregou numa casca de banana e não ganhou nada!")
 
             cargo = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
+
+            # ════════════════════════════════════════════════════════════════
+            # BALANCEAMENTO — dificuldade aumentada.
+            # Meta: Rei Símio em 4–6 semanas para jogador muito dedicado.
+            #
+            # REGRA: custo do próximo cargo = 20–25× salário médio do atual.
+            # Trabalho puro cobre apenas ~30% da progressão.
+            # Jogos, roubos e investimentos são OBRIGATÓRIOS para progredir.
+            #
+            # PROJEÇÃO (só trabalho, 8h ativas/dia):
+            #   Lêmure    → Macaquinho :  ~2 dias
+            #   Macaquinho → Babuíno   :  ~4 dias
+            #   Babuíno   → Chimpanzé  :  ~6 dias
+            #   Chimpanzé → Orangutango:  ~8 dias
+            #   Orangutango → Gorila   :  ~10 dias
+            #   Gorila    → Ancestral  :  ~13 dias
+            #   Ancestral → Rei Símio  :  ~18 dias
+            #   TOTAL SÓ TRABALHO: ~61 dias
+            #   COM JOGOS/ROUBOS (~50% extra): ~40–45 dias
+            #   JOGADOR MUITO DEDICADO (apostas altas + sorte): ~28–35 dias ✅
+            # ════════════════════════════════════════════════════════════════
             salarios = {
-                "Lêmure": (60, 120), "Macaquinho": (150, 300), "Babuíno": (400, 800),
-                "Chimpanzé": (1000, 2000), "Orangutango": (3000, 5500),
-                "Gorila": (8000, 15000), "Ancestral": (20000, 40000), "Rei Símio": (60000, 120000)
+                "Lêmure":      (40,   80),      # média 60 C/h
+                "Macaquinho":  (130,  230),     # média 180 C/h   (3×)
+                "Babuíno":     (320,  530),     # média 425 C/h   (2.4×)
+                "Chimpanzé":   (780,  1320),    # média 1.050 C/h (2.5×)
+                "Orangutango": (1900, 3200),    # média 2.550 C/h (2.4×)
+                "Gorila":      (4700, 7800),    # média 6.250 C/h (2.4×)
+                "Ancestral":   (11500, 19000),  # média 15.250 C/h (2.4×)
+                "Rei Símio":   (27000, 45000),  # média 36.000 C/h — endgame
             }
-            min_ganho, max_ganho = salarios.get(cargo, (60, 120))
+            min_ganho, max_ganho = salarios.get(cargo, (40, 80))
             ganho = round(random.uniform(min_ganho, max_ganho), 2)
 
             imposto_msg = ""
@@ -101,17 +127,20 @@ class Economy(commands.Cog):
 
         try:
             ladrao_data = db.get_user_data(ladrao_id)
-            alvo_data = db.get_user_data(str(vitima.id))
+            alvo_data   = db.get_user_data(str(vitima.id))
             if not ladrao_data or not alvo_data:
                 return await ctx.send("❌ Uma das contas não foi encontrada!")
 
             saldo_ladrao = db.parse_float(ladrao_data['data'][2])
-            saldo_alvo = db.parse_float(alvo_data['data'][2])
+            saldo_alvo   = db.parse_float(alvo_data['data'][2])
 
-            if saldo_ladrao < 50:
-                return await ctx.send("❌ Você precisa ter pelo menos **50 C** para tentar um assalto!")
+            if saldo_ladrao < 150:
+                return await ctx.send("❌ Você precisa ter pelo menos **150 C** para tentar um assalto!")
 
-            agora = time.time()
+            if saldo_alvo < 80:
+                return await ctx.send(f"😬 {vitima.mention} está tão pobre que não vale a pena o risco.")
+
+            agora    = time.time()
             vitima_id = str(vitima.id)
 
             ultimo_roubo = db.parse_float(ladrao_data['data'][6] if len(ladrao_data['data']) > 6 else None)
@@ -124,11 +153,11 @@ class Economy(commands.Cog):
                 return await ctx.send(f"🍌 **QUE FASE!** {ctx.author.mention} escorregou numa casca de banana e fugiu de mãos vazias.")
 
             inv_ladrao = [i.strip() for i in str(ladrao_data['data'][5] if len(ladrao_data['data']) > 5 else "").split(',') if i.strip()]
-            inv_alvo = [i.strip() for i in str(alvo_data['data'][5] if len(alvo_data['data']) > 5 else "").split(',') if i.strip()]
+            inv_alvo   = [i.strip() for i in str(alvo_data['data'][5]   if len(alvo_data['data'])   > 5 else "").split(',') if i.strip()]
 
-            chance_sucesso = 40
+            chance_sucesso = 38
             if "Pé de Cabra" in inv_ladrao:
-                chance_sucesso = 70
+                chance_sucesso = 62
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
@@ -139,8 +168,11 @@ class Economy(commands.Cog):
                 return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!")
 
             if random.randint(1, 100) <= chance_sucesso:
-                valor_roubado = round(saldo_alvo * random.uniform(0.05, 0.12), 2)
-                if valor_roubado <= 1:
+                # Roubo: 4–9% do saldo do alvo, teto de 12.000 C
+                pct = random.uniform(0.04, 0.09)
+                valor_roubado = min(round(saldo_alvo * pct, 2), 12000.0)
+
+                if valor_roubado < 5:
                     db.update_value(ladrao_data['row'], 7, agora)
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco.")
 
@@ -159,9 +191,9 @@ class Economy(commands.Cog):
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao + valor_roubado + bounty_ganho, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
 
-                # Bounty automático da polícia: 15% do valor roubado, máximo 5000 C
-                bounty_adicionado = min(round(valor_roubado * 0.15, 2), 5000.0)
-                self.bot.recompensas[ladrao_id] = self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado
+                # Bounty automático: 12% do roubado, máximo 2.000 C
+                bounty_adicionado = min(round(valor_roubado * 0.12, 2), 2000.0)
+                self.bot.recompensas[ladrao_id] = round(self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado, 2)
 
                 tracker = self.bot.tracker_emblemas['roubos_sucesso']
                 if ladrao_id not in tracker: tracker[ladrao_id] = []
@@ -169,15 +201,17 @@ class Economy(commands.Cog):
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = 0
 
                 mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} C** de {vitima.mention}!"
-                if chance_sucesso == 70: mensagem += " (Usou Pé de Cabra 🕵️)"
+                if chance_sucesso == 62: mensagem += " *(Usou Pé de Cabra 🕵️)*"
                 if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} C**!"
                 mensagem += seguro_msg
                 mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} C** colocada na sua cabeça!*"
                 await ctx.send(mensagem)
             else:
-                multa = max(round(saldo_ladrao * random.uniform(0.08, 0.15), 2), 10.0)
+                # Multa: 10–18% do saldo do ladrão, mínimo 30 C, máximo 5.000 C
+                pct_multa = random.uniform(0.10, 0.18)
+                multa = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
-                db.update_value(alvo_data['row'], 3, round(saldo_alvo + multa, 2))
+                db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
                 await ctx.send(f"👮 **PRESO!** O roubo falhou e você pagou **{multa:.2f} C** de multa para {vitima.mention}.")

@@ -15,58 +15,101 @@ class General(commands.Cog):
     @commands.command(name="ajuda", aliases=["comandos", "info"])
     async def ajuda_comando(self, ctx):
         embed = disnake.Embed(
-            title="📖 Guia do Gerente Conguito (V4.4)",
-            description=f"Olá {ctx.author.mention}, este é o seu manual de sobrevivência na selva!\n\n🪙 **DICA:** A economia suporta **centavos**! Use valores como `150.50` em todos os comandos.",
+            title="📖 Guia do Gerente Conguito",
+            description=(
+                f"Olá {ctx.author.mention}, este é o seu manual de sobrevivência na selva!\n\n"
+                "🪙 **DICA:** A economia suporta **centavos**! Use valores como `150.50` em todos os comandos."
+            ),
             color=disnake.Color.green()
         )
         embed.add_field(name="💵 ECONOMIA E PERFIL", inline=False, value=(
-            "💰 `!trabalhar`\n👤 `!perfil [@user]`\n🏅 `!conquistas`\n"
-            "🏆 `!rank`\n🛒 `!loja`\n💳 `!comprar <item>`\n💸 `!pagar @user <valor>`\n💵 `!salarios`"
+            "💰 `!trabalhar` — Ganhe conguitos a cada 1h\n"
+            "👤 `!perfil [@user]` — Veja seu status\n"
+            "🏅 `!conquistas` — Lista de conquistas\n"
+            "🏆 `!rank` — Top 10 da selva\n"
+            "🛒 `!loja` — Loja de itens e cargos\n"
+            "💳 `!comprar <item>` — Compre um item\n"
+            "💸 `!pagar @user <valor>` — Faça um Pix\n"
+            "💵 `!salarios` — Veja os salários e progressão"
         ))
         embed.add_field(name="😈 ROUBOS, CAÇADAS E SABOTAGEM", inline=False, value=(
-            "🥷 `!roubar @user`\n🚨 `!recompensa @user <valor>`\n📜 `!recompensas`\n"
-            "🍌 `!casca @user`\n🦍 `!taxar @user`\n🪄 `!apelidar @user <nick>`\n"
-            "🐒 `!amaldicoar @user`\n🎭 `!impostor @user <msg>`"
+            "🥷 `!roubar @user` — Tente roubar alguém (cooldown 2h)\n"
+            "🚨 `!recompensa @user <valor>` — Coloque cabeça a prêmio\n"
+            "📜 `!recompensas` — Lista de procurados\n"
+            "🍌 `!casca @user` — Usa Casca de Banana\n"
+            "🦍 `!taxar @user` — Usa Imposto do Gorila\n"
+            "🪄 `!apelidar @user <nick>` — Usa Troca de Nick\n"
+            "🐒 `!amaldicoar @user` — Maldição Símia (500 C)\n"
+            "🎭 `!impostor @user <msg>` — Impostor (500 C)"
         ))
         embed.add_field(name="🏦 BANCO E INVESTIMENTOS", inline=False, value=(
-            "🏛️ `!investir fixo <valor>`\n📈 `!investir cripto <valor>`"
+            "🏛️ `!investir fixo <valor>` — +10% na hora (limite 5.000 C/dia)\n"
+            "📈 `!investir cripto <valor>` — -25% a +25% em 1 minuto"
         ))
         embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
             "🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
             "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!loteria` | 💰 `!pote` | 🃏 `!carta`\n"
-            "💣 `!minas` | ♠️ `!21`"
+            "💣 `!minas` | ♠️ `!21`\n"
+            "*Use `!jogos` no canal de apostas para ver detalhes*"
         ))
         embed.add_field(name="🤐 CASTIGOS DE VOZ", inline=False, value=(
-            "🔇 `!castigo mudo <t> @user`\n🎧 `!castigo surdo <t> @user`\n"
-            "🤐 `!castigo surdomudo <t> @user`\n👟 `!desconectar @user`"
+            "🔇 `!castigo mudo <1/5/10> @user`\n"
+            "🎧 `!castigo surdo <1/5/10> @user`\n"
+            "🤐 `!castigo surdomudo <1/5/10> @user`\n"
+            "👟 `!desconectar @user`"
         ))
-        embed.set_footer(text="A evolução não para! Jogue com sabedoria. 🦍👑")
+        embed.set_footer(text="Use !salarios para ver a progressão completa. 🦍👑")
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["ganhos"])
     async def salarios(self, ctx):
         embed = disnake.Embed(
-            title="🍌 TABELA SALARIAL DA SELVA",
-            description="Confira quanto cada macaco recebe por turno de trabalho (`!trabalhar`):",
-            color=disnake.Color.green()
+            title="🍌 GUIA DE PROGRESSÃO DA SELVA",
+            description=(
+                "Salário por hora (`!trabalhar`) e custo de cada cargo.\n"
+                "⚠️ **Trabalho puro não é suficiente — use jogos, roubos e investimentos para avançar!**"
+            ),
+            color=disnake.Color.gold()
         )
 
-        tabela = {
-            "🐒 Lêmure": "60.00 C — 120.00 C",
-            "🐵 Macaquinho": "150.00 C — 300.00 C",
-            "🦍 Babuíno": "400.00 C — 800.00 C",
-            "🦧 Chimpanzé": "1.000.00 C — 2.000.00 C",
-            "🌴 Orangutango": "3.000.00 C — 5.500.00 C",
-            "🌋 Gorila": "8.000.00 C — 15.000.00 C",
-            "🗿 Ancestral": "20.000.00 C — 40.000.00 C",
-            "👑 Rei Símio": "60.000.00 C — 120.000.00 C"
-        }
+        tabela = [
+            ("🐒 Lêmure",      "40 – 80 C",            "1.200 C",    "—"),
+            ("🐵 Macaquinho",  "130 – 230 C",          "5.500 C",    "1.200 C"),
+            ("🦍 Babuíno",     "320 – 530 C",          "14.000 C",   "5.500 C"),
+            ("🦧 Chimpanzé",   "780 – 1.320 C",        "35.000 C",   "14.000 C"),
+            ("🌴 Orangutango", "1.900 – 3.200 C",      "85.000 C",   "35.000 C"),
+            ("🌋 Gorila",      "4.700 – 7.800 C",      "210.000 C",  "85.000 C"),
+            ("🗿 Ancestral",   "11.500 – 19.000 C",    "600.000 C",  "210.000 C"),
+            ("👑 Rei Símio",   "27.000 – 45.000 C",    "MÁXIMO 👑",  "600.000 C"),
+        ]
 
-        for cargo, valor in tabela.items():
-            embed.add_field(name=cargo, value=f"💰 `{valor}`", inline=True)
+        for cargo, salario, prox_custo, custo_atual in tabela:
+            embed.add_field(
+                name=cargo,
+                value=(
+                    f"💰 **{salario}** /h\n"
+                    f"🏪 Custo: `{custo_atual}`\n"
+                    f"➡️ Próximo: `{prox_custo}`"
+                ),
+                inline=True
+            )
 
-        embed.set_footer(text="Evolua seu cargo na !loja para ganhar mais!")
+        embed.add_field(
+            name="⏱️ Estimativa (só trabalho, 8h/dia)",
+            value=(
+                "Lêmure → Macaquinho: **~2 dias**\n"
+                "Macaquinho → Babuíno: **~4 dias**\n"
+                "Babuíno → Chimpanzé: **~5 dias**\n"
+                "Chimpanzé → Orangutango: **~7 dias**\n"
+                "Orangutango → Gorila: **~9 dias**\n"
+                "Gorila → Ancestral: **~11 dias**\n"
+                "Ancestral → Rei Símio: **~17 dias**\n"
+                "⚡ *Com jogos e roubos: ~2–3× mais rápido!*"
+            ),
+            inline=False
+        )
 
+        embed.set_footer(text="Limites de aposta aumentam a cada cargo — arrisque mais para ganhar mais!")
         await ctx.send(embed=embed)
 
 def setup(bot):

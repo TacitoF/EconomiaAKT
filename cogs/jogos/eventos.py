@@ -5,8 +5,14 @@ import random
 import asyncio
 
 LIMITES_CARGO = {
-    "Lêmure": 250, "Macaquinho": 800, "Babuíno": 2000, "Chimpanzé": 6000,
-    "Orangutango": 15000, "Gorila": 45000, "Ancestral": 150000, "Rei Símio": 1500000
+    "Lêmure":      400,
+    "Macaquinho":  1500,
+    "Babuíno":     4500,
+    "Chimpanzé":   12000,
+    "Orangutango": 30000,
+    "Gorila":      80000,
+    "Ancestral":   250000,
+    "Rei Símio":   1500000,
 }
 
 OWNER_ID = 757752617722970243

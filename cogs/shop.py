@@ -2,6 +2,18 @@ import disnake
 from disnake.ext import commands
 import database as db
 
+# Limites de aposta alinhados com a nova economia
+LIMITES_CARGO = {
+    "Lêmure":      400,
+    "Macaquinho":  1500,
+    "Babuíno":     4500,
+    "Chimpanzé":   12000,
+    "Orangutango": 30000,
+    "Gorila":      80000,
+    "Ancestral":   250000,
+    "Rei Símio":   1500000,
+}
+
 class Shop(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -15,38 +27,43 @@ class Shop(commands.Cog):
 
     @commands.command(aliases=["shop", "mercado"])
     async def loja(self, ctx):
-        embed = disnake.Embed(title="🛒 Loja de Itens e Maldades", description="Compre usando `!comprar <nome do item>`", color=disnake.Color.blue())
+        embed = disnake.Embed(
+            title="🛒 Loja de Itens e Maldades",
+            description="Compre usando `!comprar <nome do item>`",
+            color=disnake.Color.blue()
+        )
         embed.add_field(
             name="📈 Cargos (Aumenta Salário e Limite de Aposta)",
             value=(
-                "🐒 **Macaquinho** (600 C) - *Aposta Max: 800 C*\n"
-                "🐒 **Babuíno** (3.000 C) - *Aposta Max: 2.000 C*\n"
-                "🦧 **Chimpanzé** (10.000 C) - *Aposta Max: 6.000 C*\n"
-                "🦧 **Orangutango** (25.000 C) - *Aposta Max: 15.000 C*\n"
-                "🦍 **Gorila** (65.000 C) - *Aposta Max: 45.000 C*\n"
-                "🗿 **Ancestral** (150.000 C) - *Aposta Max: 150.000 C*\n"
-                "👑 **Rei Símio** (500.000 C) - *Aposta Max: 1.500.000 C*"
+                "🐒 **Macaquinho** — `1.200 C` | Sal: 130–230 C/h | Aposta: 1.500 C\n"
+                "🐒 **Babuíno** — `5.500 C` | Sal: 320–530 C/h | Aposta: 4.500 C\n"
+                "🦧 **Chimpanzé** — `14.000 C` | Sal: 780–1.320 C/h | Aposta: 12.000 C\n"
+                "🦧 **Orangutango** — `35.000 C` | Sal: 1.900–3.200 C/h | Aposta: 30.000 C\n"
+                "🦍 **Gorila** — `85.000 C` | Sal: 4.700–7.800 C/h | Aposta: 80.000 C\n"
+                "🗿 **Ancestral** — `210.000 C` | Sal: 11.500–19.000 C/h | Aposta: 250.000 C\n"
+                "👑 **Rei Símio** — `600.000 C` | Sal: 27.000–45.000 C/h | Aposta: 1.500.000 C"
             ), inline=False
         )
         embed.add_field(
             name="🛡️ Equipamentos",
             value=(
-                "🛡️ **Escudo** (800 C): Evita que você seja roubado 1 vez.\n"
-                "🕵️ **Pé de Cabra** (1.200 C): Aumenta chance de roubo para 70%.\n"
-                "📄 **Seguro** (1.000 C): Banco te devolve 60% se for roubado."
+                "🛡️ **Escudo** — `700 C` | Bloqueia 1 roubo.\n"
+                "🕵️ **Pé de Cabra** — `1.100 C` | Aumenta chance de roubo para 62%.\n"
+                "📄 **Seguro** — `950 C` | Recupera 60% do valor se for roubado."
             ), inline=False
         )
         embed.add_field(
             name="😈 Sabotagens e Maldades",
             value=(
-                "🍌 **Casca de Banana** (300 C): Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
-                "🦍 **Imposto do Gorila** (1.500 C): Rouba 25% do trabalho do alvo por 24h. `!taxar @user`\n"
-                "🪄 **Troca de Nick** (2.500 C): Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
-                "⚡ **Comandos Diretos:**\n"
-                "🙊 **Maldição Símia** (500 C): Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
-                "🎭 **Impostor** (500 C): Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
+                "🍌 **Casca de Banana** — `300 C` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
+                "🦍 **Imposto do Gorila** — `2.000 C` | Rouba 25% do trabalho do alvo por 24h. `!taxar @user`\n"
+                "🪄 **Troca de Nick** — `3.000 C` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
+                "⚡ **Comandos Diretos (sem item):**\n"
+                "🙊 **Maldição Símia** — `500 C` | Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
+                "🎭 **Impostor** — `500 C` | Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
             ), inline=False
         )
+        embed.set_footer(text="Use !salarios para ver a progressão completa")
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -60,24 +77,30 @@ class Shop(commands.Cog):
             if not user:
                 return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
+            # ════════════════════════════════════════════════════════════════
+            # PREÇOS — custo ≈ 20–22× salário médio do cargo ATUAL
+            # Sem jogos: ~20h de trabalho puro por evolução.
+            # Com jogos/roubos: ~10–12h por evolução.
+            # Rei Símio só alcançável por jogadores muito dedicados.
+            # ════════════════════════════════════════════════════════════════
             loja = {
-                "macaquinho":        {"nome": "Macaquinho",       "preco": 600.0,    "tipo": "cargo"},
-                "babuíno":           {"nome": "Babuíno",          "preco": 3000.0,   "tipo": "cargo"},
-                "babuino":           {"nome": "Babuíno",          "preco": 3000.0,   "tipo": "cargo"},
-                "chimpanzé":         {"nome": "Chimpanzé",        "preco": 10000.0,  "tipo": "cargo"},
-                "chimpanze":         {"nome": "Chimpanzé",        "preco": 10000.0,  "tipo": "cargo"},
-                "orangutango":       {"nome": "Orangutango",      "preco": 25000.0,  "tipo": "cargo"},
-                "gorila":            {"nome": "Gorila",           "preco": 65000.0,  "tipo": "cargo"},
-                "ancestral":         {"nome": "Ancestral",        "preco": 150000.0, "tipo": "cargo"},
-                "rei símio":         {"nome": "Rei Símio",        "preco": 500000.0, "tipo": "cargo"},
-                "rei simio":         {"nome": "Rei Símio",        "preco": 500000.0, "tipo": "cargo"},
-                "escudo":            {"nome": "Escudo",           "preco": 800.0,    "tipo": "item"},
-                "pé de cabra":       {"nome": "Pé de Cabra",      "preco": 1200.0,   "tipo": "item"},
-                "pe de cabra":       {"nome": "Pé de Cabra",      "preco": 1200.0,   "tipo": "item"},
-                "seguro":            {"nome": "Seguro",           "preco": 1000.0,   "tipo": "item"},
-                "casca de banana":   {"nome": "Casca de Banana",  "preco": 300.0,    "tipo": "item"},
-                "imposto do gorila": {"nome": "Imposto do Gorila","preco": 1500.0,   "tipo": "item"},
-                "troca de nick":     {"nome": "Troca de Nick",    "preco": 2500.0,   "tipo": "item"},
+                "macaquinho":        {"nome": "Macaquinho",        "preco": 1200.0,   "tipo": "cargo"},
+                "babuíno":           {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
+                "babuino":           {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
+                "chimpanzé":         {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
+                "chimpanze":         {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
+                "orangutango":       {"nome": "Orangutango",       "preco": 35000.0,  "tipo": "cargo"},
+                "gorila":            {"nome": "Gorila",            "preco": 85000.0,  "tipo": "cargo"},
+                "ancestral":         {"nome": "Ancestral",         "preco": 210000.0, "tipo": "cargo"},
+                "rei símio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
+                "rei simio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
+                "escudo":            {"nome": "Escudo",            "preco": 700.0,    "tipo": "item"},
+                "pé de cabra":       {"nome": "Pé de Cabra",       "preco": 1100.0,   "tipo": "item"},
+                "pe de cabra":       {"nome": "Pé de Cabra",       "preco": 1100.0,   "tipo": "item"},
+                "seguro":            {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
+                "casca de banana":   {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
+                "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 2000.0,   "tipo": "item"},
+                "troca de nick":     {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
             }
 
             escolha = item.lower()
@@ -87,15 +110,19 @@ class Shop(commands.Cog):
             item_data = loja[escolha]
             saldo = db.parse_float(user['data'][2])
             if saldo < item_data["preco"]:
-                return await ctx.send(f"❌ Saldo insuficiente! Você precisa de **{item_data['preco']:.2f} C**.")
+                faltam = round(item_data["preco"] - saldo, 2)
+                return await ctx.send(
+                    f"❌ Saldo insuficiente! Você precisa de **{item_data['preco']:.2f} C** "
+                    f"(faltam **{faltam:.2f} C**)."
+                )
 
             db.update_value(user['row'], 3, round(saldo - item_data["preco"], 2))
 
             if item_data["tipo"] == "cargo":
                 db.update_value(user['row'], 4, item_data["nome"])
-                await ctx.send(f"✅ {ctx.author.mention} evoluiu para o cargo **{item_data['nome']}**!")
+                await ctx.send(f"✅ {ctx.author.mention} evoluiu para o cargo **{item_data['nome']}**! 🎉")
             else:
-                inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
+                inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
                 inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
                 inv_list.append(item_data["nome"])
                 db.update_value(user['row'], 6, ", ".join(inv_list))

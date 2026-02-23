@@ -11,86 +11,74 @@ class Admin(commands.Cog):
     @commands.command()
     async def ajudaadm(self, ctx):
         if ctx.author.id != OWNER_ID: 
-            return # Silêncio total para não-admins
+            return
 
         embed = disnake.Embed(
             title="🛠️ Painel de Controle Administrativo",
             description="Comandos exclusivos para a gerência da selva.",
             color=disnake.Color.dark_grey()
         )
-        
         embed.add_field(
             name="🏆 Conquistas", 
             value="`!darconquista @membro slug` - Grava conquista\n`!removerconquista @membro slug` - Remove conquista", 
             inline=False
         )
-        
         embed.add_field(
             name="💰 Economia", 
             value="`!setar @membro valor` - Define saldo exato\n`!adicionar @membro valor` - Soma ao saldo\n`!remover @membro valor` - Subtrai do saldo\n`!wipe` - Reseta toda a planilha", 
             inline=False
         )
-        
         embed.add_field(
             name="⚙️ Sistema & Avisos", 
-            value="`!ligar` / `!desligar` - Trava global de manutenção\n`!postar_regras` - Envia e fixa as regras\n`!patchnotes` - Envia log da versão 4.4", 
+            value="`!ligar` / `!desligar` - Trava global de manutenção\n`!postar_regras` - Envia e fixa as regras\n`!patchnotes` - Envia as notas da versão atual", 
             inline=False
         )
-
         embed.add_field(
-            name="💰 loteria", 
+            name="🎰 Loteria", 
             value="`!sortear_loteria` - Sorteia o pote atual da loteria e premia o vencedor", 
             inline=False
         )
-
         await ctx.send(embed=embed)
 
     @commands.command()
     async def darconquista(self, ctx, membro: disnake.Member = None, slug: str = None):
         if ctx.author.id != OWNER_ID: return 
         if membro is None or slug is None:
-            return await ctx.send("⚠️ Use: `!dar_conquista @membro slug_da_conquista`")
-
+            return await ctx.send("⚠️ Use: `!darconquista @membro slug_da_conquista`")
         try:
             u = db.get_user_data(str(membro.id))
             if not u: return await ctx.send("❌ Usuário não encontrado!")
-
             conquistas = str(u['data'][9]) if len(u['data']) > 9 else ""
             lista = [c.strip() for c in conquistas.split(',') if c.strip()]
             if slug in lista: return await ctx.send(f"⚠️ {membro.display_name} já possui esta conquista!")
-
             lista.append(slug)
             db.update_value(u['row'], 10, ", ".join(lista))
             await ctx.send(f"🏆 Conquista `{slug}` gravada para {membro.mention}!")
         except Exception as e:
-            print(f"❌ Erro no !dar_conquista: {e}")
+            print(f"❌ Erro no !darconquista: {e}")
 
     @commands.command()
     async def removerconquista(self, ctx, membro: disnake.Member = None, slug: str = None):
         if ctx.author.id != OWNER_ID: return 
         if membro is None or slug is None:
-            return await ctx.send("⚠️ Use: `!remover_conquista @membro slug_da_conquista`")
-
+            return await ctx.send("⚠️ Use: `!removerconquista @membro slug_da_conquista`")
         try:
             u = db.get_user_data(str(membro.id))
             if not u: return await ctx.send("❌ Usuário não encontrado!")
-
             conquistas = str(u['data'][9]) if len(u['data']) > 9 else ""
             lista = [c.strip() for c in conquistas.split(',') if c.strip()]
             if slug not in lista: return await ctx.send(f"❌ {membro.display_name} não possui essa conquista.")
-
             lista.remove(slug)
             db.update_value(u['row'], 10, ", ".join(lista))
             await ctx.send(f"🧹 Conquista `{slug}` removida de {membro.mention}!")
         except Exception as e:
-            print(f"❌ Erro no !remover_conquista: {e}")
+            print(f"❌ Erro no !removerconquista: {e}")
 
     @commands.command()
     async def setar(self, ctx, membro: disnake.Member = None, valor: float = None):
         if ctx.author.id != OWNER_ID: return 
         if membro is None or valor is None:
             return await ctx.send("⚠️ Use: `!setar @membro <valor>`")
-
         try:
             u = db.get_user_data(str(membro.id))
             if not u: return await ctx.send("❌ Usuário não encontrado!")
@@ -105,11 +93,9 @@ class Admin(commands.Cog):
         if ctx.author.id != OWNER_ID: return 
         if membro is None or valor is None:
             return await ctx.send("⚠️ Use: `!adicionar @membro <valor>`")
-
         try:
             u = db.get_user_data(str(membro.id))
             if not u: return await ctx.send("❌ Usuário não encontrado!")
-            # Convertendo saldo atual com replace para evitar erro de vírgula
             saldo_atual = float(str(u['data'][2]).replace(',', '.'))
             novo_saldo = round(saldo_atual + valor, 2)
             db.update_value(u['row'], 3, novo_saldo)
@@ -122,7 +108,6 @@ class Admin(commands.Cog):
         if ctx.author.id != OWNER_ID: return 
         if membro is None or valor is None:
             return await ctx.send("⚠️ Use: `!remover @membro <valor>`")
-
         try:
             u = db.get_user_data(str(membro.id))
             if not u: return await ctx.send("❌ Usuário não encontrado!")
@@ -157,33 +142,60 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        if ctx.author.id != OWNER_ID: return 
+        if ctx.author.id != OWNER_ID: return
+
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA (V4.4): A Era de Ouro! 🦍👑",
-            description="A selva evoluiu! A economia mudou, os impostos caíram e o crime tem consequências sérias.",
-            color=disnake.Color.dark_red()
+            title="🌿 ATUALIZAÇÃO DA SELVA — Rebalanceamento Econômico",
+            description="A economia foi reformulada. Chegar ao topo agora exige mais do que só trabalhar — **os jogos fazem parte da progressão**.",
+            color=disnake.Color.dark_green()
         )
-        embed.add_field(name="🪙 1. Economia de Centavos & Novos Cargos", inline=False, value=(
-            "• Agora aceitamos **centavos**! Use valores quebrados (ex: `150.50`) em todos os comandos.\n"
-            "• A `!loja` possui **8 cargos** de progressão (do *Lêmure* ao *Rei Símio*).\n"
-            "• O `!perfil` mostra cronômetro ao vivo para trabalho e roubo."
-        ))
-        embed.add_field(name="🚫 2. Fim dos Impostos nos Jogos", inline=False, value=(
-            "A taxa de 15% foi **REMOVIDA** dos minigames. O lucro vai **100% para o seu bolso**!"
-        ))
-        embed.add_field(name="🥷 3. Novo Submundo (Roubos Dinâmicos)", inline=False, value=(
-            "• `!roubar` rouba entre **5% a 12%** do alvo.\n"
-            "• 🚨 Roubos bem-sucedidos injetam **recompensa automática** na sua cabeça!"
-        ))
-        embed.add_field(name="🏆 4. Novas Conquistas", inline=False, value=(
-            "Novas medalhas para os mais perigosos e ricos! Tente platinar o `!perfil`."
-        ))
-        embed.set_footer(text="A corrida para se tornar o Rei Símio começou! Boa sorte! 👑")
-        if self.bot.user.display_avatar:
-            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-        await ctx.send(content="🚨 **A VERSÃO 4.4 ESTÁ NO AR!** 🚨\n", embed=embed)
-        try: await ctx.message.delete()
-        except: pass
+
+        embed.add_field(
+            name="💰 Salários reduzidos",
+            value="Os ganhos do `!trabalhar` foram diminuídos em todos os cargos, com cortes maiores nos ranks avançados.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🛒 Cargos mais caros",
+            value=(
+                "🐒 Macaquinho: **1.200 C** | 🐒 Babuíno: **5.500 C**\n"
+                "🦧 Chimpanzé: **14.000 C** | 🦧 Orangutango: **35.000 C**\n"
+                "🦍 Gorila: **85.000 C** | 🗿 Ancestral: **210.000 C**\n"
+                "👑 Rei Símio: **600.000 C**"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="🥷 Roubo mais arriscado",
+            value="Chance de sucesso menor, multa por falha maior. Vale a pena — mas com cuidado.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="💣 Campo Minado renovado",
+            value=(
+                "O `!minas` ganhou uma grade **4×4 interativa**! Clique nas casas para revelar e use o botão "
+                "**💰 Sacar** a qualquer momento para garantir seus ganhos.\n"
+                "Quanto mais bombas e mais casas revelar sem explodir, maior o multiplicador."
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="💡 Como progredir agora",
+            value="O trabalho cobre só parte da jornada. Use os jogos no `#🎰・akbet`, invista no banco e arrisque roubos para avançar mais rápido. Use `!salarios` para ver a tabela completa.",
+            inline=False
+        )
+
+        embed.set_footer(text="👑 Rei Símio agora é uma conquista de verdade. Boa sorte!")
+
+        await ctx.send(content="🚨 **ATUALIZAÇÃO DA SELVA** 🚨", embed=embed)
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
 def setup(bot):
     bot.add_cog(Admin(bot))

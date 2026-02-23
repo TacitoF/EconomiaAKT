@@ -22,11 +22,17 @@ def handle_db_error(e):
 
 def get_user_data(user_id):
     try:
-        cell = sheet.find(str(user_id))
-        row = sheet.row_values(cell.row)
-        return {"row": cell.row, "data": row}
-    except gspread.exceptions.CellNotFound:
-        return None
+        # Busca manual pela coluna A para evitar dependência de exceção específica do gspread
+        col_a = sheet.col_values(1)
+        try:
+            row_index = col_a.index(str(user_id)) + 1  # +1 pois listas são 0-indexed
+        except ValueError:
+            return None  # Usuário não encontrado
+
+        row = sheet.row_values(row_index)
+        return {"row": row_index, "data": row}
+    except commands.CommandError:
+        raise
     except Exception as e:
         handle_db_error(e)
 
