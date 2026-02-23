@@ -49,7 +49,7 @@ async def ligar(ctx):
     if not bot.is_locked:
         return await ctx.send("⚠️ O bot já está ligado!")
     bot.is_locked = False
-    await ctx.send("✅ **BOT DESTRAVADO!** A selva está aberta!")
+    await ctx.send("✅ SISTEMAS ATIVOS: Manutenção finalizada com sucesso. Todos os comandos e funcionalidades estão liberados!")
 
 
 @bot.command()
@@ -61,7 +61,7 @@ async def desligar(ctx):
     if bot.is_locked:
         return await ctx.send("⚠️ O bot já está desligado!")
     bot.is_locked = True
-    await ctx.send("🛑 **BOT TRAVADO!** Modo de manutenção ativado.")
+    await ctx.send("🛠️ MANUTENÇÃO: Bot temporariamente offline para melhorias e testes. Retornaremos em breve.")
     
 
 @bot.event
