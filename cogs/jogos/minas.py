@@ -17,17 +17,17 @@ LIMITES_CARGO = {
 def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 400)
 
-# ── Multiplicadores ───────────────────────────────────────────────────────
+# ── Multiplicadores ───────────────────────────────────
 # Fórmula: mult = round((1 + fator) ^ casas_reveladas, 2)
 #
 # Tetos máximos (revelar TODAS as casas seguras):
-#   1 bomba  (15 casas) → 1.75x
-#   2 bombas (14 casas) → 2.26x
-#   3 bombas (13 casas) → 3.07x
-#   4 bombas (12 casas) → 4.11x
-#   5 bombas (11 casas) → 5.37x  (~0.06% de chance)
+#   1 bomba  (15 casas) → 1.94x (Antes: 1.75x)
+#   2 bombas (14 casas) → 2.75x (Antes: 2.26x)
+#   3 bombas (13 casas) → 3.88x (Antes: 3.07x)
+#   4 bombas (12 casas) → 5.63x (Antes: 4.11x)
+#   5 bombas (11 casas) → 8.14x (Antes: 5.37x)
 # ─────────────────────────────────────────────────────────────────────────
-FATORES = {1: 0.038, 2: 0.060, 3: 0.090, 4: 0.125, 5: 0.165}
+FATORES = {1: 0.045, 2: 0.075, 3: 0.110, 4: 0.155, 5: 0.210}
 
 def calcular_mult(bombas: int, casas_reveladas: int) -> float:
     if casas_reveladas == 0:
@@ -249,7 +249,7 @@ class MinasGame(commands.Cog):
             await ctx.send(f"🐒 Ei {ctx.author.mention}, vá para o canal {mencao}.")
             raise commands.CommandError("Canal incorreto.")
 
-    @commands.command(name="minas")
+    @commands.command(aliases=["minas", "mines", "mina", "mine"])
     async def campo_minado(self, ctx, bombas: int = None, aposta: float = None):
         if bombas is None or aposta is None:
             return await ctx.send(

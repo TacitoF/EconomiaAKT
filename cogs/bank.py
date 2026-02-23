@@ -56,7 +56,7 @@ class Bank(commands.Cog):
                 await asyncio.sleep(60)
 
                 user_atual = db.get_user_data(str(ctx.author.id))
-                variacao = random.uniform(-0.25, 0.25)
+                variacao = random.uniform(-0.25, 0.10)
                 retorno = round(valor * (1 + variacao), 2)
                 lucro = round(retorno - valor, 2)
 

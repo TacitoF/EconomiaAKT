@@ -29,7 +29,7 @@ if google_creds:
 load_dotenv()
 
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_command=None)
-bot.is_locked = True
+bot.is_locked = False
 
 @bot.check
 async def global_maintenance_check(ctx):

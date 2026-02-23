@@ -134,9 +134,6 @@ class Economy(commands.Cog):
             saldo_ladrao = db.parse_float(ladrao_data['data'][2])
             saldo_alvo   = db.parse_float(alvo_data['data'][2])
 
-            if saldo_ladrao < 150:
-                return await ctx.send("❌ Você precisa ter pelo menos **150 C** para tentar um assalto!")
-
             if saldo_alvo < 80:
                 return await ctx.send(f"😬 {vitima.mention} está tão pobre que não vale a pena o risco.")
 
@@ -168,8 +165,14 @@ class Economy(commands.Cog):
                 return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!")
 
             if random.randint(1, 100) <= chance_sucesso:
-                # Roubo: 3–10% do saldo do alvo, teto de 12.000 C
-                pct = random.uniform(0.03, 0.10)
+                # ── NOVA LÓGICA DE BALANCEAMENTO DE POBREZA ──
+                if saldo_alvo < 500:
+                    pct = random.uniform(0.01, 0.05) # Roubo com pena: 1% a 5%
+                    is_pobre = True
+                else:
+                    pct = random.uniform(0.05, 0.10) # Roubo normal: 5% a 10%
+                    is_pobre = False
+                    
                 valor_roubado = min(round(saldo_alvo * pct, 2), 12000.0)
 
                 if valor_roubado < 5:
@@ -200,7 +203,12 @@ class Economy(commands.Cog):
                 tracker[ladrao_id].append(agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = 0
 
-                mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} C** de {vitima.mention}!"
+                # ── MENSAGEM DINÂMICA ──
+                if is_pobre:
+                    mensagem = f"🥷 **SUCESSO (Mas com pena)...** {vitima.mention} está quase na miséria, então você levou só as moedinhas: **{valor_roubado:.2f} C**."
+                else:
+                    mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} C** de {vitima.mention}!"
+                    
                 if chance_sucesso == 62: mensagem += " *(Usou Pé de Cabra 🕵️)*"
                 if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} C**!"
                 mensagem += seguro_msg
