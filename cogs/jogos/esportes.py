@@ -73,7 +73,7 @@ class Esportes(commands.Cog):
                     description="Para apostar use: `!palpite <ID> <casa/empate/fora> <valor>`\n*Todos os jogos têm Odd fixa de 1.95x no sistema grátis.*",
                     color=disnake.Color.blue()
                 )
-
+                
                 # Mostra os próximos 10 jogos
                 for match in data['matches'][:10]:
                     match_id = match['id']
