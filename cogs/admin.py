@@ -145,43 +145,50 @@ class Admin(commands.Cog):
         try: await ctx.message.delete()
         except: pass
 
-
         if ctx.author.id != 757752617722970243:
             return 
 
         canal_id = 1475606959247065118
         canal_patchnotes = self.bot.get_channel(canal_id)
-       
+        
         if not canal_patchnotes:
             return await ctx.author.send("❌ Erro: Não consegui encontrar o canal de patchnotes. Verifique o ID.")
 
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA (V4.4): A Era de Ouro! 🦍👑",
-            description="A selva evoluiu! A economia mudou, os impostos caíram e o crime tem consequências sérias.",
+            title="📢 ATUALIZAÇÃO DA SELVA (V5.0): A Casa de Apostas! ⚽🦍",
+            description="A selva evoluiu! Chegaram as apostas em jogos da vida real, e o submundo está mais dinâmico.",
             color=disnake.Color.dark_red()
         )
-        embed.add_field(name="🪙 1. Economia de Centavos & Novos Cargos", inline=False, value=(
+        
+        embed.add_field(name="⚽ 1. Casa de Apostas Esportivas Reais (NOVO!)", inline=False, value=(
+            "• Use `!futebol` para listar os jogos reais da semana (Brasileirão, Champions, Premier League, etc).\n"
+            "• Faça apostas reais usando `!palpite <ID do Jogo> <casa/empate/fora> <valor>`.\n"
+            "• **Pagamento Automático:** Assim que a partida da vida real terminar, o bot paga o prêmio direto na sua conta!"
+        ))
+        
+        embed.add_field(name="🪙 2. Economia e Novos Cargos", inline=False, value=(
             "• Agora aceitamos **centavos**! Use valores quebrados (ex: `150.50`) em todos os comandos.\n"
             "• A `!loja` possui **8 cargos** de progressão (do *Lêmure* ao *Rei Símio*).\n"
-            "• O `!perfil` mostra cronômetro ao vivo para trabalho e roubo."
+            "• O `!perfil` agora mostra o cronômetro ao vivo para trabalho e roubo."
         ))
-        embed.add_field(name="🚫 2. Fim dos Impostos nos Jogos", inline=False, value=(
-            "A taxa de 15% foi **REMOVIDA** dos minigames. O lucro vai **100% para o seu bolso**!"
+        
+        embed.add_field(name="📈 3. Buff no Minas & Fim dos Impostos", inline=False, value=(
+            "• A taxa de 15% foi **REMOVIDA** dos minigames. O lucro vai 100% para você!\n"
+            "• Os multiplicadores do `!minas` foram **AUMENTADOS**! Limpar um campo de 5 bombas agora paga uma fortuna de **8.14x**."
         ))
-        embed.add_field(name="🥷 3. Novo Submundo (Roubos Dinâmicos)", inline=False, value=(
-            "• `!roubar` rouba entre **5% a 12%** do alvo.\n"
-            "• 🚨 Roubos bem-sucedidos injetam **recompensa automática** na sua cabeça!"
+        
+        embed.add_field(name="🥷 4. Novo Submundo & Piedade aos Novatos", inline=False, value=(
+            "• `!roubar` agora rouba uma % do alvo. Mas atenção: tentar assaltar jogadores pobres (menos de 500 C) renderá apenas centavos!\n"
+            "• 🚨 Roubos bem-sucedidos injetam **recompensa automática** na sua própria cabeça!"
         ))
-        embed.add_field(name="🏆 4. Novas Conquistas", inline=False, value=(
-            "Novas medalhas para os mais perigosos e ricos! Tente platinar o `!perfil`."
-        ))
-        embed.set_footer(text="A corrida para se tornar o Rei Símio começou! Boa sorte! 👑")
+        
+        embed.set_footer(text="A corrida para se tornar o Rei Símio começou! Boa sorte e boas apostas! 👑")
         
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        # 5. Envia a mensagem no canal selecionado (e não no ctx.send)
-        await canal_patchnotes.send(content="🚨 **A VERSÃO 5.0 ESTÁ NO AR!** 🚨\n", embed=embed)
+        # Envia a mensagem no canal selecionado
+        await canal_patchnotes.send(content="🚨 **A VERSÃO 5.0 ESTÁ NO AR!** @everyone 🚨\n", embed=embed)
 
 def setup(bot):
     bot.add_cog(Admin(bot))
