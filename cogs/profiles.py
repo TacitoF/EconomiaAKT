@@ -54,7 +54,10 @@ class Profiles(commands.Cog):
             "🧲 **Imã de Desgraça:** *Entre muitos alvos, o destino te marcou primeiro.*\n"
             "🥥 **Veterano:** *O último a respirar quando a semente do caos explode.*\n"
             "📉 **Queda Livre:** *O chão te abraçou antes mesmo do salto começar.*\n"
-            "🚀 **Astronauta:** *Acima das nuvens, onde o risco e o lucro não têm fim.*"
+            "🚀 **Astronauta:** *Acima das nuvens, onde o risco e o lucro não têm fim.*\n"
+            "🏳️ **Covarde:** *A primeira luz foi suficiente para apagar sua coragem.*\n"
+            "🎖️ **Desarmador:** *Você caminhou pelo inferno e saiu sem uma arranhão.*\n"
+            "😭 **Quase Lá:** *A vitória estava ao alcance, mas o destino tinha outros planos.*"
         ))
         embed.set_footer(text="Apenas os astutos dominarão a selva. 🐒")
         await ctx.send(embed=embed)
@@ -72,13 +75,13 @@ class Profiles(commands.Cog):
             cargo = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
             agora = time.time()
 
-            ultimo_work = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
+            ultimo_work  = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
             ultimo_roubo = db.parse_float(user['data'][6] if len(user['data']) > 6 else None)
 
-            status_work = "Disponível ✅" if agora - ultimo_work >= 3600 else f"<t:{int(ultimo_work + 3600)}:R>"
+            status_work  = "Disponível ✅" if agora - ultimo_work  >= 3600 else f"<t:{int(ultimo_work  + 3600)}:R>"
             status_roubo = "Disponível ✅" if agora - ultimo_roubo >= 7200 else f"<t:{int(ultimo_roubo + 7200)}:R>"
 
-            inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
+            inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != 'nenhum']
             if not inv_list:
                 inv_formatado = "Nenhum item"
@@ -95,7 +98,6 @@ class Profiles(commands.Cog):
             if 0 < saldo < 100: emblemas.append("📉 **Falência Técnica**")
             if saldo <= 0: emblemas.append("🦴 **Passa fome**")
 
-            # Ranking: get_all_values é mais leve que get_all_records e evita problemas de tipo
             try:
                 all_rows = db.sheet.get_all_values()
                 if len(all_rows) > 1:
@@ -109,17 +111,29 @@ class Profiles(commands.Cog):
             except:
                 pass
 
+            # Mapa de todas as conquistas incluindo as novas do minas
             mapa_conquistas = {
-                "palhaco": "🤡 **Palhaço**", "filho_da_sorte": "🍀 **Sortudo**",
-                "escorregou_banana": "🍌 **Desastrado**", "pix_irritante": "💸 **Pix Irritante**",
-                "casca_grossa": "🐢 **Casca Grossa**", "briga_de_bar": "🥊 **Briguento**",
-                "ima_desgraca": "🧲 **Imã de Desgraça**", "veterano_coco": "🥥 **Veterano**",
-                "queda_livre": "📉 **Queda Livre**", "astronauta_cipo": "🚀 **Astronauta**",
-                "esquadrao_suicida": "💣 **Esquadrão Suicida**"
+                "palhaco":           "🤡 **Palhaço**",
+                "filho_da_sorte":    "🍀 **Sortudo**",
+                "escorregou_banana": "🍌 **Desastrado**",
+                "pix_irritante":     "💸 **Pix Irritante**",
+                "casca_grossa":      "🐢 **Casca Grossa**",
+                "briga_de_bar":      "🥊 **Briguento**",
+                "ima_desgraca":      "🧲 **Imã de Desgraça**",
+                "veterano_coco":     "🥥 **Veterano**",
+                "queda_livre":       "📉 **Queda Livre**",
+                "astronauta_cipo":   "🚀 **Astronauta**",
+                "esquadrao_suicida": "💣 **Esquadrão Suicida**",
+                # Novas conquistas do minas
+                "covarde":           "🏳️ **Covarde**",
+                "desarmador":        "🎖️ **Desarmador**",
+                "quase_la":          "😭 **Quase Lá**",
             }
+
             conquistas_db = str(user['data'][9]) if len(user['data']) > 9 else ""
             for slug in [c.strip() for c in conquistas_db.split(',') if c.strip()]:
-                if slug in mapa_conquistas: emblemas.append(mapa_conquistas[slug])
+                if slug in mapa_conquistas:
+                    emblemas.append(mapa_conquistas[slug])
 
             rec = getattr(self.bot, 'recompensas', {}).get(user_id, 0.0)
             if rec >= 5000: emblemas.append("🚨 **Inimigo Público**")
@@ -130,13 +144,14 @@ class Profiles(commands.Cog):
 
             embed = disnake.Embed(title=f"🐒 Perfil de {membro.display_name}", color=disnake.Color.gold())
             embed.set_thumbnail(url=membro.display_avatar.url)
-            embed.add_field(name="💰 Saldo", value=f"`{saldo:.2f} C`", inline=True)
-            embed.add_field(name="💼 Cargo", value=f"`{cargo}`", inline=True)
-            embed.add_field(name="🔨 Trabalho", value=status_work, inline=True)
-            embed.add_field(name="🔫 Roubo", value=status_roubo, inline=True)
-            embed.add_field(name="🎒 Inventário", value=inv_formatado, inline=False)
-            embed.add_field(name="🏆 Conquistas", value=" | ".join(emblemas) if emblemas else "Nenhuma", inline=False)
-            if rec > 0: embed.add_field(name="🚨 PROCURADO", value=f"`{rec:.2f} C` pela sua cabeça!", inline=False)
+            embed.add_field(name="💰 Saldo",     value=f"`{saldo:.2f} C`", inline=True)
+            embed.add_field(name="💼 Cargo",     value=f"`{cargo}`",       inline=True)
+            embed.add_field(name="🔨 Trabalho",  value=status_work,        inline=True)
+            embed.add_field(name="🔫 Roubo",     value=status_roubo,       inline=True)
+            embed.add_field(name="🎒 Inventário",value=inv_formatado,       inline=False)
+            embed.add_field(name="🏆 Conquistas",value=" | ".join(emblemas) if emblemas else "Nenhuma", inline=False)
+            if rec > 0:
+                embed.add_field(name="🚨 PROCURADO", value=f"`{rec:.2f} C` pela sua cabeça!", inline=False)
             await ctx.send(embed=embed)
 
         except commands.CommandError:
@@ -148,25 +163,23 @@ class Profiles(commands.Cog):
     @commands.command(aliases=["top", "ricos", "placar"])
     async def rank(self, ctx):
         try:
-            # get_all_values retorna strings puras, evitando bugs de conversão automática de tipo
             all_rows = db.sheet.get_all_values()
             if len(all_rows) < 2:
                 return await ctx.send("❌ Sem dados suficientes.")
 
             cabecalho = all_rows[0]
-            dados = all_rows[1:]
+            dados     = all_rows[1:]
 
-            # Detecta colunas pelo cabeçalho (case-insensitive) para não depender de posição fixa
-            idx_nome = next((i for i, c in enumerate(cabecalho) if c.lower() == 'nome'), 1)
+            idx_nome  = next((i for i, c in enumerate(cabecalho) if c.lower() == 'nome'),  1)
             idx_saldo = next((i for i, c in enumerate(cabecalho) if c.lower() == 'saldo'), 2)
 
             dados_validos = [r for r in dados if len(r) > idx_saldo]
-            sorted_users = sorted(dados_validos, key=lambda r: db.parse_float(r[idx_saldo]), reverse=True)
+            sorted_users  = sorted(dados_validos, key=lambda r: db.parse_float(r[idx_saldo]), reverse=True)
 
             embed = disnake.Embed(title="🏆 Ranking de Conguitos", color=disnake.Color.gold())
             lista_rank = ""
             for i, row in enumerate(sorted_users[:10]):
-                nome = row[idx_nome] if len(row) > idx_nome else "Desconhecido"
+                nome  = row[idx_nome] if len(row) > idx_nome else "Desconhecido"
                 saldo = db.parse_float(row[idx_saldo])
                 if i == 0:   linha = f"🥇 **{nome}** — `{saldo:.2f} C`"
                 elif i == 1: linha = f"🥈 **{nome}** — `{saldo:.2f} C`"

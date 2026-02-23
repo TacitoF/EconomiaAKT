@@ -20,22 +20,12 @@ def get_limite(cargo):
 # ── Multiplicadores ───────────────────────────────────────────────────────
 # Fórmula: mult = round((1 + fator) ^ casas_reveladas, 2)
 #
-# Equivalente aos outros jogos do servidor:
-#   Corrida (3x, 33% chance) ≈ minas 3 bombas revelando ~7 casas
-#   Bicho   (5x, 20% chance) ≈ minas 4–5 bombas revelando tudo
-#   Crash   (raramente >4x)  ≈ minas 4 bombas revelando 10+ casas
-#
 # Tetos máximos (revelar TODAS as casas seguras):
-#   1 bomba  (15 casas) → 1.75x   baixo risco, retorno conservador
+#   1 bomba  (15 casas) → 1.75x
 #   2 bombas (14 casas) → 2.26x
-#   3 bombas (13 casas) → 3.07x   equivalente à corrida
-#   4 bombas (12 casas) → 4.11x   equivalente ao bicho
-#   5 bombas (11 casas) → 5.37x   extremamente difícil (~0.06%)
-#
-# Ganhos em jogadas típicas (3–5 casas reveladas antes de sacar):
-#   1 bomba,  4 casas → 1.16x   2 bombas, 4 casas → 1.26x
-#   3 bombas, 4 casas → 1.41x   4 bombas, 4 casas → 1.60x
-#   5 bombas, 4 casas → 1.84x
+#   3 bombas (13 casas) → 3.07x
+#   4 bombas (12 casas) → 4.11x
+#   5 bombas (11 casas) → 5.37x  (~0.06% de chance)
 # ─────────────────────────────────────────────────────────────────────────
 FATORES = {1: 0.038, 2: 0.060, 3: 0.090, 4: 0.125, 5: 0.165}
 
@@ -44,6 +34,13 @@ def calcular_mult(bombas: int, casas_reveladas: int) -> float:
         return 1.0
     fator = FATORES.get(bombas, 0.038)
     return round((1 + fator) ** casas_reveladas, 2)
+
+def salvar_conquista(user_data, slug: str):
+    conquistas = str(user_data['data'][9]) if len(user_data['data']) > 9 else ""
+    lista = [c.strip() for c in conquistas.split(',') if c.strip()]
+    if slug not in lista:
+        lista.append(slug)
+        db.update_value(user_data['row'], 10, ", ".join(lista))
 
 
 class MinasView(disnake.ui.View):
@@ -116,14 +113,16 @@ class MinasView(disnake.ui.View):
                 self.abertas = set(range(self.GRID))
                 self._build_buttons()
 
-                if self.bombas == 1:
-                    u = db.get_user_data(str(inter.author.id))
-                    if u:
-                        conquistas = str(u['data'][9]) if len(u['data']) > 9 else ""
-                        lista = [c.strip() for c in conquistas.split(',') if c.strip()]
-                        if "escorregou_banana" not in lista:
-                            lista.append("escorregou_banana")
-                            db.update_value(u['row'], 10, ", ".join(lista))
+                u = db.get_user_data(str(inter.author.id))
+                if u:
+                    # Conquista: perdeu com 1 bomba
+                    if self.bombas == 1:
+                        salvar_conquista(u, "escorregou_banana")
+
+                    # Conquista: explodiu na última casa (só faltava 1 casa segura)
+                    casas_seguras_total = self.GRID - self.bombas
+                    if self.reveladas == casas_seguras_total - 1:
+                        salvar_conquista(u, "quase_la")
 
                 await inter.response.edit_message(
                     embed=self._build_embed(explodiu=True), view=self
@@ -144,12 +143,12 @@ class MinasView(disnake.ui.View):
                     u = db.get_user_data(str(inter.author.id))
                     if u:
                         db.update_value(u['row'], 3, round(db.parse_float(u['data'][2]) + ganho, 2))
+                        # Conquista: revelou tudo com 5 bombas
                         if self.bombas == 5:
-                            conquistas = str(u['data'][9]) if len(u['data']) > 9 else ""
-                            lista = [c.strip() for c in conquistas.split(',') if c.strip()]
-                            if "esquadrao_suicida" not in lista:
-                                lista.append("esquadrao_suicida")
-                                db.update_value(u['row'], 10, ", ".join(lista))
+                            salvar_conquista(u, "esquadrao_suicida")
+                        # Conquista: revelou tudo com 3+ bombas
+                        if self.bombas >= 3:
+                            salvar_conquista(u, "desarmador")
 
                     self._build_buttons()
                     await inter.response.edit_message(
@@ -176,6 +175,9 @@ class MinasView(disnake.ui.View):
         u = db.get_user_data(str(inter.author.id))
         if u:
             db.update_value(u['row'], 3, round(db.parse_float(u['data'][2]) + ganho, 2))
+            # Conquista: sacou na primeira casa
+            if self.reveladas == 1:
+                salvar_conquista(u, "covarde")
 
         self._build_buttons()
         await inter.response.edit_message(
