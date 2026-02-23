@@ -142,60 +142,46 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        if ctx.author.id != OWNER_ID: return
+        try: await ctx.message.delete()
+        except: pass
+
+
+        if ctx.author.id != 757752617722970243:
+            return 
+
+        canal_id = 1475606959247065118
+        canal_patchnotes = self.bot.get_channel(canal_id)
+       
+        if not canal_patchnotes:
+            return await ctx.author.send("❌ Erro: Não consegui encontrar o canal de patchnotes. Verifique o ID.")
 
         embed = disnake.Embed(
-            title="🌿 ATUALIZAÇÃO DA SELVA — Rebalanceamento Econômico",
-            description="A economia foi reformulada. Chegar ao topo agora exige mais do que só trabalhar — **os jogos fazem parte da progressão**.",
-            color=disnake.Color.dark_green()
+            title="📢 ATUALIZAÇÃO DA SELVA (V4.4): A Era de Ouro! 🦍👑",
+            description="A selva evoluiu! A economia mudou, os impostos caíram e o crime tem consequências sérias.",
+            color=disnake.Color.dark_red()
         )
+        embed.add_field(name="🪙 1. Economia de Centavos & Novos Cargos", inline=False, value=(
+            "• Agora aceitamos **centavos**! Use valores quebrados (ex: `150.50`) em todos os comandos.\n"
+            "• A `!loja` possui **8 cargos** de progressão (do *Lêmure* ao *Rei Símio*).\n"
+            "• O `!perfil` mostra cronômetro ao vivo para trabalho e roubo."
+        ))
+        embed.add_field(name="🚫 2. Fim dos Impostos nos Jogos", inline=False, value=(
+            "A taxa de 15% foi **REMOVIDA** dos minigames. O lucro vai **100% para o seu bolso**!"
+        ))
+        embed.add_field(name="🥷 3. Novo Submundo (Roubos Dinâmicos)", inline=False, value=(
+            "• `!roubar` rouba entre **5% a 12%** do alvo.\n"
+            "• 🚨 Roubos bem-sucedidos injetam **recompensa automática** na sua cabeça!"
+        ))
+        embed.add_field(name="🏆 4. Novas Conquistas", inline=False, value=(
+            "Novas medalhas para os mais perigosos e ricos! Tente platinar o `!perfil`."
+        ))
+        embed.set_footer(text="A corrida para se tornar o Rei Símio começou! Boa sorte! 👑")
+        
+        if self.bot.user.display_avatar:
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        embed.add_field(
-            name="💰 Salários reduzidos",
-            value="Os ganhos do `!trabalhar` foram diminuídos em todos os cargos, com cortes maiores nos ranks avançados.",
-            inline=False
-        )
-
-        embed.add_field(
-            name="🛒 Cargos mais caros",
-            value=(
-                "🐒 Macaquinho: **1.200 C** | 🐒 Babuíno: **5.500 C**\n"
-                "🦧 Chimpanzé: **14.000 C** | 🦧 Orangutango: **35.000 C**\n"
-                "🦍 Gorila: **85.000 C** | 🗿 Ancestral: **210.000 C**\n"
-                "👑 Rei Símio: **600.000 C**"
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="🥷 Roubo mais arriscado",
-            value="Chance de sucesso menor, multa por falha maior. Vale a pena — mas com cuidado.",
-            inline=False
-        )
-
-        embed.add_field(
-            name="💣 Campo Minado renovado",
-            value=(
-                "O `!minas` ganhou uma grade **4×4 interativa**! Clique nas casas para revelar e use o botão "
-                "**💰 Sacar** a qualquer momento para garantir seus ganhos.\n"
-                "Quanto mais bombas e mais casas revelar sem explodir, maior o multiplicador."
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="💡 Como progredir agora",
-            value="O trabalho cobre só parte da jornada. Use os jogos no `#🎰・akbet`, invista no banco e arrisque roubos para avançar mais rápido. Use `!salarios` para ver a tabela completa.",
-            inline=False
-        )
-
-        embed.set_footer(text="👑 Rei Símio agora é uma conquista de verdade. Boa sorte!")
-
-        await ctx.send(content="🚨 **ATUALIZAÇÃO DA SELVA** 🚨", embed=embed)
-        try:
-            await ctx.message.delete()
-        except:
-            pass
+        # 5. Envia a mensagem no canal selecionado (e não no ctx.send)
+        await canal_patchnotes.send(content="🚨 **A VERSÃO 5.0 ESTÁ NO AR!** 🚨\n", embed=embed)
 
 def setup(bot):
     bot.add_cog(Admin(bot))
