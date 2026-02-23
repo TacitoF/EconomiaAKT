@@ -168,8 +168,8 @@ class Economy(commands.Cog):
                 return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!")
 
             if random.randint(1, 100) <= chance_sucesso:
-                # Roubo: 4–9% do saldo do alvo, teto de 12.000 C
-                pct = random.uniform(0.04, 0.09)
+                # Roubo: 3–10% do saldo do alvo, teto de 12.000 C
+                pct = random.uniform(0.03, 0.10)
                 valor_roubado = min(round(saldo_alvo * pct, 2), 12000.0)
 
                 if valor_roubado < 5:
@@ -207,8 +207,8 @@ class Economy(commands.Cog):
                 mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} C** colocada na sua cabeça!*"
                 await ctx.send(mensagem)
             else:
-                # Multa: 10–18% do saldo do ladrão, mínimo 30 C, máximo 5.000 C
-                pct_multa = random.uniform(0.10, 0.18)
+                # Multa: 10–15% do saldo do ladrão, mínimo 30 C, máximo 5.000 C
+                pct_multa = random.uniform(0.10, 0.15)
                 multa = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
                 db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))

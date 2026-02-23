@@ -49,7 +49,7 @@ class Roleta(commands.Cog):
                 "O Chimpanzézio abriu a mesa! Você tem **30 segundos** para apostar.\n\n"
                 "**Opções:**\n🔴 `vermelho` (2x)\n⚫ `preto` (2x)\n"
                 "⚖️ `par`/`impar` (2x)\n🎯 `0 a 36` (36x)\n"
-                "use `!apostar <opção> <valor>` para apostar!"
+                "use `!apostar <valor> <opção>` para apostar!"
             ),
             color=disnake.Color.gold()
         )

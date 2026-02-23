@@ -94,21 +94,6 @@ class General(commands.Cog):
                 inline=True
             )
 
-        embed.add_field(
-            name="⏱️ Estimativa (só trabalho, 8h/dia)",
-            value=(
-                "Lêmure → Macaquinho: **~2 dias**\n"
-                "Macaquinho → Babuíno: **~4 dias**\n"
-                "Babuíno → Chimpanzé: **~5 dias**\n"
-                "Chimpanzé → Orangutango: **~7 dias**\n"
-                "Orangutango → Gorila: **~9 dias**\n"
-                "Gorila → Ancestral: **~11 dias**\n"
-                "Ancestral → Rei Símio: **~17 dias**\n"
-                "⚡ *Com jogos e roubos: ~2–3× mais rápido!*"
-            ),
-            inline=False
-        )
-
         embed.set_footer(text="Limites de aposta aumentam a cada cargo — arrisque mais para ganhar mais!")
         await ctx.send(embed=embed)
 
