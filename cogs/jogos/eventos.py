@@ -83,7 +83,7 @@ class Eventos(commands.Cog):
     @commands.command()
     async def sortear_loteria(self, ctx):
         if ctx.author.id != OWNER_ID:
-            return await ctx.send("❌ Apenas o Rei da Selva pode sortear a loteria!")
+            return await ctx.send("❌ Apenas o Admin pode sortear a loteria!")
         if not self.loteria_participantes:
             return await ctx.send("❌ Nenhum bilhete foi vendido para esta rodada.")
 

@@ -97,7 +97,7 @@ class PvP(commands.Cog):
 
             db.update_value(vencedor_db['row'], 3, round(db.parse_float(vencedor_db['data'][2]) + aposta, 2))
             db.update_value(perdedor_db['row'], 3, round(db.parse_float(perdedor_db['data'][2]) - aposta, 2))
-            embed.description = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou **{aposta:.2f} C** de lucro!"
+            embed.description = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou **{(aposta * 2):.2f} C** de lucro!"
             await ctx.send(embed=embed)
 
         except commands.CommandError:
@@ -156,7 +156,7 @@ class PvP(commands.Cog):
 
             db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + aposta, 2))
             db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) - aposta, 2))
-            await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e lucrou **{aposta:.2f} C**!")
+            await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e lucrou **{(aposta * 2):.2f} C**!")
 
         except commands.CommandError:
             raise

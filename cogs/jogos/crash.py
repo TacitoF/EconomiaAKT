@@ -107,7 +107,7 @@ class CrashGame(commands.Cog):
                 lucro = round(ganho_total - aposta, 2)
                 db.update_value(user_atual['row'], 3, round(db.parse_float(user_atual['data'][2]) + ganho_total, 2))
                 embed.color = disnake.Color.blue()
-                embed.description = f"✅ **SACOU A TEMPO!**\nNo `{current_mult}x`.\n\n💰 {ctx.author.mention} lucrou **{lucro:.2f} C**!"
+                embed.description = f"✅ **SACOU A TEMPO!**\nNo `{current_mult}x`.\n\n💰 {ctx.author.mention} lucrou **{ganho_total:.2f} C**!"
                 await msg.edit(embed=embed)
                 if current_mult >= 5.0:
                     save_achievement(user_atual, "astronauta_cipo")

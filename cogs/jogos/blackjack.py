@@ -89,12 +89,20 @@ class BlackjackView(disnake.ui.View):
 
             res_txt = ""
             if self.terminado:
-                def resultado_mao(pm):
+                def resultado_mao(pm, aposta_mao):
                     if pm > 21: return "❌ Estourou"
-                    if d_p > 21 or pm > d_p: return "🏆 Venceu"
-                    if pm == d_p: return "🤝 Empatou (Devolvido)"
+                    if d_p > 21 or pm > d_p: 
+                        return f"🏆 Venceu (**{(aposta_mao * 2):.2f} C**)"
+                    if pm == d_p: 
+                        return f"🤝 Empatou (**{aposta_mao:.2f} C**)"
                     return "💀 Perdeu"
-                res_txt = f"\nMão 1: **{resultado_mao(p_p)}**\nMão 2: **{resultado_mao(p2_p)}**" if p["splitted"] else f"\nResultado: **{resultado_mao(p_p)}**"
+
+                if p["splitted"]:
+                    res_txt = (f"\nResultados:\n"
+                               f"Mão 1: **{resultado_mao(p_p, p['aposta'])}**\n"
+                               f"Mão 2: **{resultado_mao(p2_p, p['aposta'])}**")
+                else:
+                    res_txt = f"\nResultado: **{resultado_mao(p_p, p['aposta'])}**"
 
             embed.add_field(
                 name=f"{status_emoji} {p['member'].display_name}",

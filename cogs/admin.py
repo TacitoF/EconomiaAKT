@@ -37,6 +37,12 @@ class Admin(commands.Cog):
             inline=False
         )
 
+        embed.add_field(
+            name="💰 loteria", 
+            value="`!sortear_loteria` - Sorteia o pote atual da loteria e premia o vencedor", 
+            inline=False
+        )
+
         await ctx.send(embed=embed)
 
     @commands.command()

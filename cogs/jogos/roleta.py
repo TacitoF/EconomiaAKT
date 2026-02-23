@@ -95,10 +95,11 @@ class Roleta(commands.Cog):
 
                 if ganhou:
                     lucro = round((valor * multiplicador) - valor, 2)
-                    db.update_value(user_db['row'], 3, round(db.parse_float(user_db['data'][2]) + valor + lucro, 2))
+                    lucro_total = round(valor * multiplicador, 2)
+                    db.update_value(user_db['row'], 3, round(db.parse_float(user_db['data'][2]) + lucro_total, 2))
                     if multiplicador == 36:
                         save_achievement(user_db, "filho_da_sorte")
-                    vencedores_txt += f"🎉 {jogador.mention} lucrou **{lucro:.2f} C** em `{aposta_em.upper()}`!\n"
+                    vencedores_txt += f"🎉 {jogador.mention} lucrou **{lucro_total:.2f} C** em `{aposta_em.upper()}`!\n"
                 else:
                     perdedores_txt += f"💀 {jogador.mention} perdeu **{valor:.2f} C** em `{aposta_em.upper()}`.\n"
 

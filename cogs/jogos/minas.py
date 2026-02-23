@@ -72,7 +72,7 @@ class MinasGame(commands.Cog):
                         lista.append("esquadrao_suicida")
                         db.update_value(user_atual['row'], 10, ", ".join(lista))
 
-                await ctx.send(f"🚩 **LIMPO!** {ctx.author.mention} sobreviveu e faturou **{lucro:.2f} C** de lucro! (`{config['mult']}x`)")
+                await ctx.send(f"🚩 **LIMPO!** {ctx.author.mention} sobreviveu e faturou **{ganho_total:.2f} C** de lucro! (`{config['mult']}x`)")
             else:
                 if bombas == 1:
                     conquistas = str(user_atual['data'][9]) if len(user_atual['data']) > 9 else ""

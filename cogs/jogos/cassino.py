@@ -61,9 +61,10 @@ class Cassino(commands.Cog):
 
             if res[0] == res[1] == res[2]:
                 lucro = round(aposta * 9.0, 2)
-                db.update_value(user_atual['row'], 3, round(saldo_atual + aposta + lucro, 2))
+                lucro_total = round(aposta * 10.0, 2)
+                db.update_value(user_atual['row'], 3, round(saldo_atual + lucro_total, 2))
                 save_achievement(user_atual, "filho_da_sorte")
-                status_msg = f"🎰 **JACKPOT!** 🎰\nVocê lucrou **{lucro:.2f} C**!"
+                status_msg = f"🎰 **JACKPOT!** 🎰\nVocê lucrou **{lucro_total:.2f} C**!"
             elif res[0] == res[1] or res[1] == res[2] or res[0] == res[2]:
                 lucro = round(aposta * 1.0, 2)
                 db.update_value(user_atual['row'], 3, round(saldo_atual + aposta + lucro, 2))
