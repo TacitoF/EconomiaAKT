@@ -25,6 +25,40 @@ def save_achievement(user_data, slug):
         lista.append(slug)
         db.update_value(user_data['row'], 10, ", ".join(lista))
 
+
+class AceitarView(disnake.ui.View):
+    """View genérica de aceitar/recusar desafio PvP."""
+    def __init__(self, oponente: disnake.Member, aposta: float, modo: str):
+        super().__init__(timeout=30)
+        self.oponente = oponente
+        self.aposta = aposta
+        self.modo = modo  # "carta" ou "briga"
+        self.aceito = False
+
+    @disnake.ui.button(label="✅ Aceitar", style=disnake.ButtonStyle.success)
+    async def aceitar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        if inter.author.id != self.oponente.id:
+            return await inter.response.send_message("❌ Esse desafio não é para você!", ephemeral=True)
+        self.aceito = True
+        for item in self.children:
+            item.disabled = True
+        await inter.response.edit_message(view=self)
+        self.stop()
+
+    @disnake.ui.button(label="❌ Recusar", style=disnake.ButtonStyle.danger)
+    async def recusar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        if inter.author.id != self.oponente.id:
+            return await inter.response.send_message("❌ Esse desafio não é para você!", ephemeral=True)
+        for item in self.children:
+            item.disabled = True
+        await inter.response.edit_message(view=self)
+        self.stop()
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+
 class PvP(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -41,7 +75,7 @@ class PvP(commands.Cog):
         if oponente is None or aposta is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!carta @usuario <valor>`")
         if oponente.id == ctx.author.id:
-            return await ctx.send(f"🃏 {ctx.author.mention}, você não pode jocar contra o espelho!")
+            return await ctx.send(f"🃏 {ctx.author.mention}, você não pode jogar contra o espelho!")
         if aposta <= 0:
             return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
         aposta = round(aposta, 2)
@@ -62,15 +96,17 @@ class PvP(commands.Cog):
             if aposta > get_limite(cargo_d):
                 return await ctx.send(f"🚫 Limite de aposta para **{cargo_d}** é de **{get_limite(cargo_d)} C**!")
 
-            await ctx.send(f"🃏 {oponente.mention}, você foi desafiado por {ctx.author.mention} para um Duelo de Cartas valendo **{aposta:.2f} C**! Digite `comprar` para aceitar!")
+            view = AceitarView(oponente, aposta, "carta")
+            await ctx.send(
+                f"🃏 {oponente.mention}, você foi desafiado por {ctx.author.mention} para um **Duelo de Cartas** valendo **{aposta:.2f} C**!",
+                view=view
+            )
+            await view.wait()
 
-            def check(m): return m.author == oponente and m.content.lower() == 'comprar' and m.channel == ctx.channel
-            try:
-                await self.bot.wait_for('message', check=check, timeout=30.0)
-            except asyncio.TimeoutError:
-                return await ctx.send(f"⏱️ {oponente.mention} demorou demais. Duelo cancelado!")
+            if not view.aceito:
+                return await ctx.send(f"❌ {oponente.mention} recusou ou ignorou o desafio. Duelo cancelado!")
 
-            # Re-checagem de saldo para evitar gastos entre o aceite e o início
+            # Re-checagem de saldo
             d_atual = db.get_user_data(str(ctx.author.id))
             o_atual = db.get_user_data(str(oponente.id))
             if db.parse_float(d_atual['data'][2]) < aposta or db.parse_float(o_atual['data'][2]) < aposta:
@@ -141,12 +177,14 @@ class PvP(commands.Cog):
             if aposta == 1.0:
                 save_achievement(ladrao, "briga_de_bar")
 
-            await ctx.send(f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma briga por **{aposta:.2f} C**! Digite `aceitar` para lutar!")
+            view = AceitarView(vitima, aposta, "briga")
+            await ctx.send(
+                f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma **briga** por **{aposta:.2f} C**!",
+                view=view
+            )
+            await view.wait()
 
-            def check(m): return m.author == vitima and m.content.lower() == 'aceitar' and m.channel == ctx.channel
-            try:
-                await self.bot.wait_for('message', check=check, timeout=30.0)
-            except asyncio.TimeoutError:
+            if not view.aceito:
                 return await ctx.send(f"⏱️ {vitima.mention} amarelou e fugiu da briga!")
 
             # Re-checagem de saldo após aceite

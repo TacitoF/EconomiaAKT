@@ -18,6 +18,58 @@ LIMITES_CARGO = {
 def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 250)
 
+
+class LobbyView(disnake.ui.View):
+    """Lobby de entrada do Blackjack com botões Entrar e Começar."""
+    def __init__(self, ctx, bot, aposta: float, players: list):
+        super().__init__(timeout=60)
+        self.ctx = ctx
+        self.bot = bot
+        self.aposta = aposta
+        self.players = players
+        self.started = False
+        self.cancelled = False
+        self.msg = None  # set after sending
+
+    @disnake.ui.button(label="🃏 Entrar", style=disnake.ButtonStyle.success)
+    async def entrar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        if inter.author in self.players:
+            return await inter.response.send_message("🐒 Você já está na mesa!", ephemeral=True)
+        u_db = db.get_user_data(str(inter.author.id))
+        if not u_db:
+            return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
+        cargo_p = u_db['data'][3] if len(u_db['data']) > 3 else "Lêmure"
+        if self.aposta > get_limite(cargo_p):
+            return await inter.response.send_message(f"🚫 Aposta excede seu limite de **{cargo_p}**.", ephemeral=True)
+        if db.parse_float(u_db['data'][2]) < self.aposta:
+            return await inter.response.send_message("❌ Saldo insuficiente!", ephemeral=True)
+        db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - self.aposta, 2))
+        self.players.append(inter.author)
+        await inter.response.edit_message(content=self._lobby_text())
+
+    @disnake.ui.button(label="▶️ Começar", style=disnake.ButtonStyle.primary)
+    async def comecar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        if inter.author.id != self.ctx.author.id:
+            return await inter.response.send_message("❌ Só o dono da mesa pode iniciar!", ephemeral=True)
+        self.started = True
+        for item in self.children:
+            item.disabled = True
+        await inter.response.edit_message(content="✅ Mesa iniciada!", view=self)
+        self.stop()
+
+    def _lobby_text(self):
+        nomes = ", ".join([p.display_name for p in self.players])
+        return (
+            f"🃏 **BLACKJACK!** Dono: {self.ctx.author.mention} | Aposta: `{self.aposta:.2f} C`\n"
+            f"👥 **Jogadores ({len(self.players)}):** {nomes}\n\n"
+            f"Clique **Entrar** para participar ou **Começar** para iniciar!"
+        )
+
+    async def on_timeout(self):
+        self.cancelled = True
+        self.stop()
+
+
 class BlackjackView(disnake.ui.View):
     def __init__(self, ctx, bot, aposta_base, players):
         super().__init__(timeout=120)
@@ -97,9 +149,9 @@ class BlackjackView(disnake.ui.View):
             if self.terminado:
                 def resultado_mao(pm, aposta_mao):
                     if pm > 21: return "❌ Estourou"
-                    if d_p > 21 or pm > d_p: 
+                    if d_p > 21 or pm > d_p:
                         return f"🏆 Venceu (**{(aposta_mao * 2):.2f} C**)"
-                    if pm == d_p: 
+                    if pm == d_p:
                         return f"🤝 Empatou (**{aposta_mao:.2f} C**)"
                     return "💀 Perdeu"
 
@@ -128,7 +180,7 @@ class BlackjackView(disnake.ui.View):
     async def hit(self, button, inter):
         if self.terminado or self.current_player_idx >= len(self.player_ids): return
         if inter.author.id != self.player_ids[self.current_player_idx]:
-            return await inter.send("❌ Não é sua vez!", ephemeral=True)
+            return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         p = self.players_data[inter.author.id]
         mao_atual = p["hand"] if not p["splitted"] or p["current_hand"] == 1 else p["hand2"]
         mao_atual.append(self.deck.pop())
@@ -143,7 +195,7 @@ class BlackjackView(disnake.ui.View):
     async def stand(self, button, inter):
         if self.terminado or self.current_player_idx >= len(self.player_ids): return
         if inter.author.id != self.player_ids[self.current_player_idx]:
-            return await inter.send("❌ Não é sua vez!", ephemeral=True)
+            return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         p = self.players_data[inter.author.id]
         if p["splitted"] and p["current_hand"] == 1: p["current_hand"] = 2
         else:
@@ -156,12 +208,12 @@ class BlackjackView(disnake.ui.View):
         if self.terminado or self.current_player_idx >= len(self.player_ids): return
         p_id = inter.author.id
         if p_id != self.player_ids[self.current_player_idx]:
-            return await inter.send("❌ Não é sua vez!", ephemeral=True)
+            return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         p = self.players_data[p_id]
         try:
             u_db = db.get_user_data(str(p_id))
             if not u_db or db.parse_float(u_db['data'][2]) < p["aposta"]:
-                return await inter.send("❌ Saldo insuficiente para dobrar!", ephemeral=True)
+                return await inter.response.send_message("❌ Saldo insuficiente para dobrar!", ephemeral=True)
             db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - p["aposta"], 2))
             p["aposta"] *= 2
             p["hand"].append(self.deck.pop())
@@ -176,12 +228,12 @@ class BlackjackView(disnake.ui.View):
         if self.terminado or self.current_player_idx >= len(self.player_ids): return
         p_id = inter.author.id
         if p_id != self.player_ids[self.current_player_idx]:
-            return await inter.send("❌ Não é sua vez!", ephemeral=True)
+            return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         p = self.players_data[p_id]
         try:
             u_db = db.get_user_data(str(p_id))
             if not u_db or db.parse_float(u_db['data'][2]) < p["aposta"]:
-                return await inter.send("❌ Saldo insuficiente para o Split!", ephemeral=True)
+                return await inter.response.send_message("❌ Saldo insuficiente para o Split!", ephemeral=True)
             db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - p["aposta"], 2))
             p["splitted"] = True
             carta_separada = p["hand"].pop()
@@ -256,43 +308,21 @@ class BlackjackCog(commands.Cog):
             db.update_value(u_c['row'], 3, round(saldo - aposta, 2))
             players = [ctx.author]
 
-            def gerar_texto_lobby(lista):
-                nomes = ", ".join([p.display_name for p in lista])
-                return (f"🃏 **BLACKJACK!** Dono: {ctx.author.mention} | Aposta: `{aposta:.2f} C`\n"
-                        f"👥 **Jogadores ({len(lista)}):** {nomes}\n\nDigite `!entrar` para participar ou **`começar`** para iniciar!")
+            lobby_view = LobbyView(ctx, self.bot, aposta, players)
+            msg = await ctx.send(lobby_view._lobby_text(), view=lobby_view)
+            lobby_view.msg = msg
 
-            msg = await ctx.send(gerar_texto_lobby(players))
+            await lobby_view.wait()
 
-            def check(m):
-                return m.channel == ctx.channel and (
-                    m.content.lower() == '!entrar' or
-                    (m.author == ctx.author and m.content.lower() == 'começar')
-                )
+            if lobby_view.cancelled and not lobby_view.started:
+                # Devolver apostas
+                for p in players:
+                    p_db = db.get_user_data(str(p.id))
+                    if p_db:
+                        db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) + aposta, 2))
+                return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
 
-            start = False
-            while True:
-                try:
-                    m = await self.bot.wait_for('message', check=check, timeout=60.0)
-                    if m.content.lower() == 'começar':
-                        start = True
-                        break
-                    if m.content.lower() == '!entrar' and m.author not in players:
-                        u_db = db.get_user_data(str(m.author.id))
-                        if not u_db: continue
-                        cargo_p = u_db['data'][3] if len(u_db['data']) > 3 else "Lêmure"
-                        if aposta > get_limite(cargo_p):
-                            await ctx.send(f"🚫 {m.author.mention}, aposta excede seu limite de **{cargo_p}**.", delete_after=6)
-                            continue
-                        if db.parse_float(u_db['data'][2]) >= aposta:
-                            db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - aposta, 2))
-                            players.append(m.author)
-                            await msg.edit(content=gerar_texto_lobby(players))
-                        else:
-                            await ctx.send(f"❌ {m.author.mention}, saldo insuficiente!", delete_after=6)
-                except asyncio.TimeoutError:
-                    break
-
-            if not start:
+            if not lobby_view.started:
                 for p in players:
                     p_db = db.get_user_data(str(p.id))
                     if p_db:

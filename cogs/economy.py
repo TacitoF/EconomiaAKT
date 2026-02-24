@@ -216,7 +216,7 @@ class Economy(commands.Cog):
                 await ctx.send(mensagem)
             else:
                 # Multa: 10–15% do saldo do ladrão, mínimo 30 C, máximo 5.000 C
-                pct_multa = random.uniform(0.10, 0.15)
+                pct_multa = random.uniform(0.5, 0.10)
                 multa = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
                 db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))

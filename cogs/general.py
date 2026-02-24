@@ -12,7 +12,7 @@ class General(commands.Cog):
             await ctx.send(f"⚠️ {ctx.author.mention}, comandos gerais no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
-    @commands.command(name="ajuda", aliases=["comandos", "info"])
+    @commands.command(name="ajuda", aliases=["comandos", "info", "help"])
     async def ajuda_comando(self, ctx):
         embed = disnake.Embed(
             title="📖 Guia do Gerente Conguito",

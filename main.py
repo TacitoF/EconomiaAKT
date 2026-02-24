@@ -73,6 +73,26 @@ async def on_ready():
 async def on_command_error(ctx, error):
     if isinstance(error, (commands.CheckFailure, commands.CommandNotFound)):
         return
+
+    # Quando o usuário menciona alguém de forma inválida ou passa argumento errado
+    if isinstance(error, (commands.MemberNotFound, commands.UserNotFound)):
+        return await ctx.send(
+            f"❌ {ctx.author.mention}, usuário não encontrado! "
+            f"Mencione alguém que esteja no servidor com `@nome`."
+        )
+
+    if isinstance(error, commands.BadArgument):
+        return await ctx.send(
+            f"❌ {ctx.author.mention}, argumento inválido! "
+            f"Verifique o comando com `!ajuda`."
+        )
+
+    if isinstance(error, commands.MissingRequiredArgument):
+        return await ctx.send(
+            f"⚠️ {ctx.author.mention}, faltou um argumento. "
+            f"Verifique o comando com `!ajuda`."
+        )
+
     print(f"❌ Erro não tratado: {error}")
 
 def load_cogs():

@@ -25,6 +25,24 @@ def save_achievement(user_data, slug):
         lista.append(slug)
         db.update_value(user_data['row'], 10, ", ".join(lista))
 
+
+class CrashView(disnake.ui.View):
+    def __init__(self, author_id: int):
+        super().__init__(timeout=35)
+        self.author_id = author_id
+        self.sacou = False
+
+    @disnake.ui.button(label="🪂 SACAR", style=disnake.ButtonStyle.danger)
+    async def sacar_btn(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        if inter.author.id != self.author_id:
+            return await inter.response.send_message("❌ Não é o seu jogo!", ephemeral=True)
+        self.sacou = True
+        button.disabled = True
+        button.label = "✅ Sacado!"
+        await inter.response.edit_message(view=self)
+        self.stop()
+
+
 class CrashGame(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -58,7 +76,6 @@ class CrashGame(commands.Cog):
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))
 
-            # Algoritmo de probabilidade: 5% crash imediato, 60% baixo, 25% médio, 10% alto
             chance = random.random()
             if chance < 0.05:      crash_point = 1.0
             elif chance < 0.65:    crash_point = random.uniform(1.1, 2.0)
@@ -66,61 +83,60 @@ class CrashGame(commands.Cog):
             else:                  crash_point = random.uniform(4.0, 10.0)
             crash_point = round(crash_point, 1)
 
+            view = CrashView(ctx.author.id)
+
             embed = disnake.Embed(
                 title="📈 CRASH DO CIPÓ 🐒",
-                description=f"{ctx.author.mention} apostou **{aposta:.2f} C**!\n\n🌿 O macaco começou a subir...\n**Multiplicador:** `1.0x`\n\n⚠️ *Digite `parar` para sacar!*",
+                description=f"{ctx.author.mention} apostou **{aposta:.2f} C**!\n\n🌿 O macaco começou a subir...\n**Multiplicador:** `1.0x`",
                 color=disnake.Color.green()
             )
-            msg = await ctx.send(embed=embed)
+            msg = await ctx.send(embed=embed, view=view)
 
             if crash_point == 1.0:
                 await asyncio.sleep(1)
+                view.stop()
                 embed.color = disnake.Color.red()
                 embed.description = f"💥 **ARREBENTOU INSTANTANEAMENTE!**\nO cipó rasgou no `1.0x`.\n\n💀 {ctx.author.mention} perdeu **{aposta:.2f} C**."
-                await msg.edit(embed=embed)
+                for item in view.children:
+                    item.disabled = True
+                await msg.edit(embed=embed, view=view)
                 user_atual = db.get_user_data(str(ctx.author.id))
                 save_achievement(user_atual, "queda_livre")
                 return
 
-            stop_event = asyncio.Event()
-
-            async def listen_for_parar():
-                def check(m): return m.author == ctx.author and m.content.lower() == 'parar' and m.channel == ctx.channel
-                try:
-                    await self.bot.wait_for('message', check=check, timeout=30.0)
-                    stop_event.set()
-                except asyncio.TimeoutError:
-                    pass
-
-            listen_task = self.bot.loop.create_task(listen_for_parar())
             current_mult = 1.0
 
             while current_mult < crash_point:
-                try:
-                    await asyncio.wait_for(stop_event.wait(), timeout=1.5)
+                await asyncio.sleep(1.5)
+                if view.sacou:
                     break
-                except asyncio.TimeoutError:
-                    current_mult = round(min(current_mult + round(random.uniform(0.1, 0.4), 1), crash_point), 1)
-                    embed.description = f"{ctx.author.mention} apostou **{aposta:.2f} C**!\n\n🌿 Subindo alto...\n**Multiplicador:** `{current_mult}x`\n\n⚠️ *Digite `parar` para sacar!*"
-                    try: await msg.edit(embed=embed)
-                    except: pass
+                current_mult = round(min(current_mult + round(random.uniform(0.1, 0.4), 1), crash_point), 1)
+                if not view.sacou:
+                    embed.description = (
+                        f"{ctx.author.mention} apostou **{aposta:.2f} C**!\n\n"
+                        f"🌿 Subindo alto...\n**Multiplicador:** `{current_mult}x`"
+                    )
+                    try:
+                        await msg.edit(embed=embed, view=view)
+                    except:
+                        pass
 
-            listen_task.cancel()
             user_atual = db.get_user_data(str(ctx.author.id))
+            for item in view.children:
+                item.disabled = True
 
-            if stop_event.is_set():
+            if view.sacou:
                 ganho_total = round(aposta * current_mult, 2)
-                lucro = round(ganho_total - aposta, 2)
                 db.update_value(user_atual['row'], 3, round(db.parse_float(user_atual['data'][2]) + ganho_total, 2))
                 embed.color = disnake.Color.blue()
                 embed.description = f"✅ **SACOU A TEMPO!**\nNo `{current_mult}x`.\n\n💰 {ctx.author.mention} lucrou **{ganho_total:.2f} C**!"
-                await msg.edit(embed=embed)
+                await msg.edit(embed=embed, view=view)
                 if current_mult >= 5.0:
                     save_achievement(user_atual, "astronauta_cipo")
             else:
                 embed.color = disnake.Color.red()
                 embed.description = f"💥 **ARREBENTOU!**\nO cipó rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} perdeu **{aposta:.2f} C**."
-                await msg.edit(embed=embed)
+                await msg.edit(embed=embed, view=view)
 
         except commands.CommandError:
             raise

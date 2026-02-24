@@ -27,6 +27,37 @@ def save_achievement(user_data, slug):
         lista.append(slug)
         db.update_value(user_data['row'], 10, ", ".join(lista))
 
+
+class CocoEntrarView(disnake.ui.View):
+    """Botão para entrar na Roleta do Coco Explosivo."""
+    def __init__(self, cog, aposta: float):
+        super().__init__(timeout=60)
+        self.cog = cog
+        self.aposta = aposta
+
+    @disnake.ui.button(label="🥥 Entrar na Roda", style=disnake.ButtonStyle.danger)
+    async def entrar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        if inter.author in self.cog.coco_players:
+            return await inter.response.send_message("🐒 Você já está na roda!", ephemeral=True)
+        user = db.get_user_data(str(inter.author.id))
+        if not user:
+            return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
+        saldo = db.parse_float(user['data'][2])
+        cargo = user['data'][3] if len(user['data']) > 3 else "Lêmure"
+        if saldo < self.aposta:
+            return await inter.response.send_message("❌ Saldo insuficiente!", ephemeral=True)
+        if self.aposta > get_limite(cargo):
+            return await inter.response.send_message(f"🚫 A aposta excede seu limite de **{cargo}**!", ephemeral=True)
+        db.update_value(user['row'], 3, round(saldo - self.aposta, 2))
+        self.cog.coco_players.append(inter.author)
+        pote_atual = round(len(self.cog.coco_players) * self.aposta, 2)
+        await inter.response.send_message(f"🥥 {inter.author.mention} entrou na roda da morte! (Pote: **{pote_atual:.2f} C**)")
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+
 class Eventos(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -127,7 +158,7 @@ class Eventos(commands.Cog):
         if aposta is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!coco <valor>`")
         if self.coco_active:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, já existe uma roda aberta! Digite `!entrar_coco`.")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, já existe uma roda aberta!")
         if aposta <= 0:
             return await ctx.send("❌ Aposta inválida!")
         aposta = round(aposta, 2)
@@ -149,13 +180,18 @@ class Eventos(commands.Cog):
             self.coco_aposta = aposta
             self.coco_players = [ctx.author]
 
+            view = CocoEntrarView(self, aposta)
             embed = disnake.Embed(
                 title="🚨 ROLETA DO COCO EXPLOSIVO! 🚨",
-                description=f"{ctx.author.mention} abriu uma roda mortal!\n\n💰 **Entrada:** `{aposta:.2f} C`\n⏳ **60 segundos** para entrar!\n\nDigite **`!entrar_coco`** para participar.",
+                description=f"{ctx.author.mention} abriu uma roda mortal!\n\n💰 **Entrada:** `{aposta:.2f} C`\n⏳ **60 segundos** para entrar!\n\nClique no botão abaixo para participar.",
                 color=disnake.Color.dark_red()
             )
-            await ctx.send(embed=embed)
+            await ctx.send(embed=embed, view=view)
             await asyncio.sleep(60)
+
+            # Disable the button after time
+            for item in view.children:
+                item.disabled = True
 
             if len(self.coco_players) < 2:
                 user_refund = db.get_user_data(str(ctx.author.id))
@@ -214,36 +250,6 @@ class Eventos(commands.Cog):
             self.coco_aposta = 0.0
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. O jogo foi cancelado.")
 
-    @commands.command(name="entrar_coco")
-    async def entrar_coco(self, ctx):
-        if not self.coco_active:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, não há roda aberta! Crie uma com `!coco <valor>`.")
-        if ctx.author in self.coco_players:
-            return await ctx.send(f"🐒 {ctx.author.mention}, você já está na roda!")
-
-        try:
-            user = db.get_user_data(str(ctx.author.id))
-            if not user:
-                return await ctx.send(f"❌ {ctx.author.mention}, conta não encontrada!")
-
-            saldo = db.parse_float(user['data'][2])
-            cargo = user['data'][3] if len(user['data']) > 3 else "Lêmure"
-            if saldo < self.coco_aposta:
-                return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
-            if self.coco_aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 A aposta excede seu limite de **{cargo}**!")
-
-            db.update_value(user['row'], 3, round(saldo - self.coco_aposta, 2))
-            self.coco_players.append(ctx.author)
-            pote_atual = round(len(self.coco_players) * self.coco_aposta, 2)
-            await ctx.send(f"🥥 {ctx.author.mention} entrou na roda da morte! (Pote: **{pote_atual:.2f} C**)")
-
-        except commands.CommandError:
-            raise
-        except Exception as e:
-            print(f"❌ Erro no !entrar_coco de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
-
     @commands.command()
     async def jogos(self, ctx):
         if ctx.channel.name != '🎰・akbet':
@@ -253,25 +259,25 @@ class Eventos(commands.Cog):
 
         embed = disnake.Embed(title="🎰 AK-BET JOGOS", description="Transforme seus conguitos em fortuna!", color=disnake.Color.purple())
         embed.add_field(name="🎮 Comandos Disponíveis", inline=False, value=(
-            "🚀 **!crash <valor>** - Foguetinho! Suba no cipó e digite `parar`.\n"
-            "🃏 **!carta @user <valor>** - Duelo de Cartas.\n"
-            "♠️ **!21 <valor>** - Blackjack contra o dealer.\n"
+            "🚀 **!crash <valor>** - Foguetinho! Suba no cipó e clique em **Sacar**.\n"
+            "🃏 **!carta @user <valor>** - Duelo de Cartas (aceite via botão).\n"
+            "♠️ **!21 <valor>** - Blackjack contra o dealer (lobby com botões).\n"
             "🎰 **!cassino <valor>** - Caça-níquel clássico.\n"
-            "🥥 **!coco <valor>** - Roleta do Coco Explosivo.\n"
-            "🏃 **!entrar_coco** - Entre na roda antes do tempo acabar!\n"
+            "🥥 **!coco <valor>** - Roleta do Coco Explosivo (entre via botão).\n"
             "🐒 **!corrida <animal> <valor>** - Aposte no Macaquinho, Gorila ou Orangutango.\n"
             "🦁 **!bicho <animal> <valor>** - Aposte em: Leao, Cobra, Jacare, Arara, Elefante.\n"
             "💣 **!minas <1-5> <valor>** - Sobreviva ao campo minado.\n"
-            "⚔️ **!briga @user <valor>** - PvP!\n"
+            "⚔️ **!briga @user <valor>** - PvP (aceite via botão)!\n"
             "🎫 **!loteria** - Bilhete por 500 C para concorrer ao pote.\n"
             "💰 **!pote** - Veja o pote atual da loteria.\n"
             "🎰 **!roleta** - Mesa de Roleta Multiplayer! (30s)\n"
             "🪙 **!apostar <valor> <opção>** - Entre na rodada da Roleta.\n"
-            "  ↳ *Cores/Par/Ímpar pagam **2x** | Números exatos pagam **36x**!*\n" \
+            "  ↳ *Cores/Par/Ímpar pagam **2x** | Números exatos pagam **36x**!*\n"
             "⚽ **!futebol** - Ver os jogos atuais.\n"
-            "  ↳ Use `!palpite <ID> <casa/empate/fora> <valor>` para apostar! Exemplo: `!palpite 123456 casa 150`\n E `!palpites` para ver seus bilhetes ativos." \
+            "  ↳ Use `!palpite <ID> <casa/empate/fora> <valor>` para apostar!\n"
+            "  ↳ Use `!palpites` para ver seus bilhetes ativos."
         ))
-        embed.set_footer(text="Jogos 100% isentos de impostos! 🐒")
+        embed.set_footer(text="Todos os jogos agora com interação por botões! 🐒")
         await ctx.send(embed=embed)
 
 def setup(bot):
