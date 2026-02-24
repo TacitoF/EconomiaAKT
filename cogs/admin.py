@@ -92,7 +92,7 @@ class Admin(commands.Cog):
             if not u: return await ctx.send("❌ Usuário não encontrado!")
             valor = round(valor, 2)
             db.update_value(u['row'], 3, valor)
-            await ctx.send(f"✅ Saldo de {membro.mention} definido em **{valor:.2f} C**.")
+            await ctx.send(f"✅ Saldo de {membro.mention} definido em **{valor:.2f} MC**.")
         except Exception as e:
             print(f"Erro no !setar: {e}")
 
@@ -107,7 +107,7 @@ class Admin(commands.Cog):
             saldo_atual = float(str(u['data'][2]).replace(',', '.'))
             novo_saldo = round(saldo_atual + valor, 2)
             db.update_value(u['row'], 3, novo_saldo)
-            await ctx.send(f"📈 **+{valor:.2f} C** adicionados para {membro.mention}. (Saldo: `{novo_saldo:.2f} C`)")
+            await ctx.send(f"📈 **+{valor:.2f} MC** adicionados para {membro.mention}. (Saldo: `{novo_saldo:.2f} MC`)")
         except Exception as e:
             print(f"Erro no !adicionar: {e}")
 
@@ -122,7 +122,7 @@ class Admin(commands.Cog):
             saldo_atual = float(str(u['data'][2]).replace(',', '.'))
             novo_saldo = max(round(saldo_atual - valor, 2), 0.0)
             db.update_value(u['row'], 3, novo_saldo)
-            await ctx.send(f"📉 **-{valor:.2f} C** removidos de {membro.mention}. (Saldo: `{novo_saldo:.2f} C`)")
+            await ctx.send(f"📉 **-{valor:.2f} MC** removidos de {membro.mention}. (Saldo: `{novo_saldo:.2f} MC`)")
         except Exception as e:
             print(f"Erro no !remover: {e}")
 

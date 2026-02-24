@@ -50,7 +50,7 @@ class CocoEntrarView(disnake.ui.View):
         db.update_value(user['row'], 3, round(saldo - self.aposta, 2))
         self.cog.coco_players.append(inter.author)
         pote_atual = round(len(self.cog.coco_players) * self.aposta, 2)
-        await inter.response.send_message(f"🥥 {inter.author.mention} entrou na roda da morte! (Pote: **{pote_atual:.2f} C**)")
+        await inter.response.send_message(f"🥥 {inter.author.mention} entrou na roda da morte! (Pote: **{pote_atual:.2f} MC**)")
 
     async def on_timeout(self):
         for item in self.children:
@@ -83,10 +83,10 @@ class Eventos(commands.Cog):
     @commands.command(aliases=["premio", "acumulado"])
     async def pote(self, ctx):
         if self.loteria_pote == 0.0:
-            return await ctx.send(f"🎫 {ctx.author.mention}, o pote está zerado! Seja o primeiro com `!loteria` (500 C).")
+            return await ctx.send(f"🎫 {ctx.author.mention}, o pote está zerado! Seja o primeiro com `!loteria` (500 MC).")
         embed = disnake.Embed(
             title="💰 Pote da Loteria da Selva",
-            description=f"Prêmio acumulado: **{self.loteria_pote:.2f} C**\n\n👥 **Bilhetes vendidos:** `{len(self.loteria_participantes)}`",
+            description=f"Prêmio acumulado: **{self.loteria_pote:.2f} MC**\n\n👥 **Bilhetes vendidos:** `{len(self.loteria_participantes)}`",
             color=disnake.Color.gold()
         )
         embed.set_footer(text="Garanta sua chance com !loteria")
@@ -97,18 +97,18 @@ class Eventos(commands.Cog):
         custo = 500.0
         user_id = ctx.author.id
         if user_id in self.loteria_participantes:
-            return await ctx.send(f"🎫 {ctx.author.mention}, você já tem um bilhete! Pote atual: **{self.loteria_pote:.2f} C**.")
+            return await ctx.send(f"🎫 {ctx.author.mention}, você já tem um bilhete! Pote atual: **{self.loteria_pote:.2f} MC**.")
 
         try:
             user = db.get_user_data(str(user_id))
             saldo = db.parse_float(user['data'][2]) if user else 0.0
             if not user or saldo < custo:
-                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} C** para um bilhete!")
+                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} MC** para um bilhete!")
 
             db.update_value(user['row'], 3, round(saldo - custo, 2))
             self.loteria_participantes.append(user_id)
             self.loteria_pote += custo
-            await ctx.send(f"🎫 **BILHETE COMPRADO!** {ctx.author.mention} entrou na loteria.\n💰 Pote agora em **{self.loteria_pote:.2f} C**!")
+            await ctx.send(f"🎫 **BILHETE COMPRADO!** {ctx.author.mention} entrou na loteria.\n💰 Pote agora em **{self.loteria_pote:.2f} MC**!")
 
         except commands.CommandError:
             raise
@@ -139,7 +139,7 @@ class Eventos(commands.Cog):
 
             embed = disnake.Embed(
                 title="🎉 TEMOS UM VENCEDOR! 🎉",
-                description=f"O sortudo é **{ganhador.mention}**!\nEle faturou **{premio:.2f} C**!",
+                description=f"O sortudo é **{ganhador.mention}**!\nEle faturou **{premio:.2f} MC**!",
                 color=disnake.Color.gold()
             )
             embed.set_footer(text="A próxima rodada começa agora!")
@@ -172,7 +172,7 @@ class Eventos(commands.Cog):
             if saldo < aposta:
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
             if aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))
             self.coco_active = True
@@ -182,7 +182,7 @@ class Eventos(commands.Cog):
             view = CocoEntrarView(self, aposta)
             embed = disnake.Embed(
                 title="🚨 ROLETA DO COCO EXPLOSIVO! 🚨",
-                description=f"{ctx.author.mention} abriu uma roda mortal!\n\n💰 **Entrada:** `{aposta:.2f} C`\n⏳ **30 segundos** para entrar!\n\nClique no botão abaixo para participar.",
+                description=f"{ctx.author.mention} abriu uma roda mortal!\n\n💰 **Entrada:** `{aposta:.2f} MC`\n⏳ **30 segundos** para entrar!\n\nClique no botão abaixo para participar.",
                 color=disnake.Color.dark_red()
             )
             await ctx.send(embed=embed, view=view)
@@ -205,7 +205,7 @@ class Eventos(commands.Cog):
             total_jogadores = len(jogadores)
             pote_bruto = round(self.coco_aposta * total_jogadores, 2)
 
-            await ctx.send(f"🔥 **A RODA FECHOU!** {total_jogadores} macacos corajosos — pote de **{pote_bruto:.2f} C**!\nQue os jogos comecem...")
+            await ctx.send(f"🔥 **A RODA FECHOU!** {total_jogadores} macacos corajosos — pote de **{pote_bruto:.2f} MC**!\nQue os jogos comecem...")
             self.coco_active = False
 
             rodada = 1
@@ -246,7 +246,7 @@ class Eventos(commands.Cog):
             db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + pote_bruto, 2))
             
             # Anuncia a vitória
-            await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} sobreviveu e faturou **{lucro_total:.2f} C** de lucro!")
+            await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} sobreviveu e faturou **{lucro_total:.2f} MC** de lucro!")
 
             # Verifica as conquistas
             if total_jogadores >= 5:
@@ -278,7 +278,7 @@ class Eventos(commands.Cog):
             mencao = canal.mention if canal else "#🎰・akbet"
             return await ctx.send(f"⚠️ {ctx.author.mention}, use este comando no canal {mencao}!")
 
-        embed = disnake.Embed(title="🎰 AK-BET JOGOS", description="Transforme seus conguitos em fortuna!", color=disnake.Color.purple())
+        embed = disnake.Embed(title="🎰 AK-BET JOGOS", description="Transforme seus Macacoins em fortuna!", color=disnake.Color.purple())
         embed.add_field(name="🎮 Comandos Disponíveis", inline=False, value=(
             "🚀 **!crash <valor>** - Foguetinho! Suba no cipó e clique em **Sacar**.\n"
             "🃏 **!carta @user <valor>** - Duelo de Cartas (aceite via botão).\n"
@@ -289,7 +289,7 @@ class Eventos(commands.Cog):
             "🦁 **!bicho <animal> <valor>** - Aposte em: Leao, Cobra, Jacare, Arara, Elefante.\n"
             "💣 **!minas <1-5> <valor>** - Sobreviva ao campo minado.\n"
             "⚔️ **!briga @user <valor>** - PvP (aceite via botão)!\n"
-            "🎫 **!loteria** - Bilhete por 500 C para concorrer ao pote.\n"
+            "🎫 **!loteria** - Bilhete por 500 MC para concorrer ao pote.\n"
             "💰 **!pote** - Veja o pote atual da loteria.\n"
             "🎰 **!roleta** - Mesa de Roleta Multiplayer! (30s)\n"
             "🪙 **!apostar <valor> <opção>** - Entre na rodada da Roleta.\n"

@@ -24,7 +24,7 @@ class Bank(commands.Cog):
         if not tipo or tipo.lower() not in ['cripto', 'fixo'] or valor is None or valor <= 0:
             embed = disnake.Embed(title="🏦 Banco da Selva AKTrovão", color=disnake.Color.green())
             embed.add_field(name="📈 `!investir cripto <valor>`", value="Risco alto! Rende **-25%, -15%, -5%, 0%, +5%, +10% ou +20%**. *Limite: 4x ao dia.*", inline=False)
-            embed.add_field(name="🏛️ `!investir fixo <valor>`",  value="Seguro! Rende **+10%** na hora. *Limite: 5.000 C por dia.*", inline=False)
+            embed.add_field(name="🏛️ `!investir fixo <valor>`",  value="Seguro! Rende **+10%** na hora. *Limite: 5.000 MC por dia.*", inline=False)
             return await ctx.send(embed=embed)
 
         tipo  = tipo.lower()
@@ -45,7 +45,7 @@ class Bank(commands.Cog):
             # ── RENDA FIXA ────────────────────────────────────────────────────
             if tipo == 'fixo':
                 if valor > 5000.0:
-                    return await ctx.send("❌ O banco só aceita até **5.000 C** na Renda Fixa por operação!")
+                    return await ctx.send("❌ O banco só aceita até **5.000 MC** na Renda Fixa por operação!")
 
                 ultimo_invest = db.parse_float(user['data'][7] if len(user['data']) > 7 else None)
                 if agora - ultimo_invest < 86400:
@@ -54,7 +54,7 @@ class Bank(commands.Cog):
                 lucro = round(valor * 0.10, 2)
                 db.update_value(user['row'], 3, round(saldo + lucro, 2))
                 db.update_value(user['row'], 8, agora)
-                await ctx.send(f"🏛️ **RENDA FIXA!** Rendimento de 10% aplicado. Você ganhou **+{lucro:.2f} C**, {ctx.author.mention}!")
+                await ctx.send(f"🏛️ **RENDA FIXA!** Rendimento de 10% aplicado. Você ganhou **+{lucro:.2f} MC**, {ctx.author.mention}!")
 
             # ── CRIPTO ────────────────────────────────────────────────────────
             elif tipo == 'cripto':
@@ -78,7 +78,7 @@ class Bank(commands.Cog):
                 self.cripto_usos[user_id_str][0] += 1
                 
                 aviso = await ctx.send(
-                    f"📈 {ctx.author.mention} comprou **{valor:.2f} C** em MacacoCoin. "
+                    f"📈 {ctx.author.mention} comprou **{valor:.2f} MC** em BNN (Banana). "
                     f"O mercado fecha em 30 segundos... 💸"
                 )
 
@@ -100,11 +100,11 @@ class Bank(commands.Cog):
                     db.update_value(user_atual['row'], 3, round(db.parse_float(user_atual['data'][2]) + retorno, 2))
 
                     if variacao > 0:
-                        await ctx.send(f"🚀 **ALTA!** {ctx.author.mention} resgatou **{retorno:.2f} C** (Lucro: `+{lucro:.2f} C`).")
+                        await ctx.send(f"🚀 **ALTA!** {ctx.author.mention} resgatou **{retorno:.2f} MC** (Lucro: `+{lucro:.2f} MC`).")
                     elif variacao == 0:
-                        await ctx.send(f"⚖️ **ESTÁVEL!** {ctx.author.mention} resgatou exatamente seus **{retorno:.2f} C** (Lucro: `0.00 C`).")
+                        await ctx.send(f"⚖️ **ESTÁVEL!** {ctx.author.mention} resgatou exatamente seus **{retorno:.2f} MC** (Lucro: `0.00 MC`).")
                     else:
-                        await ctx.send(f"📉 **CRASH!** {ctx.author.mention} resgatou apenas **{retorno:.2f} C** (Prejuízo: `{lucro:.2f} C`).")
+                        await ctx.send(f"📉 **CRASH!** {ctx.author.mention} resgatou apenas **{retorno:.2f} MC** (Prejuízo: `{lucro:.2f} MC`).")
 
                 except Exception as inner_e:
                     # ── CORREÇÃO: qualquer erro após o débito devolve o valor ──
@@ -118,18 +118,18 @@ class Bank(commands.Cog):
                             self.cripto_usos[user_id_str][0] -= 1
                             await ctx.send(
                                 f"⚠️ {ctx.author.mention}, ocorreu um erro durante o investimento. "
-                                f"Seus **{valor:.2f} C** foram devolvidos automaticamente."
+                                f"Seus **{valor:.2f} MC** foram devolvidos automaticamente."
                             )
                         else:
                             await ctx.send(
                                 f"⚠️ {ctx.author.mention}, ocorreu um erro e não conseguimos encontrar sua conta "
-                                f"para devolver os **{valor:.2f} C**. Contate um administrador!"
+                                f"para devolver os **{valor:.2f} MC**. Contate um administrador!"
                             )
                     except Exception as refund_e:
                         print(f"❌ CRÍTICO: falha ao devolver saldo do cripto para {ctx.author}: {refund_e}")
                         await ctx.send(
                             f"🚨 {ctx.author.mention}, erro crítico no investimento. "
-                            f"Informe um admin para recuperar seus **{valor:.2f} C**."
+                            f"Informe um admin para recuperar seus **{valor:.2f} MC**."
                         )
 
         except commands.CommandError:

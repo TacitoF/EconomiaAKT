@@ -63,7 +63,7 @@ class Roleta(commands.Cog):
         total_apostado = sum(a['valor'] for a in self.apostas)
         embed_giro = disnake.Embed(
             title="🛑 APOSTAS ENCERRADAS!",
-            description=f"Total na mesa: **{total_apostado:.2f} C**!\n\n🌀 **O Chimpanzézio girou a roleta...**",
+            description=f"Total na mesa: **{total_apostado:.2f} MC**!\n\n🌀 **O Chimpanzézio girou a roleta...**",
             color=disnake.Color.orange()
         )
         msg = await ctx.send(embed=embed_giro)
@@ -106,9 +106,9 @@ class Roleta(commands.Cog):
                     db.update_value(user_db['row'], 3, round(db.parse_float(user_db['data'][2]) + lucro_total, 2))
                     if multiplicador == 36:
                         save_achievement(user_db, "filho_da_sorte")
-                    vencedores_txt += f"🎉 {jogador.mention} lucrou **{lucro_total:.2f} C** em `{aposta_em.upper()}`!\n"
+                    vencedores_txt += f"🎉 {jogador.mention} lucrou **{lucro_total:.2f} MC** em `{aposta_em.upper()}`!\n"
                 else:
-                    perdedores_txt += f"💀 {jogador.mention} perdeu **{valor:.2f} C** em `{aposta_em.upper()}`.\n"
+                    perdedores_txt += f"💀 {jogador.mention} perdeu **{valor:.2f} MC** em `{aposta_em.upper()}`.\n"
 
             except Exception as e:
                 print(f"❌ Erro ao processar aposta de {jogador}: {e}")
@@ -145,7 +145,7 @@ class Roleta(commands.Cog):
             apostado_ja = sum(a['valor'] for a in self.apostas if a['user'] == ctx.author)
             if (apostado_ja + valor) > limite:
                 restante = max(round(limite - apostado_ja, 2), 0)
-                return await ctx.send(f"🚫 {ctx.author.mention}, limite como **{cargo}** é **{limite} C**. Você pode apostar mais **{restante} C**.")
+                return await ctx.send(f"🚫 {ctx.author.mention}, limite como **{cargo}** é **{limite} MC**. Você pode apostar mais **{restante} MC**.")
 
             aposta_em = aposta_em.lower()
             validas = ['vermelho', 'preto', 'par', 'impar'] + [str(i) for i in range(37)]
@@ -154,7 +154,7 @@ class Roleta(commands.Cog):
 
             db.update_value(user['row'], 3, round(saldo - valor, 2))
             self.apostas.append({'user': ctx.author, 'valor': valor, 'tipo': aposta_em})
-            await ctx.send(f"🪙 {ctx.author.mention} apostou **{valor:.2f} C** em `{aposta_em.upper()}`!")
+            await ctx.send(f"🪙 {ctx.author.mention} apostou **{valor:.2f} MC** em `{aposta_em.upper()}`!")
 
         except commands.CommandError:
             raise

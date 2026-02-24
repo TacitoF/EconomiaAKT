@@ -38,7 +38,7 @@ class Fun(commands.Cog):
             custo = precos[tipo][tempo]
             saldo = db.parse_float(user['data'][2])
             if saldo < custo:
-                return await ctx.send(f"❌ {ctx.author.mention}, esse castigo custa **{custo:.2f} C**.")
+                return await ctx.send(f"❌ {ctx.author.mention}, esse castigo custa **{custo:.2f} MC**.")
             if not vitima.voice:
                 return await ctx.send(f"❌ {vitima.mention} precisa estar em um canal de voz!")
 
@@ -54,7 +54,7 @@ class Fun(commands.Cog):
                     await vitima.edit(mute=True, deafen=True, reason=f"Castigo de {ctx.author.name}")
                     msg = f"🤐 **CASTIGO TOTAL!** {vitima.mention} ficou mudo e surdo por {tempo} minuto(s)!"
 
-                await ctx.send(f"💸 {ctx.author.mention} pagou **{custo:.2f} C** e... {msg}")
+                await ctx.send(f"💸 {ctx.author.mention} pagou **{custo:.2f} MC** e... {msg}")
                 await asyncio.sleep(tempo * 60)
 
                 try:
@@ -89,14 +89,14 @@ class Fun(commands.Cog):
 
             saldo = db.parse_float(user['data'][2])
             if saldo < custo:
-                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} C**!")
+                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} MC**!")
             if not vitima.voice:
                 return await ctx.send(f"❌ {vitima.mention} não está em nenhum canal de voz.")
 
             db.update_value(user['row'], 3, round(saldo - custo, 2))
             try:
                 await vitima.move_to(None, reason=f"Expulso por {ctx.author.name}")
-                await ctx.send(f"👟 {ctx.author.mention} pagou **{custo:.2f} C** e expulsou {vitima.mention} da call!")
+                await ctx.send(f"👟 {ctx.author.mention} pagou **{custo:.2f} MC** e expulsou {vitima.mention} da call!")
             except disnake.Forbidden:
                 db.update_value(user['row'], 3, round(saldo, 2))
                 await ctx.send(f"❌ Sem permissão para mover membros! O dinheiro foi devolvido.")

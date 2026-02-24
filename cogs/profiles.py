@@ -28,10 +28,10 @@ class Profiles(commands.Cog):
             "• **Rei da Selva:** Possua o cargo máximo (**Rei Símio**)."
         ))
         embed.add_field(name="💰 Fortuna e Miséria", inline=False, value=(
-            "• **Burguês Safado:** Acumule a fortuna de **500.000 C**.\n"
-            "• **Magnata:** Acumule um saldo de **100.000 C** ou mais.\n"
-            "• **Falência Técnica:** Tenha um saldo abaixo de **100 C**.\n"
-            "• **Passa Fome:** Zere completamente sua conta (**0 C**)."
+            "• **Burguês Safado:** Acumule a fortuna de **500.000 MC**.\n"
+            "• **Magnata:** Acumule um saldo de **100.000 MC** ou mais.\n"
+            "• **Falência Técnica:** Tenha um saldo abaixo de **100 MC**.\n"
+            "• **Passa Fome:** Zere completamente sua conta (**0 MC**)."
         ))
         embed.add_field(name="🏃 Atividade Diária", inline=False, value=(
             "• **Proletário Padrão:** Realize 5 trabalhos em um único dia.\n"
@@ -40,7 +40,7 @@ class Profiles(commands.Cog):
             "• **Invasor:** Adquira um **Pé de Cabra** na loja."
         ))
         embed.add_field(name="🚨 Submundo", inline=False, value=(
-            "• **Inimigo Público:** Recompensa de **5.000 C** ou mais pela cabeça.\n"
+            "• **Inimigo Público:** Recompensa de **5.000 MC** ou mais pela cabeça.\n"
             "• **Rei do Crime:** Seja o macaco mais procurado (Top 1) da selva."
         ))
         
@@ -152,14 +152,14 @@ class Profiles(commands.Cog):
 
             embed = disnake.Embed(title=f"🐒 Perfil de {membro.display_name}", color=disnake.Color.gold())
             embed.set_thumbnail(url=membro.display_avatar.url)
-            embed.add_field(name="💰 Saldo",     value=f"`{saldo:.2f} C`", inline=True)
+            embed.add_field(name="💰 Saldo",     value=f"`{saldo:.2f} MC`", inline=True)
             embed.add_field(name="💼 Cargo",     value=f"`{cargo}`",       inline=True)
             embed.add_field(name="🔨 Trabalho",  value=status_work,        inline=True)
             embed.add_field(name="🔫 Roubo",     value=status_roubo,       inline=True)
             embed.add_field(name="🎒 Inventário",value=inv_formatado,       inline=False)
             embed.add_field(name="🏆 Conquistas",value=" | ".join(emblemas) if emblemas else "Nenhuma", inline=False)
             if rec > 0:
-                embed.add_field(name="🚨 PROCURADO", value=f"`{rec:.2f} C` pela sua cabeça!", inline=False)
+                embed.add_field(name="🚨 PROCURADO", value=f"`{rec:.2f} MC` pela sua cabeça!", inline=False)
             await ctx.send(embed=embed)
 
         except commands.CommandError:
@@ -184,15 +184,15 @@ class Profiles(commands.Cog):
             dados_validos = [r for r in dados if len(r) > idx_saldo]
             sorted_users  = sorted(dados_validos, key=lambda r: db.parse_float(r[idx_saldo]), reverse=True)
 
-            embed = disnake.Embed(title="🏆 Ranking de Conguitos", color=disnake.Color.gold())
+            embed = disnake.Embed(title="🏆 Ranking de Macacoins", color=disnake.Color.gold())
             lista_rank = ""
             for i, row in enumerate(sorted_users[:10]):
                 nome  = row[idx_nome] if len(row) > idx_nome else "Desconhecido"
                 saldo = db.parse_float(row[idx_saldo])
-                if i == 0:   linha = f"🥇 **{nome}** — `{saldo:.2f} C`"
-                elif i == 1: linha = f"🥈 **{nome}** — `{saldo:.2f} C`"
-                elif i == 2: linha = f"🥉 **{nome}** — `{saldo:.2f} C`"
-                else:        linha = f"**{i+1}.** {nome} — `{saldo:.2f} C`"
+                if i == 0:   linha = f"🥇 **{nome}** — `{saldo:.2f} MC`"
+                elif i == 1: linha = f"🥈 **{nome}** — `{saldo:.2f} MC`"
+                elif i == 2: linha = f"🥉 **{nome}** — `{saldo:.2f} MC`"
+                else:        linha = f"**{i+1}.** {nome} — `{saldo:.2f} MC`"
                 lista_rank += linha + "\n"
 
             embed.add_field(name="Top 10 Jogadores", value=lista_rank, inline=False)

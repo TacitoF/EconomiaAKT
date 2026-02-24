@@ -128,7 +128,7 @@ class Esportes(commands.Cog):
             if saldo < valor:
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
             if valor > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             # ──────────────────────────────────────────────────────────
             # VALIDAÇÃO DO JOGO — verifica ANTES de descontar o saldo
@@ -219,9 +219,9 @@ class Esportes(commands.Cog):
                 f"**Jogo:** `{time_casa}` 🆚 `{time_fora}`\n"
                 f"**Jogo ID:** `{match_id}`\n"
                 f"**Palpite:** `{nome_palpite}`\n"
-                f"**Valor Apostado:** `{valor:.2f} C`\n"
+                f"**Valor Apostado:** `{valor:.2f} MC`\n"
                 f"**Multiplicador:** `{odd_fixa}x`\n"
-                f"**Retorno Potencial:** `{ganho_potencial:.2f} C`"
+                f"**Retorno Potencial:** `{ganho_potencial:.2f} MC`"
             )
             embed.set_footer(text="O pagamento será feito automaticamente quando a partida acabar!")
             await ctx.send(embed=embed)
@@ -291,7 +291,7 @@ class Esportes(commands.Cog):
                     name=f"🆔 Jogo ID: {m_id}",
                     value=(
                         f"**Palpite:** `{palpite_fmt}`\n"
-                        f"**Apostou:** `{aposta['valor']:.2f} C` ➔ **Retorno:** `{ganho_potencial:.2f} C`"
+                        f"**Apostou:** `{aposta['valor']:.2f} MC` ➔ **Retorno:** `{ganho_potencial:.2f} MC`"
                     ),
                     inline=False
                 )
@@ -352,7 +352,7 @@ class Esportes(commands.Cog):
                                         await canal_cassino.send(
                                             f"🏆 **APOSTA ESPORTIVA VENCEDORA!**\n"
                                             f"{jogador.mention} acertou que `{resultado_real.upper()}` venceria "
-                                            f"no jogo `{match['id']}` e faturou **{premio:.2f} C**!"
+                                            f"no jogo `{match['id']}` e faturou **{premio:.2f} MC**!"
                                         )
                             else:
                                 db.atualizar_status_aposta(aposta['row'], 'Perdeu')

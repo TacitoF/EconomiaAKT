@@ -35,32 +35,32 @@ class Shop(commands.Cog):
         embed.add_field(
             name="📈 Cargos (Aumenta Salário e Limite de Aposta)",
             value=(
-                "🐒 **Macaquinho** — `1.200 C` | Sal: 130–230 C/h | Aposta: 1.500 C\n"
-                "🐒 **Babuíno** — `5.500 C` | Sal: 320–530 C/h | Aposta: 4.500 C\n"
-                "🦧 **Chimpanzé** — `14.000 C` | Sal: 780–1.320 C/h | Aposta: 12.000 C\n"
-                "🦧 **Orangutango** — `35.000 C` | Sal: 1.900–3.200 C/h | Aposta: 30.000 C\n"
-                "🦍 **Gorila** — `85.000 C` | Sal: 4.700–7.800 C/h | Aposta: 80.000 C\n"
-                "🗿 **Ancestral** — `210.000 C` | Sal: 11.500–19.000 C/h | Aposta: 250.000 C\n"
-                "👑 **Rei Símio** — `600.000 C` | Sal: 27.000–45.000 C/h | Aposta: 1.500.000 C"
+                "🐒 **Macaquinho** — `1.200 MC` | Sal: 130–230 MC/h | Aposta: 1.500 MC\n"
+                "🐒 **Babuíno** — `5.500 MC` | Sal: 320–530 MC/h | Aposta: 4.500 MC\n"
+                "🦧 **Chimpanzé** — `14.000 MC` | Sal: 780–1.320 MC/h | Aposta: 12.000 MC\n"
+                "🦧 **Orangutango** — `35.000 MC` | Sal: 1.900–3.200 MC/h | Aposta: 30.000 MC\n"
+                "🦍 **Gorila** — `85.000 MC` | Sal: 4.700–7.800 MC/h | Aposta: 80.000 MC\n"
+                "🗿 **Ancestral** — `210.000 MC` | Sal: 11.500–19.000 MC/h | Aposta: 250.000 MC\n"
+                "👑 **Rei Símio** — `600.000 MC` | Sal: 27.000–45.000 MC/h | Aposta: 1.500.000 MC"
             ), inline=False
         )
         embed.add_field(
             name="🛡️ Equipamentos",
             value=(
-                "🛡️ **Escudo** — `700 C` | Bloqueia 1 roubo.\n"
-                "🕵️ **Pé de Cabra** — `1.100 C` | Aumenta chance de roubo para 62%.\n"
-                "📄 **Seguro** — `950 C` | Recupera 60% do valor se for roubado."
+                "🛡️ **Escudo** — `700 MC` | Bloqueia 1 roubo.\n"
+                "🕵️ **Pé de Cabra** — `1.100 MC` | Aumenta chance de roubo para 62%.\n"
+                "📄 **Seguro** — `950 MC` | Recupera 60% do valor se for roubado."
             ), inline=False
         )
         embed.add_field(
             name="😈 Sabotagens e Maldades",
             value=(
-                "🍌 **Casca de Banana** — `300 C` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
-                "🦍 **Imposto do Gorila** — `2.000 C` | Rouba 25% do trabalho do alvo por 24h. `!taxar @user`\n"
-                "🪄 **Troca de Nick** — `3.000 C` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
+                "🍌 **Casca de Banana** — `300 MC` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
+                "🦍 **Imposto do Gorila** — `2.000 MC` | Rouba 25% do trabalho do alvo por 24h. `!taxar @user`\n"
+                "🪄 **Troca de Nick** — `3.000 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
                 "⚡ **Comandos Diretos (sem item):**\n"
-                "🙊 **Maldição Símia** — `500 C` | Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
-                "🎭 **Impostor** — `500 C` | Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
+                "🙊 **Maldição Símia** — `500 MC` | Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
+                "🎭 **Impostor** — `500 MC` | Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
             ), inline=False
         )
         embed.set_footer(text="Use !salarios para ver a progressão completa")
@@ -112,8 +112,8 @@ class Shop(commands.Cog):
             if saldo < item_data["preco"]:
                 faltam = round(item_data["preco"] - saldo, 2)
                 return await ctx.send(
-                    f"❌ Saldo insuficiente! Você precisa de **{item_data['preco']:.2f} C** "
-                    f"(faltam **{faltam:.2f} C**)."
+                    f"❌ Saldo insuficiente! Você precisa de **{item_data['preco']:.2f} MC** "
+                    f"(faltam **{faltam:.2f} MC**)."
                 )
 
             db.update_value(user['row'], 3, round(saldo - item_data["preco"], 2))

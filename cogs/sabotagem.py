@@ -23,7 +23,7 @@ class Sabotagem(commands.Cog):
             user = db.get_user_data(str(ctx.author.id))
             saldo = db.parse_float(user['data'][2]) if user else 0.0
             if not user or saldo < custo:
-                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} C**!")
+                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - custo, 2))
 
@@ -58,7 +58,7 @@ class Sabotagem(commands.Cog):
             user = db.get_user_data(str(ctx.author.id))
             saldo = db.parse_float(user['data'][2]) if user else 0.0
             if not user or saldo < custo:
-                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} C** para conjurar a Maldição Símia!")
+                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} MC** para conjurar a Maldição Símia!")
 
             db.update_value(user['row'], 3, round(saldo - custo, 2))
             tempo_fim = int(time.time() + 60)

@@ -90,7 +90,7 @@ class MinasView(disnake.ui.View):
             mult  = calcular_mult(self.bombas, self.reveladas)
             ganho = round(self.aposta * mult, 2)
             sacar = disnake.ui.Button(
-                label=f"💰 Sacar  {mult}x  ({ganho:.2f} C)",
+                label=f"💰 Sacar  {mult}x  ({ganho:.2f} MC)",
                 style=disnake.ButtonStyle.success,
                 custom_id="sacar",
                 row=4,
@@ -199,22 +199,22 @@ class MinasView(disnake.ui.View):
         if explodiu:
             cor    = disnake.Color.red()
             titulo = "💥 BOOOOM! Você pisou numa mina!"
-            desc   = f"{self.ctx.author.mention} perdeu **{self.aposta:.2f} C**."
+            desc   = f"{self.ctx.author.mention} perdeu **{self.aposta:.2f} MC**."
         elif vitoria:
             cor    = disnake.Color.gold()
             titulo = "🏆 CAMPO LIMPO! Todas as casas seguras reveladas!"
-            desc   = f"{self.ctx.author.mention} ganhou **{ganho:.2f} C** (`{mult}x`)!"
+            desc   = f"{self.ctx.author.mention} ganhou **{ganho:.2f} MC** (`{mult}x`)!"
         elif sacou:
             cor    = disnake.Color.green()
             titulo = "💰 Saque realizado com segurança!"
-            desc   = f"{self.ctx.author.mention} sacou **{ganho:.2f} C** (`{mult}x`)."
+            desc   = f"{self.ctx.author.mention} sacou **{ganho:.2f} MC** (`{mult}x`)."
         else:
             cor    = disnake.Color.blurple()
             titulo = f"💣 Campo Minado — {self.bombas} {'mina' if self.bombas == 1 else 'minas'}"
             desc   = (
-                f"Aposta: **{self.aposta:.2f} C**\n"
+                f"Aposta: **{self.aposta:.2f} MC**\n"
                 f"Casas seguras reveladas: **{self.reveladas}**\n"
-                f"Multiplicador atual: **{mult_atual}x** → Saque: **{saque_atual:.2f} C**"
+                f"Multiplicador atual: **{mult_atual}x** → Saque: **{saque_atual:.2f} MC**"
             )
 
         embed = disnake.Embed(title=titulo, description=desc, color=cor)
@@ -232,7 +232,7 @@ class MinasView(disnake.ui.View):
             try:
                 await self.ctx.channel.send(
                     f"⏰ {self.ctx.author.mention}, o tempo acabou! "
-                    f"Sua aposta de **{self.aposta:.2f} C** foi perdida."
+                    f"Sua aposta de **{self.aposta:.2f} MC** foi perdida."
                 )
             except:
                 pass
@@ -274,7 +274,7 @@ class MinasGame(commands.Cog):
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
             if aposta > get_limite(cargo):
                 return await ctx.send(
-                    f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!"
+                    f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!"
                 )
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))

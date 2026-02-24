@@ -154,7 +154,7 @@ async def desligar(ctx):
 # ─────────────────────────────────────────────
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=disnake.Game(name="!ajuda no AKTrovão"))
+    await bot.change_presence(activity=disnake.Game(name="!trabalhar para começar ou !ajuda para o manual!"))
     print(f"✅ {bot.user} (Koba) online! (MODO TRAVADO)")
     await atualizar_canal_status(online=not bot.is_locked)
 

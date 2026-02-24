@@ -36,7 +36,7 @@ class Bounty(commands.Cog):
 
             embed = disnake.Embed(
                 title="🚨 CAÇADA ATUALIZADA! 🚨",
-                description=f"**{ctx.author.mention}** investiu na caçada contra **{vitima.mention}**!\n\n💰 **Prêmio Total:** `{self.bot.recompensas[vitima_id]:.2f} C`",
+                description=f"**{ctx.author.mention}** investiu na caçada contra **{vitima.mention}**!\n\n💰 **Prêmio Total:** `{self.bot.recompensas[vitima_id]:.2f} MC`",
                 color=disnake.Color.red()
             )
             await ctx.send(embed=embed)
@@ -58,7 +58,7 @@ class Bounty(commands.Cog):
             if val > 0:
                 user = self.bot.get_user(int(u_id))
                 nome = user.display_name if user else f"ID: {u_id}"
-                embed.add_field(name=f"Alvo: {nome}", value=f"➡️ **{val:.2f} C**", inline=False)
+                embed.add_field(name=f"Alvo: {nome}", value=f"➡️ **{val:.2f} MC**", inline=False)
                 tem = True
 
         if not tem:

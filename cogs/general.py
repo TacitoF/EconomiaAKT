@@ -23,7 +23,7 @@ class General(commands.Cog):
             color=disnake.Color.green()
         )
         embed.add_field(name="💵 ECONOMIA E PERFIL", inline=False, value=(
-            "💰 `!trabalhar` — Ganhe conguitos a cada 1h\n"
+            "💰 `!trabalhar` — Ganhe Macacoins a cada 1h\n"
             "👤 `!perfil [@user]` — Veja seu status\n"
             "🏅 `!conquistas` — Lista de conquistas\n"
             "🏆 `!rank` — Top 10 da selva\n"
@@ -39,11 +39,11 @@ class General(commands.Cog):
             "🍌 `!casca @user` — Usa Casca de Banana\n"
             "🦍 `!taxar @user` — Usa Imposto do Gorila\n"
             "🪄 `!apelidar @user <nick>` — Usa Troca de Nick\n"
-            "🐒 `!amaldicoar @user` — Maldição Símia (500 C)\n"
-            "🎭 `!impostor @user <msg>` — Impostor (500 C)"
+            "🐒 `!amaldicoar @user` — Maldição Símia (500 MC)\n"
+            "🎭 `!impostor @user <msg>` — Impostor (500 MC)"
         ))
         embed.add_field(name="🏦 BANCO E INVESTIMENTOS", inline=False, value=(
-            "🏛️ `!investir fixo <valor>` — +10% na hora (limite 5.000 C/dia)\n"
+            "🏛️ `!investir fixo <valor>` — +10% na hora (limite 5.000 MC/dia)\n"
             "📈 `!investir cripto <valor>` — -25% a +20% em 30 segundos"
         ))
         embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
@@ -73,14 +73,14 @@ class General(commands.Cog):
         )
 
         tabela = [
-            ("🐒 Lêmure",      "40 – 80 C",            "1.200 C",    "—"),
-            ("🐵 Macaquinho",  "130 – 230 C",          "5.500 C",    "1.200 C"),
-            ("🦍 Babuíno",     "320 – 530 C",          "14.000 C",   "5.500 C"),
-            ("🦧 Chimpanzé",   "780 – 1.320 C",        "35.000 C",   "14.000 C"),
-            ("🌴 Orangutango", "1.900 – 3.200 C",      "85.000 C",   "35.000 C"),
-            ("🌋 Gorila",      "4.700 – 7.800 C",      "210.000 C",  "85.000 C"),
-            ("🗿 Ancestral",   "11.500 – 19.000 C",    "600.000 C",  "210.000 C"),
-            ("👑 Rei Símio",   "27.000 – 45.000 C",    "MÁXIMO 👑",  "600.000 C"),
+            ("🐒 Lêmure",      "40 – 80 MC",            "1.200 MC",    "—"),
+            ("🐵 Macaquinho",  "130 – 230 MC",          "5.500 MC",    "1.200 MC"),
+            ("🦍 Babuíno",     "320 – 530 MC",          "14.000 MC",   "5.500 MC"),
+            ("🦧 Chimpanzé",   "780 – 1.320 MC",        "35.000 MC",   "14.000 MC"),
+            ("🌴 Orangutango", "1.900 – 3.200 MC",      "85.000 MC",   "35.000 MC"),
+            ("🌋 Gorila",      "4.700 – 7.800 MC",      "210.000 MC",  "85.000 MC"),
+            ("🗿 Ancestral",   "11.500 – 19.000 MC",    "600.000 MC",  "210.000 MC"),
+            ("👑 Rei Símio",   "27.000 – 45.000 MC",    "MÁXIMO 👑",  "600.000 MC"),
         ]
 
         for cargo, salario, prox_custo, custo_atual in tabela:

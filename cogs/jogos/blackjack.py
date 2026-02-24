@@ -60,7 +60,7 @@ class LobbyView(disnake.ui.View):
     def _lobby_text(self):
         nomes = ", ".join([p.display_name for p in self.players])
         return (
-            f"🃏 **BLACKJACK!** Dono: {self.ctx.author.mention} | Aposta: `{self.aposta:.2f} C`\n"
+            f"🃏 **BLACKJACK!** Dono: {self.ctx.author.mention} | Aposta: `{self.aposta:.2f} MC`\n"
             f"👥 **Jogadores ({len(self.players)}):** {nomes}\n\n"
             f"Clique **Entrar** para participar ou **Começar** para iniciar!"
         )
@@ -150,9 +150,9 @@ class BlackjackView(disnake.ui.View):
                 def resultado_mao(pm, aposta_mao):
                     if pm > 21: return "❌ Estourou"
                     if d_p > 21 or pm > d_p:
-                        return f"🏆 Venceu (**{(aposta_mao * 2):.2f} C**)"
+                        return f"🏆 Venceu (**{(aposta_mao * 2):.2f} MC**)"
                     if pm == d_p:
-                        return f"🤝 Empatou (**{aposta_mao:.2f} C**)"
+                        return f"🤝 Empatou (**{aposta_mao:.2f} MC**)"
                     return "💀 Perdeu"
 
                 if p["splitted"]:
@@ -164,7 +164,7 @@ class BlackjackView(disnake.ui.View):
 
             embed.add_field(
                 name=f"{status_emoji} {p['member'].display_name}",
-                value=f"{mao_str}\nAposta: `{p['aposta'] * (2 if p['splitted'] else 1):.2f} C`{res_txt}",
+                value=f"{mao_str}\nAposta: `{p['aposta'] * (2 if p['splitted'] else 1):.2f} MC`{res_txt}",
                 inline=True
             )
 
@@ -301,7 +301,7 @@ class BlackjackCog(commands.Cog):
             cargo = u_c['data'][3] if len(u_c['data']) > 3 else "Lêmure"
             saldo = db.parse_float(u_c['data'][2])
             if aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 Como **{cargo}**, seu limite é de **{get_limite(cargo)} C**.")
+                return await ctx.send(f"🚫 Como **{cargo}**, seu limite é de **{get_limite(cargo)} MC**.")
             if saldo < aposta:
                 return await ctx.send("❌ Saldo insuficiente!")
 

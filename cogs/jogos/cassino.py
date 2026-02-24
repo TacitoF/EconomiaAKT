@@ -55,7 +55,7 @@ class Cassino(commands.Cog):
 
             cargo = user['data'][3] if len(user['data']) > 3 else "Lêmure"
             if aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))
 
@@ -70,13 +70,13 @@ class Cassino(commands.Cog):
                 lucro_total = round(aposta * 10.0, 2)
                 db.update_value(user_atual['row'], 3, round(saldo_atual + lucro_total, 2))
                 save_achievement(user_atual, "filho_da_sorte")
-                status_msg = f"🎰 **JACKPOT!** 🎰\nVocê lucrou **{lucro_total:.2f} C**!"
+                status_msg = f"🎰 **JACKPOT!** 🎰\nVocê lucrou **{lucro_total:.2f} MC**!"
             elif res[0] == res[1] or res[1] == res[2] or res[0] == res[2]:
                 lucro = round(aposta * 1.0, 2)
                 db.update_value(user_atual['row'], 3, round(saldo_atual + aposta + lucro, 2))
-                status_msg = f"Você lucrou **{lucro:.2f} C**!"
+                status_msg = f"Você lucrou **{lucro:.2f} MC**!"
             else:
-                status_msg = f"Você perdeu **{aposta:.2f} C**."
+                status_msg = f"Você perdeu **{aposta:.2f} MC**."
 
             await ctx.send(f"🎰 **CASSINO AKTrovão** 🎰\n**[ {res[0]} | {res[1]} | {res[2]} ]**\n{ctx.author.mention}, {status_msg}")
 
@@ -109,7 +109,7 @@ class Cassino(commands.Cog):
             if saldo < aposta:
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
             if aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))
             resultado = random.choice(bichos)
@@ -122,9 +122,9 @@ class Cassino(commands.Cog):
             if bicho == resultado:
                 lucro = round(aposta * 4.0, 2)
                 db.update_value(user_atual['row'], 3, round(saldo_atual + aposta + lucro, 2))
-                await msg.edit(content=f"🎉 {ctx.author.mention} DEU **{resultado.upper()}**! Você faturou **{lucro:.2f} C** de lucro!")
+                await msg.edit(content=f"🎉 {ctx.author.mention} DEU **{resultado.upper()}**! Você faturou **{lucro:.2f} MC** de lucro!")
             else:
-                await msg.edit(content=f"💀 {ctx.author.mention} DEU **{resultado.upper()}**! Perdeu **{aposta:.2f} C**.")
+                await msg.edit(content=f"💀 {ctx.author.mention} DEU **{resultado.upper()}**! Perdeu **{aposta:.2f} MC**.")
 
         except commands.CommandError:
             raise
@@ -155,7 +155,7 @@ class Cassino(commands.Cog):
             if saldo < aposta:
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
             if aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))
 
@@ -190,9 +190,9 @@ class Cassino(commands.Cog):
             if escolha == nome_vencedor:
                 lucro = round(aposta * 2.0, 2)
                 db.update_value(user_atual['row'], 3, round(saldo_atual + aposta + lucro, 2))
-                await ctx.send(f"🏆 {ctx.author.mention} **VITÓRIA!** O {nome_vencedor.capitalize()} cruzou primeiro! Lucrou **{lucro:.2f} C**!")
+                await ctx.send(f"🏆 {ctx.author.mention} **VITÓRIA!** O {nome_vencedor.capitalize()} cruzou primeiro! Lucrou **{lucro:.2f} MC**!")
             else:
-                await ctx.send(f"💀 {ctx.author.mention} **DERROTA!** O {nome_vencedor.capitalize()} venceu. Você perdeu **{aposta:.2f} C**.")
+                await ctx.send(f"💀 {ctx.author.mention} **DERROTA!** O {nome_vencedor.capitalize()} venceu. Você perdeu **{aposta:.2f} MC**.")
 
         except commands.CommandError:
             raise

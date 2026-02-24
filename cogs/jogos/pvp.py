@@ -94,11 +94,11 @@ class PvP(commands.Cog):
 
             cargo_d = desafiante_db['data'][3] if len(desafiante_db['data']) > 3 else "Lêmure"
             if aposta > get_limite(cargo_d):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo_d}** é de **{get_limite(cargo_d)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo_d}** é de **{get_limite(cargo_d)} MC**!")
 
             view = AceitarView(oponente, aposta, "carta")
             await ctx.send(
-                f"🃏 {oponente.mention}, você foi desafiado por {ctx.author.mention} para um **Duelo de Cartas** valendo **{aposta:.2f} C**!",
+                f"🃏 {oponente.mention}, você foi desafiado por {ctx.author.mention} para um **Duelo de Cartas** valendo **{aposta:.2f} MC**!",
                 view=view
             )
             await view.wait()
@@ -129,7 +129,7 @@ class PvP(commands.Cog):
             if peso_d == peso_o:
                 db.update_value(d_atual['row'], 3, round(db.parse_float(d_atual['data'][2]) - aposta, 2))
                 db.update_value(o_atual['row'], 3, round(db.parse_float(o_atual['data'][2]) - aposta, 2))
-                embed.description = f"🤝 **EMPATE!** Ambos perdem **{aposta:.2f} C** para o Cassino!"
+                embed.description = f"🤝 **EMPATE!** Ambos perdem **{aposta:.2f} MC** para o Cassino!"
                 return await ctx.send(embed=embed)
 
             vencedor_db = d_atual if peso_d > peso_o else o_atual
@@ -139,7 +139,7 @@ class PvP(commands.Cog):
 
             db.update_value(vencedor_db['row'], 3, round(db.parse_float(vencedor_db['data'][2]) + aposta, 2))
             db.update_value(perdedor_db['row'], 3, round(db.parse_float(perdedor_db['data'][2]) - aposta, 2))
-            embed.description = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou **{(aposta * 2):.2f} C** de lucro!"
+            embed.description = f"🏆 A carta de **{vencedor.mention}** foi maior! Faturou **{(aposta * 2):.2f} MC** de lucro!"
             await ctx.send(embed=embed)
 
         except commands.CommandError:
@@ -172,14 +172,14 @@ class PvP(commands.Cog):
 
             cargo = ladrao['data'][3] if len(ladrao['data']) > 3 else "Lêmure"
             if aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             if aposta == 1.0:
                 save_achievement(ladrao, "briga_de_bar")
 
             view = AceitarView(vitima, aposta, "briga")
             await ctx.send(
-                f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma **briga** por **{aposta:.2f} C**!",
+                f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma **briga** por **{aposta:.2f} MC**!",
                 view=view
             )
             await view.wait()
@@ -200,7 +200,7 @@ class PvP(commands.Cog):
 
             db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + aposta, 2))
             db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) - aposta, 2))
-            await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e lucrou **{(aposta * 2):.2f} C**!")
+            await ctx.send(f"🏆 **{vencedor.mention}** nocauteou {perdedor.mention} e lucrou **{(aposta * 2):.2f} MC**!")
 
         except commands.CommandError:
             raise

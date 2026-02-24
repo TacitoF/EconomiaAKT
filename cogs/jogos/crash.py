@@ -72,7 +72,7 @@ class CrashGame(commands.Cog):
             if saldo < aposta:
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
             if aposta > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
+                return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))
 
@@ -87,7 +87,7 @@ class CrashGame(commands.Cog):
 
             embed = disnake.Embed(
                 title="📈 CRASH DO CIPÓ 🐒",
-                description=f"{ctx.author.mention} apostou **{aposta:.2f} C**!\n\n🌿 O macaco começou a subir...\n**Multiplicador:** `1.0x`",
+                description=f"{ctx.author.mention} apostou **{aposta:.2f} MC**!\n\n🌿 O macaco começou a subir...\n**Multiplicador:** `1.0x`",
                 color=disnake.Color.green()
             )
             msg = await ctx.send(embed=embed, view=view)
@@ -96,7 +96,7 @@ class CrashGame(commands.Cog):
                 await asyncio.sleep(1)
                 view.stop()
                 embed.color = disnake.Color.red()
-                embed.description = f"💥 **ARREBENTOU INSTANTANEAMENTE!**\nO cipó rasgou no `1.0x`.\n\n💀 {ctx.author.mention} perdeu **{aposta:.2f} C**."
+                embed.description = f"💥 **ARREBENTOU INSTANTANEAMENTE!**\nO cipó rasgou no `1.0x`.\n\n💀 {ctx.author.mention} perdeu **{aposta:.2f} MC**."
                 for item in view.children:
                     item.disabled = True
                 await msg.edit(embed=embed, view=view)
@@ -113,7 +113,7 @@ class CrashGame(commands.Cog):
                 current_mult = round(min(current_mult + round(random.uniform(0.1, 0.4), 1), crash_point), 1)
                 if not view.sacou:
                     embed.description = (
-                        f"{ctx.author.mention} apostou **{aposta:.2f} C**!\n\n"
+                        f"{ctx.author.mention} apostou **{aposta:.2f} MC**!\n\n"
                         f"🌿 Subindo alto...\n**Multiplicador:** `{current_mult}x`"
                     )
                     try:
@@ -129,13 +129,13 @@ class CrashGame(commands.Cog):
                 ganho_total = round(aposta * current_mult, 2)
                 db.update_value(user_atual['row'], 3, round(db.parse_float(user_atual['data'][2]) + ganho_total, 2))
                 embed.color = disnake.Color.blue()
-                embed.description = f"✅ **SACOU A TEMPO!**\nNo `{current_mult}x`.\n\n💰 {ctx.author.mention} lucrou **{ganho_total:.2f} C**!"
+                embed.description = f"✅ **SACOU A TEMPO!**\nNo `{current_mult}x`.\n\n💰 {ctx.author.mention} lucrou **{ganho_total:.2f} MC**!"
                 await msg.edit(embed=embed, view=view)
                 if current_mult >= 5.0:
                     save_achievement(user_atual, "astronauta_cipo")
             else:
                 embed.color = disnake.Color.red()
-                embed.description = f"💥 **ARREBENTOU!**\nO cipó rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} perdeu **{aposta:.2f} C**."
+                embed.description = f"💥 **ARREBENTOU!**\nO cipó rasgou no `{crash_point}x`.\n\n💀 {ctx.author.mention} perdeu **{aposta:.2f} MC**."
                 await msg.edit(embed=embed, view=view)
 
         except commands.CommandError:
