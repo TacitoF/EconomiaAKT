@@ -29,7 +29,7 @@ class LobbyView(disnake.ui.View):
         self.players = players
         self.started = False
         self.cancelled = False
-        self.msg = None  # set after sending
+        self.msg = None
 
     @disnake.ui.button(label="🃏 Entrar", style=disnake.ButtonStyle.success)
     async def entrar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
@@ -75,6 +75,7 @@ class BlackjackView(disnake.ui.View):
         super().__init__(timeout=120)
         self.ctx = ctx
         self.bot = bot
+        self.message = None # Guarda a mensagem para podermos animar sem precisar do inter
         self.players_data = {
             p.id: {"member": p, "hand": [], "hand2": [], "status": "jogando",
                    "aposta": round(float(aposta_base), 2), "splitted": False, "current_hand": 1}
@@ -127,14 +128,22 @@ class BlackjackView(disnake.ui.View):
             v1 = self._calcular_pontos([p_atual_data["hand"][0]])
             v2 = self._calcular_pontos([p_atual_data["hand"][1]])
             pode_split = len(p_atual_data["hand"]) == 2 and v1 == v2 and not p_atual_data["splitted"]
+            
+            # Lógica do botão de Seguro (Só ativa na primeira jogada se a carta visível do dealer for um Ás)
+            pode_seguro = False
+            if len(self.dealer_hand) > 1 and self.dealer_hand[1]['valor'] == 'A':
+                if len(p_atual_data["hand"]) == 2 and not p_atual_data["splitted"]:
+                    pode_seguro = True
+
             for child in self.children:
                 if child.label == "Dividir (Split)": child.disabled = not pode_split
                 if child.label == "Dobrar (Double)": child.disabled = p_atual_data["splitted"]
+                if child.label == "Seguro": child.disabled = not pode_seguro
 
         for p_id in self.player_ids:
             p = self.players_data[p_id]
             em_turno = (not self.terminado and p_atual_id == p_id)
-            status_emoji = "⏳" if em_turno else ("💥" if p["status"] == "estourou" else "✋" if p["status"] == "parou" else "✅")
+            status_emoji = "⏳" if em_turno else ("💥" if p["status"] == "estourou" else "🛡️" if p["status"] == "seguro" else "✋" if p["status"] == "parou" else "✅")
             p_p = self._calcular_pontos(p["hand"])
 
             if p["splitted"]:
@@ -147,7 +156,8 @@ class BlackjackView(disnake.ui.View):
 
             res_txt = ""
             if self.terminado:
-                def resultado_mao(pm, aposta_mao):
+                def resultado_mao(pm, aposta_mao, status):
+                    if status == "seguro": return "🛡️ Acionou Seguro"
                     if pm > 21: return "❌ Estourou"
                     if d_p > 21 or pm > d_p:
                         return f"🏆 Venceu (**{(aposta_mao * 2):.2f} MC**)"
@@ -157,10 +167,10 @@ class BlackjackView(disnake.ui.View):
 
                 if p["splitted"]:
                     res_txt = (f"\nResultados:\n"
-                               f"Mão 1: **{resultado_mao(p_p, p['aposta'])}**\n"
-                               f"Mão 2: **{resultado_mao(p2_p, p['aposta'])}**")
+                               f"Mão 1: **{resultado_mao(p_p, p['aposta'], p['status'])}**\n"
+                               f"Mão 2: **{resultado_mao(p2_p, p['aposta'], p['status'])}**")
                 else:
-                    res_txt = f"\nResultado: **{resultado_mao(p_p, p['aposta'])}**"
+                    res_txt = f"\nResultado: **{resultado_mao(p_p, p['aposta'], p['status'])}**"
 
             embed.add_field(
                 name=f"{status_emoji} {p['member'].display_name}",
@@ -171,15 +181,16 @@ class BlackjackView(disnake.ui.View):
         if self.terminado:
             embed.set_footer(text="Partida finalizada! Prêmios entregues.")
 
-        if inter:
-            try:
-                # Usa edit_original_response pois os botões já usaram defer()
-                await inter.edit_original_response(embed=embed, view=None if self.terminado else self)
-            except disnake.NotFound:
-                # Fallback caso a mensagem já tenha sido apagada ou dado erro
-                await inter.channel.send(embed=embed, view=None if self.terminado else self)
-        else:
-            return embed
+        try:
+            if inter:
+                if not inter.response.is_done():
+                    await inter.response.edit_message(embed=embed, view=None if self.terminado else self)
+                else:
+                    await inter.edit_original_response(embed=embed, view=None if self.terminado else self)
+            elif self.message:
+                await self.message.edit(embed=embed, view=None if self.terminado else self)
+        except Exception as e:
+            print(f"Erro ao atualizar embed do Blackjack: {e}")
 
     @disnake.ui.button(label="Pedir (Hit)", style=disnake.ButtonStyle.green)
     async def hit(self, button, inter):
@@ -187,17 +198,21 @@ class BlackjackView(disnake.ui.View):
         if inter.author.id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         
-        await inter.response.defer() # <--- EVITA O ERRO 10062
+        await inter.response.defer() 
         
         p = self.players_data[inter.author.id]
         mao_atual = p["hand"] if not p["splitted"] or p["current_hand"] == 1 else p["hand2"]
         mao_atual.append(self.deck.pop())
+        
         if self._calcular_pontos(mao_atual) >= 21:
-            if p["splitted"] and p["current_hand"] == 1: p["current_hand"] = 2
+            if p["splitted"] and p["current_hand"] == 1: 
+                p["current_hand"] = 2
+                await self.atualizar_embed(inter)
             else:
                 p["status"] = "parou"
-                await self._proximo_turno()
-        await self.atualizar_embed(inter)
+                await self._proximo_turno(inter)
+        else:
+            await self.atualizar_embed(inter)
 
     @disnake.ui.button(label="Parar (Stand)", style=disnake.ButtonStyle.grey)
     async def stand(self, button, inter):
@@ -205,14 +220,15 @@ class BlackjackView(disnake.ui.View):
         if inter.author.id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         
-        await inter.response.defer() # <--- EVITA O ERRO 10062
+        await inter.response.defer() 
         
         p = self.players_data[inter.author.id]
-        if p["splitted"] and p["current_hand"] == 1: p["current_hand"] = 2
+        if p["splitted"] and p["current_hand"] == 1: 
+            p["current_hand"] = 2
+            await self.atualizar_embed(inter)
         else:
             p["status"] = "parou"
-            await self._proximo_turno()
-        await self.atualizar_embed(inter)
+            await self._proximo_turno(inter)
 
     @disnake.ui.button(label="Dobrar (Double)", style=disnake.ButtonStyle.blurple)
     async def double(self, button, inter):
@@ -221,7 +237,7 @@ class BlackjackView(disnake.ui.View):
         if p_id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         
-        await inter.response.defer() # <--- EVITA O ERRO 10062
+        await inter.response.defer() 
         
         p = self.players_data[p_id]
         try:
@@ -232,8 +248,7 @@ class BlackjackView(disnake.ui.View):
             p["aposta"] *= 2
             p["hand"].append(self.deck.pop())
             p["status"] = "parou"
-            await self._proximo_turno()
-            await self.atualizar_embed(inter)
+            await self._proximo_turno(inter)
         except Exception as e:
             print(f"❌ Erro no Double: {e}")
 
@@ -244,7 +259,7 @@ class BlackjackView(disnake.ui.View):
         if p_id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
         
-        await inter.response.defer() # <--- EVITA O ERRO 10062
+        await inter.response.defer() 
         
         p = self.players_data[p_id]
         try:
@@ -260,13 +275,49 @@ class BlackjackView(disnake.ui.View):
         except Exception as e:
             print(f"❌ Erro no Split: {e}")
 
-    async def _proximo_turno(self):
+    @disnake.ui.button(label="Seguro", style=disnake.ButtonStyle.secondary, disabled=True)
+    async def seguro(self, button, inter):
+        if self.terminado or self.current_player_idx >= len(self.player_ids): return
+        p_id = inter.author.id
+        if p_id != self.player_ids[self.current_player_idx]:
+            return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
+        
+        await inter.response.defer()
+        
+        p = self.players_data[p_id]
+        try:
+            u_db = db.get_user_data(str(p_id))
+            if u_db:
+                saldo = db.parse_float(u_db['data'][2])
+                devolucao = p["aposta"] / 2
+                # O botão devolve 50% do dinheiro que já tinha sido descontado
+                db.update_value(u_db['row'], 3, round(saldo + devolucao, 2))
+                
+            p["status"] = "seguro"
+            await self._proximo_turno(inter)
+        except Exception as e:
+            print(f"❌ Erro no Seguro: {e}")
+
+    async def _proximo_turno(self, inter=None):
         self.current_player_idx += 1
+        
+        # Se todos os jogadores já jogaram, chegou a hora do Dealer
         if self.current_player_idx >= len(self.player_ids):
             self.terminado = True
+            
+            # 1º Passo: Atualiza revelando a carta oculta do dealer
+            await self.atualizar_embed(inter)
+            await asyncio.sleep(1.5) # Pausa de suspense
+            
+            # 2º Passo: Animação puxando cartas de 2 em 2 segundos
             while self._calcular_pontos(self.dealer_hand) < 17:
                 self.dealer_hand.append(self.deck.pop())
+                await self.atualizar_embed() # Sem passar o 'inter', usa self.message.edit()
+                await asyncio.sleep(2.0)
+                
+            # 3º Passo: Terminou de puxar, processa quem ganhou
             await self._processar_pagamentos()
+            await self.atualizar_embed()
 
     async def _processar_pagamentos(self):
         d_p = self._calcular_pontos(self.dealer_hand)
@@ -278,6 +329,9 @@ class BlackjackView(disnake.ui.View):
             return 0.0
 
         for p_id, p in self.players_data.items():
+            if p["status"] == "seguro": 
+                continue # Pula quem já desistiu usando o botão de seguro
+
             try:
                 u_db = db.get_user_data(str(p_id))
                 if not u_db: continue
@@ -351,7 +405,14 @@ class BlackjackCog(commands.Cog):
             view.dealer_hand = [view.deck.pop(), view.deck.pop()]
             for p_id in view.player_ids:
                 view.players_data[p_id]["hand"] = [view.deck.pop(), view.deck.pop()]
-            await ctx.send(embed=await view.atualizar_embed(), view=view)
+            
+            # Envia uma mensagem em branco primeiro para pegar o objeto 'msg'
+            embed_loading = disnake.Embed(title="🃏 Embaralhando as cartas...", color=disnake.Color.dark_purple())
+            msg = await ctx.send(embed=embed_loading)
+            view.message = msg # Salva a mensagem na View para a animação do Dealer funcionar depois
+            
+            # Gera a mesa real
+            await view.atualizar_embed()
 
         except commands.CommandError:
             raise
