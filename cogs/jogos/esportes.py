@@ -124,7 +124,7 @@ class Esportes(commands.Cog):
 
             # Como esta API gratuita não fornece as Odds de apostas, 
             # fixamos em 1.95x (padrão de casa de aposta para jogo equilibrado)
-            odd_fixa = 1.95
+            odd_fixa = 2.0
 
             # Desconta o saldo e salva a aposta diretamente no Google Sheets
             db.update_value(user['row'], 3, round(saldo - valor, 2))
