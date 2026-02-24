@@ -205,7 +205,7 @@ class Admin(commands.Cog):
 
         embed = disnake.Embed(
             title="📢 ATUALIZAÇÃO DA SELVA (V6.0): Chega de Digitar! 🎮 🐒",
-            description="A maior melhoria de experiência da história do AK-BET chegou. Todos os jogos que precisavam de digitação no chat agora funcionam com **botões interativos**.",
+            description="A maior melhoria de experiência da história do AK-BET chegou. Todos os jogos que precisavam de digitação no chat agora funcionam com **botões interativos**, além de ajustes pesados na economia!",
             color=disnake.Color.dark_red()
         )
 
@@ -227,6 +227,16 @@ class Admin(commands.Cog):
         embed.add_field(name="🥥 4. Coco Explosivo — Entrar por Botão", inline=False, value=(
             "• O comando `!entrar_coco` foi aposentado!\n"
             "• A mensagem de abertura da roda agora tem um botão **🥥 Entrar na Roda** direto nela. Simples assim."
+        ))
+
+        embed.add_field(name="🥷 5. Balanceamento Justo (!roubar)", inline=False, value=(
+            "• **Piedade aos Pobres:** Tentar roubar jogadores com menos de 500 C agora rende apenas migalhas (1% a 5%).\n"
+            "• Procure alvos do seu tamanho! Roubos normais continuam rendendo de 5% a 10%."
+        ))
+
+        embed.add_field(name="📈 6. Novo Mercado Cripto (!investir cripto)", inline=False, value=(
+            "• **Anti-Vício:** Para evitar spam e quebras de banco, a compra de criptomoedas agora é limitada a **4 vezes por dia**.\n"
+            "• **Volatilidade Fixa:** Os resultados agora são cravados, variando de um Crash de **-25%** até uma Alta Máxima de **+20%**."
         ))
 
         embed.set_footer(text="AK-BET V6.0 • Jogue com estilo, não com digitação! 🐒")
