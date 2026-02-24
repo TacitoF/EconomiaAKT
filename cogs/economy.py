@@ -143,7 +143,7 @@ class Economy(commands.Cog):
             inv_ladrao = [i.strip() for i in str(ladrao_data['data'][5] if len(ladrao_data['data']) > 5 else "").split(',') if i.strip()]
             inv_alvo   = [i.strip() for i in str(alvo_data['data'][5]   if len(alvo_data['data'])   > 5 else "").split(',') if i.strip()]
 
-            chance_sucesso = 38
+            chance_sucesso = 42
             if "Pé de Cabra" in inv_ladrao:
                 chance_sucesso = 62
                 inv_ladrao.remove("Pé de Cabra")

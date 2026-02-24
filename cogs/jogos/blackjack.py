@@ -172,7 +172,12 @@ class BlackjackView(disnake.ui.View):
             embed.set_footer(text="Partida finalizada! Prêmios entregues.")
 
         if inter:
-            await inter.response.edit_message(embed=embed, view=None if self.terminado else self)
+            try:
+                # Usa edit_original_response pois os botões já usaram defer()
+                await inter.edit_original_response(embed=embed, view=None if self.terminado else self)
+            except disnake.NotFound:
+                # Fallback caso a mensagem já tenha sido apagada ou dado erro
+                await inter.channel.send(embed=embed, view=None if self.terminado else self)
         else:
             return embed
 
@@ -181,6 +186,9 @@ class BlackjackView(disnake.ui.View):
         if self.terminado or self.current_player_idx >= len(self.player_ids): return
         if inter.author.id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
+        
+        await inter.response.defer() # <--- EVITA O ERRO 10062
+        
         p = self.players_data[inter.author.id]
         mao_atual = p["hand"] if not p["splitted"] or p["current_hand"] == 1 else p["hand2"]
         mao_atual.append(self.deck.pop())
@@ -196,6 +204,9 @@ class BlackjackView(disnake.ui.View):
         if self.terminado or self.current_player_idx >= len(self.player_ids): return
         if inter.author.id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
+        
+        await inter.response.defer() # <--- EVITA O ERRO 10062
+        
         p = self.players_data[inter.author.id]
         if p["splitted"] and p["current_hand"] == 1: p["current_hand"] = 2
         else:
@@ -209,11 +220,14 @@ class BlackjackView(disnake.ui.View):
         p_id = inter.author.id
         if p_id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
+        
+        await inter.response.defer() # <--- EVITA O ERRO 10062
+        
         p = self.players_data[p_id]
         try:
             u_db = db.get_user_data(str(p_id))
             if not u_db or db.parse_float(u_db['data'][2]) < p["aposta"]:
-                return await inter.response.send_message("❌ Saldo insuficiente para dobrar!", ephemeral=True)
+                return await inter.followup.send("❌ Saldo insuficiente para dobrar!", ephemeral=True)
             db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - p["aposta"], 2))
             p["aposta"] *= 2
             p["hand"].append(self.deck.pop())
@@ -229,11 +243,14 @@ class BlackjackView(disnake.ui.View):
         p_id = inter.author.id
         if p_id != self.player_ids[self.current_player_idx]:
             return await inter.response.send_message("❌ Não é sua vez!", ephemeral=True)
+        
+        await inter.response.defer() # <--- EVITA O ERRO 10062
+        
         p = self.players_data[p_id]
         try:
             u_db = db.get_user_data(str(p_id))
             if not u_db or db.parse_float(u_db['data'][2]) < p["aposta"]:
-                return await inter.response.send_message("❌ Saldo insuficiente para o Split!", ephemeral=True)
+                return await inter.followup.send("❌ Saldo insuficiente para o Split!", ephemeral=True)
             db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - p["aposta"], 2))
             p["splitted"] = True
             carta_separada = p["hand"].pop()
@@ -320,9 +337,10 @@ class BlackjackCog(commands.Cog):
                     p_db = db.get_user_data(str(p.id))
                     if p_db:
                         db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) + aposta, 2))
-                return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
+                return await ctx.send("⏰ Mesa cancelada por inatividade. Valores devolvidos.")
 
             if not lobby_view.started:
+                # Segurança extra caso o timeout não tenha acionado cancelled
                 for p in players:
                     p_db = db.get_user_data(str(p.id))
                     if p_db:

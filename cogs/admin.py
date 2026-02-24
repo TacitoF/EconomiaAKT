@@ -3,6 +3,7 @@ from disnake.ext import commands
 import database as db
 import aiohttp
 import os
+from datetime import datetime, timedelta
 
 OWNER_ID = 757752617722970243
 
@@ -37,8 +38,8 @@ class Admin(commands.Cog):
             inline=False
         )
         embed.add_field(
-            name="⚙️ Sistema & Avisos",
-            value="`!ligar` / `!desligar` - Trava global de manutenção\n`!postar_regras` - Envia e fixa as regras\n`!patchnotes` - Posta as novidades no canal oficial",
+            name="⚙️ Sistema & API",
+            value="`!ligar` / `!desligar` - Trava global de manutenção\n`!patchnotes` - Posta as novidades no canal oficial\n`!apistatus` - Verifica saúde da API de Esportes\n`!pagar_apostas` - Força checagem de jogos finalizados",
             inline=False
         )
         embed.add_field(
@@ -185,10 +186,103 @@ class Admin(commands.Cog):
             print(f"❌ Erro no !apistatus: {e}")
             await msg.edit(content=f"⚠️ Erro ao consultar a API: `{e}`")
 
+    @commands.command(aliases=["forcar_pagamento", "pagar_apostas"])
+    async def pagarapostas(self, ctx):
+        """[ADMIN] Força a verificação e pagamento das apostas esportivas pendentes."""
+        if ctx.author.id != OWNER_ID:
+            return await ctx.send("❌ Você não tem permissão para usar este comando.")
+
+        msg = await ctx.send("🔄 Consultando a API e o Banco de Dados para verificar jogos finalizados...")
+
+        apostas_pendentes = db.obter_apostas_pendentes()
+        if not apostas_pendentes:
+            return await msg.edit(content="✅ Nenhuma aposta pendente encontrada no banco de dados.")
+
+        agora = datetime.utcnow()
+        data_inicio = (agora - timedelta(days=3)).strftime("%Y-%m-%d")
+        data_fim = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        api_url = "https://api.football-data.org/v4"
+        api_key = os.getenv("FOOTBALL_API_KEY") or ""
+        headers = {"X-Auth-Token": api_key}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                params = {"status": "FINISHED", "dateFrom": data_inicio, "dateTo": data_fim}
+                async with session.get(f"{api_url}/matches", headers=headers, params=params) as resp:
+                    if resp.status != 200:
+                        return await msg.edit(content=f"⚠️ Erro ao acessar a API: Status {resp.status}")
+                    
+                    data = await resp.json()
+
+                    if 'matches' not in data:
+                        return await msg.edit(content="⚠️ Nenhum jogo finalizado encontrado na janela de tempo informada.")
+
+                    canal_cassino = disnake.utils.get(self.bot.get_all_channels(), name='🎰・akbet')
+                    processadas = 0
+
+                    for aposta in apostas_pendentes:
+                        aposta_id = str(aposta['match_id'])
+                        
+                        jogo_encontrado = None
+                        for match in data['matches']:
+                            if str(match['id']) == aposta_id:
+                                jogo_encontrado = match
+                                break
+                        
+                        if not jogo_encontrado:
+                            continue
+
+                        gols_casa = jogo_encontrado['score']['fullTime']['home']
+                        gols_fora = jogo_encontrado['score']['fullTime']['away']
+
+                        if gols_casa > gols_fora:   resultado_real = "casa"
+                        elif gols_fora > gols_casa: resultado_real = "fora"
+                        else:                       resultado_real = "empate"
+
+                        jogador = self.bot.get_user(int(aposta['user_id']))
+                        se_venceu = (aposta['palpite'].lower() == resultado_real)
+
+                        processadas += 1
+
+                        if se_venceu:
+                            db.atualizar_status_aposta(aposta['row'], 'Venceu')
+                            user_db = db.get_user_data(str(aposta['user_id']))
+                            if user_db:
+                                saldo_atual = db.parse_float(user_db['data'][2])
+                                premio = round(aposta['valor'] * aposta['odd'], 2)
+                                db.update_value(user_db['row'], 3, round(saldo_atual + premio, 2))
+                                
+                                if canal_cassino and jogador:
+                                    await canal_cassino.send(
+                                        f"🏆 **APOSTA ESPORTIVA VENCEDORA!**\n"
+                                        f"{jogador.mention} acertou que `{resultado_real.upper()}` venceria "
+                                        f"no jogo `{aposta_id}` e faturou **{premio:.2f} MC**!"
+                                    )
+                        else:
+                            db.atualizar_status_aposta(aposta['row'], 'Perdeu')
+                            if canal_cassino and jogador:
+                                await canal_cassino.send(
+                                    f"💀 **APOSTA PERDIDA!**\n"
+                                    f"O jogo `{aposta_id}` terminou com vitória de `{resultado_real.upper()}`. "
+                                    f"{jogador.mention} perdeu o bilhete."
+                                )
+
+                    if processadas > 0:
+                        await msg.edit(content=f"✅ Verificação concluída! **{processadas}** apostas foram processadas e os resultados postados no canal.")
+                    else:
+                        await msg.edit(content="✅ Verificação concluída! Nenhuma aposta pendente teve o jogo finalizado ainda.")
+
+        except Exception as e:
+            await msg.edit(content=f"❌ Erro ao forçar pagamentos: `{e}`")
+
     @commands.command()
     async def patchnotes(self, ctx):
-        try: await ctx.message.delete()
-        except: pass
+        """Publica as notas de atualização oficiais no canal de comunicados."""
+        try: 
+            await ctx.message.delete()
+        except: 
+            pass
 
         if ctx.author.id != OWNER_ID:
             return
@@ -200,28 +294,38 @@ class Admin(commands.Cog):
             return await ctx.author.send("❌ Erro: Não consegui encontrar o canal de patchnotes. Verifique o ID.")
 
         embed = disnake.Embed(
-            title="📢 NOTAS DE ATUALIZAÇÃO DA SELVA 🐒",
-            description="Confira as novidades no mercado de investimentos e uma correção muito aguardada no submundo!",
+            title="📢 ATUALIZAÇÃO DA SELVA: NOTAS DA VERSÃO 🦍👑",
+            description="A economia e o submundo passaram por ajustes finos. Confira as mudanças de hoje!",
             color=disnake.Color.dark_red()
         )
 
-        embed.add_field(name="📈 Mercado Cripto (!investir cripto)", inline=False, value=(
-            "• **Anti-Vício:** Para evitar spam e quebras de banco, a compra de criptomoedas agora é limitada a **4 vezes por dia**.\n"
-            "• **Volatilidade Fixa:** Os resultados agora são cravados, variando de um Crash de **-25%** até uma Alta Máxima de **+20%**."
-        ))
+        # Campo 1: Mudança no Roubo
+        embed.add_field(
+            name="🥷 Submundo Perigoso (!roubar)", 
+            inline=False, 
+            value=(
+                "• **Taxa de Sucesso:** A periculosidade aumentou! A taxa de êxito para roubos foi ajustada para **42%**.\n"
+                "• O crime agora exige mais estratégia (e sorte) para quem busca lucro rápido."
+            )
+        )
 
-        embed.add_field(name="🥷 Correção de Bug (!roubar)", inline=False, value=(
-            "• **Bug Resolvido:** O erro que estava punindo os jogadores com uma multa absurda de **50%** ao serem pegos em um roubo foi corrigido!\n"
-            "• A taxa de punição voltou ao normal (a multa baseia-se novamente numa porcentagem justa do seu saldo)."
-        ))
+        # Campo 2: Fix do Blackjack
+        embed.add_field(
+            name="🃏 Cassino Estabilizado (!blackjack)", 
+            inline=False, 
+            value=(
+                "• **Correção de Interface:** O erro de 'interação desconhecida' que travava a mesa durante as jogadas do Dealer foi **corrigido**.\n"
+                "• Agora as mesas de 21 fluem com estabilidade total, sem interrupções nos pagamentos."
+            )
+        )
 
-        embed.set_footer(text="A economia da selva agradece! Boa sorte e bons lucros. 👑")
+        embed.set_footer(text="Koba: Mantendo a selva em ordem. 🌴")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **ATUALIZAÇÃO IMPORTANTE!** @everyone 🚨\n",
+            content="🚨 **NOVIDADES NA ÁREA!** @everyone 🚨\n",
             embed=embed
         )
 

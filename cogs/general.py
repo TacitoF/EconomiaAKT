@@ -18,12 +18,12 @@ class General(commands.Cog):
             title="📖 Guia do  Koba",
             description=(
                 f"Olá {ctx.author.mention}, este é o seu manual de sobrevivência na selva!\n\n"
-                "🪙 **DICA:** A economia suporta **centavos**! Use valores como `150.50` em todos os comandos."
+                "🪙 **Como começar:** Digite !trabalhar para abrir uma conta!"
             ),
             color=disnake.Color.green()
         )
         embed.add_field(name="💵 ECONOMIA E PERFIL", inline=False, value=(
-            "💰 `!trabalhar` — Ganhe Macacoins a cada 1h\n"
+            "💰 `!trabalhar` — Crie uma conta e ganhe Macacoins a cada 1h\n"
             "👤 `!perfil [@user]` — Veja seu status\n"
             "🏅 `!conquistas` — Lista de conquistas\n"
             "🏆 `!rank` — Top 10 da selva\n"

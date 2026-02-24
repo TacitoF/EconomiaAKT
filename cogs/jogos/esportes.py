@@ -60,7 +60,7 @@ class Esportes(commands.Cog):
                     "dateTo":       futuro_str,
                 }
                 async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
-                    print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
+                    print(f"🔄 Chamadas API Futebol restantes: {resp.headers.get('X-Requests-Available-Minute')}")
                     data = await resp.json()
 
                     if 'errorCode' in data or resp.status != 200:
@@ -145,8 +145,6 @@ class Esportes(commands.Cog):
                     f"{self.api_url}/matches/{match_id}",
                     headers=self.headers
                 ) as resp:
-                    print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
-
                     # ID inexistente → a API retorna 404 ou um body sem 'id'
                     if resp.status == 404:
                         await msg_buscando.delete()
@@ -257,7 +255,6 @@ class Esportes(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 params = {"dateFrom": data_inicio, "dateTo": data_fim}
                 async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
-                    print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
                     if resp.status == 200:
                         data = await resp.json()
                         for match in data.get('matches', []):
@@ -310,15 +307,19 @@ class Esportes(commands.Cog):
         if not apostas_pendentes:
             return
 
-        agora        = datetime.now()
-        data_inicio  = (agora - timedelta(days=3)).strftime("%Y-%m-%d")
-        data_fim     = agora.strftime("%Y-%m-%d")
+        # Ajuste de UTC e expansão do intervalo de busca para evitar perder jogos recém-terminados
+        agora = datetime.utcnow()
+        data_inicio = (agora - timedelta(days=3)).strftime("%Y-%m-%d")
+        data_fim = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
 
         try:
             async with aiohttp.ClientSession() as session:
                 params = {"status": "FINISHED", "dateFrom": data_inicio, "dateTo": data_fim}
                 async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
-                    print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
+                    if resp.status != 200:
+                        print(f"⚠️ Erro ao buscar resultados na API (Status: {resp.status})")
+                        return
+
                     data = await resp.json()
 
                     if 'matches' not in data:
@@ -327,41 +328,51 @@ class Esportes(commands.Cog):
                     canal_cassino = disnake.utils.get(self.bot.get_all_channels(), name='🎰・akbet')
 
                     for aposta in apostas_pendentes:
+                        aposta_id = str(aposta['match_id'])
+                        
+                        jogo_encontrado = None
                         for match in data['matches']:
-                            if str(match['id']) != str(aposta['match_id']):
-                                continue
+                            if str(match['id']) == aposta_id:
+                                jogo_encontrado = match
+                                break # Achou o jogo correspondente, quebra o loop interno
+                        
+                        if not jogo_encontrado:
+                            continue # Jogo não finalizado ou não achado na janela de tempo
 
-                            gols_casa = match['score']['fullTime']['home']
-                            gols_fora = match['score']['fullTime']['away']
+                        gols_casa = jogo_encontrado['score']['fullTime']['home']
+                        gols_fora = jogo_encontrado['score']['fullTime']['away']
 
-                            if gols_casa > gols_fora:   resultado_real = "casa"
-                            elif gols_fora > gols_casa: resultado_real = "fora"
-                            else:                       resultado_real = "empate"
+                        if gols_casa > gols_fora:   resultado_real = "casa"
+                        elif gols_fora > gols_casa: resultado_real = "fora"
+                        else:                       resultado_real = "empate"
 
-                            jogador   = self.bot.get_user(int(aposta['user_id']))
-                            se_venceu = aposta['palpite'] == resultado_real
+                        jogador = self.bot.get_user(int(aposta['user_id']))
+                        # Garante que a comparação seja feita corretamente com minúsculas
+                        se_venceu = (aposta['palpite'].lower() == resultado_real)
 
-                            if se_venceu:
-                                db.atualizar_status_aposta(aposta['row'], 'Venceu')
-                                user_db = db.get_user_data(str(aposta['user_id']))
-                                if user_db:
-                                    saldo_atual = db.parse_float(user_db['data'][2])
-                                    premio      = round(aposta['valor'] * aposta['odd'], 2)
-                                    db.update_value(user_db['row'], 3, round(saldo_atual + premio, 2))
-                                    if canal_cassino and jogador:
-                                        await canal_cassino.send(
-                                            f"🏆 **APOSTA ESPORTIVA VENCEDORA!**\n"
-                                            f"{jogador.mention} acertou que `{resultado_real.upper()}` venceria "
-                                            f"no jogo `{match['id']}` e faturou **{premio:.2f} MC**!"
-                                        )
-                            else:
-                                db.atualizar_status_aposta(aposta['row'], 'Perdeu')
+                        if se_venceu:
+                            db.atualizar_status_aposta(aposta['row'], 'Venceu')
+                            user_db = db.get_user_data(str(aposta['user_id']))
+                            if user_db:
+                                saldo_atual = db.parse_float(user_db['data'][2])
+                                premio = round(aposta['valor'] * aposta['odd'], 2)
+                                db.update_value(user_db['row'], 3, round(saldo_atual + premio, 2))
+                                
                                 if canal_cassino and jogador:
                                     await canal_cassino.send(
-                                        f"💀 **APOSTA PERDIDA!**\n"
-                                        f"O jogo `{match['id']}` terminou com vitória de `{resultado_real.upper()}`. "
-                                        f"{jogador.mention} perdeu o bilhete."
+                                        f"🏆 **APOSTA ESPORTIVA VENCEDORA!**\n"
+                                        f"{jogador.mention} acertou que `{resultado_real.upper()}` venceria "
+                                        f"no jogo `{aposta_id}` e faturou **{premio:.2f} MC**!"
                                     )
+                        else:
+                            db.atualizar_status_aposta(aposta['row'], 'Perdeu')
+                            if canal_cassino and jogador:
+                                await canal_cassino.send(
+                                    f"💀 **APOSTA PERDIDA!**\n"
+                                    f"O jogo `{aposta_id}` terminou com vitória de `{resultado_real.upper()}`. "
+                                    f"{jogador.mention} perdeu o bilhete."
+                                )
+                                
         except Exception as e:
             print(f"❌ Erro no checar_resultados: {e}")
 
