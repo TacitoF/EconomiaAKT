@@ -35,17 +35,14 @@ bot.is_locked = True
 # ─────────────────────────────────────────────
 # ANTI-SPAM GLOBAL
 # ─────────────────────────────────────────────
-# Cooldown padrão por usuário: 3 segundos entre o mesmo comando.
 ANTI_SPAM_COOLDOWN = 3  # segundos
-_spam_tracker: dict = {}  # chave: "user_id:comando" -> timestamp do último uso
+_spam_tracker: dict = {}
 
 @bot.check
 async def global_check(ctx):
-    # Comandos de admin nunca são bloqueados
     if ctx.command and ctx.command.name in ['ligar', 'desligar']:
         return True
 
-    # Verificação de manutenção
     if bot.is_locked:
         await ctx.send(
             f"🛠️ {ctx.author.mention}, o sistema encontra-se em manutenção programada. "
@@ -53,7 +50,6 @@ async def global_check(ctx):
         )
         raise commands.CheckFailure("Bot em manutenção.")
 
-    # Anti-spam: cooldown por usuário + comando
     chave = f"{ctx.author.id}:{ctx.command.name if ctx.command else 'unknown'}"
     agora = time.time()
     ultimo = _spam_tracker.get(chave, 0)
@@ -72,39 +68,30 @@ async def global_check(ctx):
     _spam_tracker[chave] = agora
     return True
 
-
 # ─────────────────────────────────────────────
 # CANAL DE STATUS
 # ─────────────────────────────────────────────
-# Crie um canal de texto com este nome exato no servidor.
-# Dica: deixe somente o bot com permissão de enviar mensagens lá.
 NOME_CANAL_STATUS = "📡・status-bot"
-
-# IDs dos seus servidores de teste
 ALLOWED_GUILDS = [1474556702861819967, 1438279770386206882] 
 
 @bot.check
 async def restrict_servers(ctx):
-    # Se o bot estiver rodando localmente (você define isso no .env)
     if os.getenv("ENVIRONMENT") == "DEV":
         return ctx.guild.id in ALLOWED_GUILDS
-    return True # Em produção, ele aceita todos ou segue a regra da produção
+    return True
 
 async def atualizar_canal_status(online: bool):
-    """Atualiza (ou cria) o embed de status no canal dedicado."""
+    """Limpa o canal de status completamente e envia o novo embed."""
     for guild in bot.guilds:
         canal = disnake.utils.get(guild.text_channels, name=NOME_CANAL_STATUS)
         if not canal:
             continue
 
-        # Remove a última mensagem de status enviada pelo bot
+        # 🔄 LIMPEZA TOTAL: Apaga todas as mensagens do canal (limite de 100 mensagens)
         try:
-            async for msg in canal.history(limit=20):
-                if msg.author == bot.user:
-                    await msg.delete()
-                    break
-        except Exception:
-            pass
+            await canal.purge(limit=100)
+        except Exception as e:
+            print(f"⚠️ Erro ao limpar canal de status em {guild.name}: {e}")
 
         if online:
             embed = disnake.Embed(
@@ -133,8 +120,7 @@ async def atualizar_canal_status(online: bool):
         try:
             await canal.send(embed=embed)
         except Exception as e:
-            print(f"⚠️ Erro ao atualizar canal de status: {e}")
-
+            print(f"⚠️ Erro ao enviar status em {guild.name}: {e}")
 
 # ─────────────────────────────────────────────
 # COMANDOS DE CONTROLE
@@ -148,9 +134,8 @@ async def ligar(ctx):
     if not bot.is_locked:
         return await ctx.send("⚠️ O bot já está ligado!")
     bot.is_locked = False
-    await ctx.send("✅ SISTEMAS ATIVOS: Manutenção finalizada. Koba assumiu o controle!")
+    await ctx.send("✅ SISTEMAS ATIVOS: Koba assumiu o controle!", delete_after=5)
     await atualizar_canal_status(online=True)
-
 
 @bot.command()
 async def desligar(ctx):
@@ -161,9 +146,8 @@ async def desligar(ctx):
     if bot.is_locked:
         return await ctx.send("⚠️ O bot já está desligado!")
     bot.is_locked = True
-    await ctx.send("🛠️ MANUTENÇÃO: Koba entrou em modo de suspensão para atualizações. Retornaremos em breve.")
+    await ctx.send("🛠️ MANUTENÇÃO: Koba entrou em modo de suspensão.", delete_after=5)
     await atualizar_canal_status(online=False)
-
 
 # ─────────────────────────────────────────────
 # EVENTOS
@@ -172,35 +156,14 @@ async def desligar(ctx):
 async def on_ready():
     await bot.change_presence(activity=disnake.Game(name="!ajuda no AKTrovão"))
     print(f"✅ {bot.user} (Koba) online! (MODO TRAVADO)")
-    # Atualiza o canal de status com o estado real ao iniciar
     await atualizar_canal_status(online=not bot.is_locked)
-
 
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, (commands.CheckFailure, commands.CommandNotFound)):
         return
-
-    if isinstance(error, (commands.MemberNotFound, commands.UserNotFound)):
-        return await ctx.send(
-            f"❌ {ctx.author.mention}, usuário não encontrado! "
-            f"Mencione alguém que esteja no servidor com `@nome`."
-        )
-
-    if isinstance(error, commands.BadArgument):
-        return await ctx.send(
-            f"❌ {ctx.author.mention}, argumento inválido! "
-            f"Verifique o comando com `!ajuda`."
-        )
-
-    if isinstance(error, commands.MissingRequiredArgument):
-        return await ctx.send(
-            f"⚠️ {ctx.author.mention}, faltou um argumento. "
-            f"Verifique o comando com `!ajuda`."
-        )
-
+    # Outros erros...
     print(f"❌ Erro não tratado: {error}")
-
 
 # ─────────────────────────────────────────────
 # CARREGAMENTO DE COGS
@@ -223,7 +186,6 @@ def load_cogs():
                 except Exception as e:
                     print(f"❌ Erro ao carregar {modulo}: {e}")
 
-
 if __name__ == "__main__":
     keep_alive()
     load_cogs()
@@ -231,4 +193,4 @@ if __name__ == "__main__":
     if token:
         bot.run(token)
     else:
-        print("❌ TOKEN não encontrado no .env!")
+        print("❌ TOKEN não encontrado!")
