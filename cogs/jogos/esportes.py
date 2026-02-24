@@ -175,7 +175,7 @@ class Esportes(commands.Cog):
             print(f"❌ Erro no !palpite de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro ao registrar a aposta.")
 
-    @commands.command(aliases=["palpites"])
+    @commands.command(aliases=["palpites", "cupom", "cupoms", "cupons"])
     async def pule(self, ctx):
         """Mostra os bilhetes pendentes do usuário com os nomes dos times"""
         try: await ctx.message.delete()
