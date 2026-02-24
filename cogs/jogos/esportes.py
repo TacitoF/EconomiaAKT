@@ -210,7 +210,7 @@ class Esportes(commands.Cog):
 
         embed = disnake.Embed(
             title="🎟️ SEUS BILHETES PENDENTES",
-            description="Aqui estão as suas apostas que aguardam o fim da partida:",
+            description=f"{ctx.author.mention}, Aqui estão as suas apostas que aguardam o fim da partida:",
             color=disnake.Color.orange()
         )
 
