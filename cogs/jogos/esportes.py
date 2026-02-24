@@ -122,8 +122,31 @@ class Esportes(commands.Cog):
             if valor > get_limite(cargo):
                 return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
 
-            # Como esta API gratuita não fornece as Odds de apostas, 
-            # fixamos em 2.5x (padrão de casa de aposta para jogo equilibrado)
+            # Bate na API rapidinho para pegar os nomes dos times
+            msg_buscando = await ctx.send(f"📊 {ctx.author.mention}, validando a partida e gerando o bilhete...")
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{self.api_url}/matches/{match_id}", headers=self.headers) as resp:
+                    match_data = await resp.json()
+                    
+                    if 'id' not in match_data:
+                        await msg_buscando.delete()
+                        return await ctx.send(f"❌ {ctx.author.mention}, partida não encontrada! Verifique se o ID `{match_id}` está correto.")
+                    
+                    time_casa = match_data['homeTeam']['name']
+                    time_fora = match_data['awayTeam']['name']
+
+            await msg_buscando.delete()
+
+            # Formata o nome do palpite conforme solicitado
+            if palpite_escolha == "casa":
+                nome_palpite = f"{time_casa} (Casa)"
+            elif palpite_escolha == "fora":
+                nome_palpite = f"{time_fora} (Fora)"
+            else:
+                nome_palpite = "Empate"
+
+            # Fixamos em 2.5x (padrão de casa de aposta para jogo equilibrado)
             odd_fixa = 2.5
 
             # Desconta o saldo e salva a aposta diretamente no Google Sheets
@@ -136,7 +159,7 @@ class Esportes(commands.Cog):
             embed.description = (
                 f"**Apostador:** {ctx.author.mention}\n"
                 f"**Jogo ID:** `{match_id}`\n"
-                f"**Palpite:** `{palpite_escolha.upper()}`\n"
+                f"**Palpite:** `{nome_palpite}`\n"
                 f"**Valor Apostado:** `{valor:.2f} C`\n"
                 f"**Multiplicador:** `{odd_fixa}x`\n"
                 f"**Retorno Potencial:** `{ganho_potencial:.2f} C`"
@@ -149,6 +172,74 @@ class Esportes(commands.Cog):
         except Exception as e:
             print(f"❌ Erro no !palpite de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro ao registrar a aposta.")
+
+    @commands.command(aliases=["palpites"])
+    async def bilhetes(self, ctx):
+        """Mostra os bilhetes pendentes do usuário com os nomes dos times"""
+        try: await ctx.message.delete()
+        except: pass
+
+        msg = await ctx.send(f"🔎 {ctx.author.mention}, buscando seus bilhetes na gaveta...")
+
+        # Pega todas as apostas pendentes da planilha
+        pendentes = db.obter_apostas_pendentes()
+        
+        # Filtra apenas as apostas de quem digitou o comando
+        minhas = [a for a in pendentes if str(a['user_id']) == str(ctx.author.id)]
+
+        if not minhas:
+            return await msg.edit(content=f"⚽ {ctx.author.mention}, você não tem nenhum bilhete pendente no momento!")
+
+        # ─── BUSCA OS NOMES DOS TIMES NA API (EM LOTE) ───
+        agora = datetime.now()
+        data_inicio = (agora - timedelta(days=3)).strftime("%Y-%m-%d")
+        data_fim = (agora + timedelta(days=7)).strftime("%Y-%m-%d")
+        
+        nomes_times = {}
+        async with aiohttp.ClientSession() as session:
+            # Faz 1 única requisição buscando a janela de jogos para economizar limite da API
+            params = {"dateFrom": data_inicio, "dateTo": data_fim}
+            async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    for match in data.get('matches', []):
+                        nomes_times[str(match['id'])] = {
+                            "home": match['homeTeam']['name'],
+                            "away": match['awayTeam']['name']
+                        }
+
+        embed = disnake.Embed(
+            title="🎟️ SEUS BILHETES PENDENTES",
+            description="Aqui estão as suas apostas que aguardam o fim da partida:",
+            color=disnake.Color.orange()
+        )
+
+        for aposta in minhas[:15]: # Limite visual de 15 bilhetes para não quebrar a mensagem
+            ganho_potencial = aposta['valor'] * aposta['odd']
+            m_id = str(aposta['match_id'])
+            
+            # Resgata o nome do time do dicionário (ou usa um fallback caso o jogo seja muito antigo)
+            time_casa = nomes_times.get(m_id, {}).get("home", "Time da Casa")
+            time_fora = nomes_times.get(m_id, {}).get("away", "Time Visitante")
+            
+            palpite_bruto = aposta['palpite']
+            if palpite_bruto == "casa":
+                palpite_formatado = f"{time_casa} (Casa)"
+            elif palpite_bruto == "fora":
+                palpite_formatado = f"{time_fora} (Fora)"
+            else:
+                palpite_formatado = f"Empate ({time_casa} x {time_fora})"
+            
+            embed.add_field(
+                name=f"🆔 Jogo ID: {m_id}",
+                value=(
+                    f"**Palpite:** `{palpite_formatado}`\n"
+                    f"**Apostou:** `{aposta['valor']:.2f} C` ➔ **Retorno:** `{ganho_potencial:.2f} C`"
+                ),
+                inline=False
+            )
+
+        await msg.edit(content=None, embed=embed)
 
     @tasks.loop(minutes=60) # Roda a cada 1 hora
     async def checar_resultados(self):
