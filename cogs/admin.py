@@ -38,7 +38,7 @@ class Admin(commands.Cog):
         )
         embed.add_field(
             name="⚙️ Sistema & Avisos",
-            value="`!ligar` / `!desligar` - Trava global de manutenção\n`!postar_regras` - Envia e fixa as regras\n`!patchnotes` - Posta a V6.0 (botões interativos) no canal oficial",
+            value="`!ligar` / `!desligar` - Trava global de manutenção\n`!postar_regras` - Envia e fixa as regras\n`!patchnotes` - Posta as novidades no canal oficial",
             inline=False
         )
         embed.add_field(
@@ -154,10 +154,6 @@ class Admin(commands.Cog):
                     status_code = resp.status
                     resp_headers = resp.headers
 
-                    # ── CORREÇÃO: sanitizar valores dos headers antes de usar no embed ──
-                    # O erro "str is not valid UTF-8: surrogates not allowed" ocorre porque
-                    # headers HTTP podem conter bytes inválidos que o disnake rejeita ao
-                    # serializar a mensagem para JSON.
                     disponivel_minuto = sanitizar(resp_headers.get('X-Requests-Available-Minute', 'N/A'))
                     conta_tipo        = sanitizar(resp_headers.get('X-Authenticated-Client', 'Desconhecido'))
 
@@ -204,48 +200,28 @@ class Admin(commands.Cog):
             return await ctx.author.send("❌ Erro: Não consegui encontrar o canal de patchnotes. Verifique o ID.")
 
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA (V6.0): Chega de Digitar! 🎮 🐒",
-            description="A maior melhoria de experiência da história do AK-BET chegou. Todos os jogos que precisavam de digitação no chat agora funcionam com **botões interativos**, além de ajustes pesados na economia!",
+            title="📢 NOTAS DE ATUALIZAÇÃO DA SELVA 🐒",
+            description="Confira as novidades no mercado de investimentos e uma correção muito aguardada no submundo!",
             color=disnake.Color.dark_red()
         )
 
-        embed.add_field(name="🚀 1. Crash — Botão SACAR", inline=False, value=(
-            "• Acabou o sofrimento de digitar `parar` no chat enquanto o cipó subia!\n"
-            "• Agora um botão **🪂 SACAR** aparece direto na mensagem. É só clicar na hora certa e garantir o lucro."
-        ))
-
-        embed.add_field(name="🃏 2. Carta & Briga — Desafios por Botão", inline=False, value=(
-            "• Ao desafiar alguém com `!carta` ou `!briga`, o oponente recebe dois botões: **✅ Aceitar** e **❌ Recusar**.\n"
-            "• Sem mais esperar alguém digitar `comprar` ou `aceitar` — mais rápido, mais limpo."
-        ))
-
-        embed.add_field(name="♠️ 3. Blackjack — Lobby Interativo", inline=False, value=(
-            "• A mesa agora abre com botões **🃏 Entrar** e **▶️ Começar** na própria mensagem.\n"
-            "• Qualquer pessoa entra clicando, e o dono da mesa decide quando iniciar a partida."
-        ))
-
-        embed.add_field(name="🥥 4. Coco Explosivo — Entrar por Botão", inline=False, value=(
-            "• O comando `!entrar_coco` foi aposentado!\n"
-            "• A mensagem de abertura da roda agora tem um botão **🥥 Entrar na Roda** direto nela. Simples assim."
-        ))
-
-        embed.add_field(name="🥷 5. Balanceamento Justo (!roubar)", inline=False, value=(
-            "• **Piedade aos Pobres:** Tentar roubar jogadores com menos de 500 C agora rende apenas migalhas (1% a 5%).\n"
-            "• Procure alvos do seu tamanho! Roubos normais continuam rendendo de 5% a 10%."
-        ))
-
-        embed.add_field(name="📈 6. Novo Mercado Cripto (!investir cripto)", inline=False, value=(
+        embed.add_field(name="📈 Mercado Cripto (!investir cripto)", inline=False, value=(
             "• **Anti-Vício:** Para evitar spam e quebras de banco, a compra de criptomoedas agora é limitada a **4 vezes por dia**.\n"
             "• **Volatilidade Fixa:** Os resultados agora são cravados, variando de um Crash de **-25%** até uma Alta Máxima de **+20%**."
         ))
 
-        embed.set_footer(text="AK-BET V6.0 • Jogue com estilo, não com digitação! 🐒")
+        embed.add_field(name="🥷 Correção de Bug (!roubar)", inline=False, value=(
+            "• **Bug Resolvido:** O erro que estava punindo os jogadores com uma multa absurda de **50%** ao serem pegos em um roubo foi corrigido!\n"
+            "• A taxa de punição voltou ao normal (a multa baseia-se novamente numa porcentagem justa do seu saldo)."
+        ))
+
+        embed.set_footer(text="A economia da selva agradece! Boa sorte e bons lucros. 👑")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **A VERSÃO 6.0 ESTÁ NO AR!** @everyone 🚨\n",
+            content="🚨 **ATUALIZAÇÃO IMPORTANTE!** @everyone 🚨\n",
             embed=embed
         )
 
