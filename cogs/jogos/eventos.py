@@ -268,8 +268,8 @@ class Eventos(commands.Cog):
             "🎰 **!roleta** - Mesa de Roleta Multiplayer! (30s)\n"
             "🪙 **!apostar <valor> <opção>** - Entre na rodada da Roleta.\n"
             "  ↳ *Cores/Par/Ímpar pagam **2x** | Números exatos pagam **36x**!*\n" \
-            "⚽ **!futebol** - Ver os jogos atuais\n"
-            "  ↳ Use `!palpite <ID> <casa/empate/fora> <valor>` para apostar! Exemplo: `!palpite 123456 casa 150`\n" \
+            "⚽ **!futebol** - Ver os jogos atuais.\n"
+            "  ↳ Use `!palpite <ID> <casa/empate/fora> <valor>` para apostar! Exemplo: `!palpite 123456 casa 150`\n E `!palpites` para ver seus bilhetes ativos." \
         ))
         embed.set_footer(text="Jogos 100% isentos de impostos! 🐒")
         await ctx.send(embed=embed)
