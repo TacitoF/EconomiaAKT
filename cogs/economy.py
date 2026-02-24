@@ -84,7 +84,7 @@ class Economy(commands.Cog):
             tracker[user_id].append(agora)
 
             conquista_msg = ""
-            if len(tracker[user_id]) >= 5:
+            if len(tracker[user_id]) >= 10:
                 conquistas_user = str(user['data'][9]) if len(user['data']) > 9 else ""
                 lista_conquistas = [c.strip() for c in conquistas_user.split(',') if c.strip()]
                 if "proletario" not in lista_conquistas:

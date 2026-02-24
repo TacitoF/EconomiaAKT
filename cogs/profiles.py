@@ -134,6 +134,8 @@ class Profiles(commands.Cog):
                 "desarmador":        "🎖️ **Desarmador**",
                 "quase_la":          "😭 **Quase Lá**",
                 "invicto_coco":      "🔥 **Mestre dos Cocos**",
+                "mestre_sombras":  "🥷 **Mestre das Sombras**",
+                "proletario":      "⚒️ **Proletário Padrão**",
             }
 
             conquistas_db = str(user['data'][9]) if len(user['data']) > 9 else ""
