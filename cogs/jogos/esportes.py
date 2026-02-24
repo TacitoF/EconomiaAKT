@@ -58,6 +58,7 @@ class Esportes(commands.Cog):
                 "dateTo": futuro_str
             }
             async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
+                print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
                 data = await resp.json()
                 
                 # Tratamento de erro caso a chave seja negada
@@ -127,6 +128,7 @@ class Esportes(commands.Cog):
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{self.api_url}/matches/{match_id}", headers=self.headers) as resp:
+                    print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
                     match_data = await resp.json()
                     
                     if 'id' not in match_data:
@@ -174,7 +176,7 @@ class Esportes(commands.Cog):
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro ao registrar a aposta.")
 
     @commands.command(aliases=["palpites"])
-    async def bilhetes(self, ctx):
+    async def pule(self, ctx):
         """Mostra os bilhetes pendentes do usuário com os nomes dos times"""
         try: await ctx.message.delete()
         except: pass
@@ -200,6 +202,7 @@ class Esportes(commands.Cog):
             # Faz 1 única requisição buscando a janela de jogos para economizar limite da API
             params = {"dateFrom": data_inicio, "dateTo": data_fim}
             async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
+                print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
                 if resp.status == 200:
                     data = await resp.json()
                     for match in data.get('matches', []):
@@ -262,6 +265,7 @@ class Esportes(commands.Cog):
                 "dateTo": data_fim
             }
             async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
+                print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
                 data = await resp.json()
                 
                 if 'matches' not in data: 
