@@ -1,13 +1,24 @@
+import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from disnake.ext import commands
+from dotenv import load_dotenv
+
+# Carrega as variáveis de ambiente (para garantir leitura local do .env)
+load_dotenv()
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 client = gspread.authorize(creds)
 
-sheet = client.open("Discord_Economy").sheet1
-sheet_apostas = client.open("Discord_Economy").worksheet("Apostas_Esportivas")
+# ── NOVA LÓGICA: Lendo o ID da planilha através das variáveis de ambiente ──
+sheet_id = os.getenv("DATABASE_URL")
+
+if not sheet_id:
+    raise ValueError("❌ A variável DATABASE_URL não foi encontrada no .env ou Koyeb!")
+
+sheet = client.open_by_key(sheet_id).sheet1
+sheet_apostas = client.open_by_key(sheet_id).worksheet("Apostas_Esportivas")
 
 def parse_float(valor, padrao=0.0):
     """Converte qualquer valor da planilha para float com segurança."""

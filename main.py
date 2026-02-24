@@ -12,7 +12,7 @@ logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 @app.route('/')
 def home():
-    return "Gerente Conguito está online!"
+    return "Koba está online e operando a economia!"
 
 def run():
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 8000)))
@@ -25,7 +25,7 @@ google_creds = os.getenv("GOOGLE_CREDS")
 if google_creds:
     with open("credentials.json", "w") as f:
         f.write(google_creds)
-    print("✅ credentials.json gerado.")
+    print("✅ credentials.json gerado pelo ambiente.")
 
 load_dotenv()
 
@@ -80,6 +80,16 @@ async def global_check(ctx):
 # Dica: deixe somente o bot com permissão de enviar mensagens lá.
 NOME_CANAL_STATUS = "📡・status-bot"
 
+# IDs dos seus servidores de teste
+ALLOWED_GUILDS = [1474556702861819967, 1438279770386206882] 
+
+@bot.check
+async def restrict_servers(ctx):
+    # Se o bot estiver rodando localmente (você define isso no .env)
+    if os.getenv("ENVIRONMENT") == "DEV":
+        return ctx.guild.id in ALLOWED_GUILDS
+    return True # Em produção, ele aceita todos ou segue a regra da produção
+
 async def atualizar_canal_status(online: bool):
     """Atualiza (ou cria) o embed de status no canal dedicado."""
     for guild in bot.guilds:
@@ -98,19 +108,19 @@ async def atualizar_canal_status(online: bool):
 
         if online:
             embed = disnake.Embed(
-                title="🟢 BOT ONLINE",
+                title="🟢 SISTEMA ONLINE",
                 description=(
-                    "**Gerente Conguito** está ativo e pronto para uso!\n\n"
-                    "Todos os comandos e funcionalidades estão liberados.\n"
-                    "Use `!ajuda` para ver a lista de comandos disponíveis."
+                    "**Koba** está ativo e pronto para uso!\n\n"
+                    "A economia da selva está operando normalmente.\n"
+                    "Use `!ajuda` para acessar o painel de investimentos e jogos."
                 ),
                 color=disnake.Color.green()
             )
         else:
             embed = disnake.Embed(
-                title="🔴 BOT EM MANUTENÇÃO",
+                title="🔴 SISTEMA EM MANUTENÇÃO",
                 description=(
-                    "**Gerente Conguito** está temporariamente offline para melhorias.\n\n"
+                    "**Koba** está temporariamente offline para auditoria e melhorias no sistema.\n\n"
                     "Os comandos estão bloqueados durante este período.\n"
                     "Retornaremos em breve! 🔧"
                 ),
@@ -134,11 +144,11 @@ async def ligar(ctx):
     try: await ctx.message.delete()
     except: pass
     if ctx.author.id != 757752617722970243:
-        return await ctx.send("❌ Apenas o dono pode destravar o bot!")
+        return await ctx.send("❌ Acesso restrito! Apenas a gerência pode destravar o bot.")
     if not bot.is_locked:
         return await ctx.send("⚠️ O bot já está ligado!")
     bot.is_locked = False
-    await ctx.send("✅ SISTEMAS ATIVOS: Manutenção finalizada com sucesso. Todos os comandos e funcionalidades estão liberados!")
+    await ctx.send("✅ SISTEMAS ATIVOS: Manutenção finalizada. Koba assumiu o controle!")
     await atualizar_canal_status(online=True)
 
 
@@ -147,11 +157,11 @@ async def desligar(ctx):
     try: await ctx.message.delete()
     except: pass
     if ctx.author.id != 757752617722970243:
-        return await ctx.send("❌ Apenas o dono pode travar o bot!")
+        return await ctx.send("❌ Acesso restrito! Apenas a gerência pode travar o bot.")
     if bot.is_locked:
         return await ctx.send("⚠️ O bot já está desligado!")
     bot.is_locked = True
-    await ctx.send("🛠️ MANUTENÇÃO: Bot temporariamente offline para melhorias e testes. Retornaremos em breve.")
+    await ctx.send("🛠️ MANUTENÇÃO: Koba entrou em modo de suspensão para atualizações. Retornaremos em breve.")
     await atualizar_canal_status(online=False)
 
 
@@ -161,7 +171,7 @@ async def desligar(ctx):
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=disnake.Game(name="!ajuda no AKTrovão"))
-    print(f"✅ {bot.user} online! (MODO TRAVADO)")
+    print(f"✅ {bot.user} (Koba) online! (MODO TRAVADO)")
     # Atualiza o canal de status com o estado real ao iniciar
     await atualizar_canal_status(online=not bot.is_locked)
 
@@ -221,4 +231,4 @@ if __name__ == "__main__":
     if token:
         bot.run(token)
     else:
-        print("❌ TOKEN não encontrado!")
+        print("❌ TOKEN não encontrado no .env!")

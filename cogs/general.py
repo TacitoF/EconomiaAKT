@@ -15,7 +15,7 @@ class General(commands.Cog):
     @commands.command(name="ajuda", aliases=["comandos", "info", "help"])
     async def ajuda_comando(self, ctx):
         embed = disnake.Embed(
-            title="📖 Guia do Gerente Conguito",
+            title="📖 Guia do  Koba",
             description=(
                 f"Olá {ctx.author.mention}, este é o seu manual de sobrevivência na selva!\n\n"
                 "🪙 **DICA:** A economia suporta **centavos**! Use valores como `150.50` em todos os comandos."
