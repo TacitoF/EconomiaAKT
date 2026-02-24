@@ -130,24 +130,73 @@ class Esportes(commands.Cog):
             if valor > get_limite(cargo):
                 return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
 
-            msg_buscando = await ctx.send(f"📊 {ctx.author.mention}, validando a partida e gerando o bilhete...")
+            # ──────────────────────────────────────────────────────────
+            # VALIDAÇÃO DO JOGO — verifica ANTES de descontar o saldo
+            # ──────────────────────────────────────────────────────────
+            msg_buscando = await ctx.send(f"📊 {ctx.author.mention}, validando a partida...")
+
+            jogo_valido  = False
+            time_casa    = None
+            time_fora    = None
+            status_jogo  = None
 
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.api_url}/matches/{match_id}", headers=self.headers) as resp:
+                async with session.get(
+                    f"{self.api_url}/matches/{match_id}",
+                    headers=self.headers
+                ) as resp:
                     print(f"🔄 Chamadas restantes: {resp.headers.get('X-Requests-Available-Minute')}")
+
+                    # ID inexistente → a API retorna 404 ou um body sem 'id'
+                    if resp.status == 404:
+                        await msg_buscando.delete()
+                        return await ctx.send(
+                            f"❌ {ctx.author.mention}, o ID `{match_id}` não corresponde a nenhum jogo. "
+                            f"Use `!futebol` para ver os IDs válidos."
+                        )
+
+                    if resp.status != 200:
+                        await msg_buscando.delete()
+                        return await ctx.send(
+                            f"⚠️ {ctx.author.mention}, não foi possível validar a partida no momento "
+                            f"(erro {resp.status}). Tente novamente mais tarde."
+                        )
+
                     match_data = await resp.json()
 
+                    # Proteção extra: body sem 'id' = jogo inválido
                     if 'id' not in match_data:
                         await msg_buscando.delete()
                         return await ctx.send(
-                            f"❌ {ctx.author.mention}, partida não encontrada! "
-                            f"Verifique se o ID `{match_id}` está correto."
+                            f"❌ {ctx.author.mention}, o ID `{match_id}` não é válido. "
+                            f"Use `!futebol` para ver os jogos disponíveis."
                         )
 
-                    time_casa = match_data['homeTeam']['name']
-                    time_fora = match_data['awayTeam']['name']
+                    status_jogo = match_data.get('status', '')
+                    time_casa   = match_data['homeTeam']['name']
+                    time_fora   = match_data['awayTeam']['name']
+                    jogo_valido = True
 
-            await msg_buscando.delete()
+            # Jogo já terminou ou está em andamento — não aceita aposta
+            if status_jogo in ('FINISHED', 'IN_PLAY', 'PAUSED', 'SUSPENDED', 'CANCELLED', 'POSTPONED'):
+                await msg_buscando.delete()
+                status_pt = {
+                    'FINISHED':  'já encerrado',
+                    'IN_PLAY':   'em andamento',
+                    'PAUSED':    'pausado',
+                    'SUSPENDED': 'suspenso',
+                    'CANCELLED': 'cancelado',
+                    'POSTPONED': 'adiado',
+                }.get(status_jogo, status_jogo)
+                return await ctx.send(
+                    f"⛔ {ctx.author.mention}, não é possível apostar nesta partida — ela está **{status_pt}**!\n"
+                    f"Use `!futebol` para ver jogos disponíveis para aposta."
+                )
+
+            # ──────────────────────────────────────────────────────────
+            # TUDO VÁLIDO — desconta o saldo e registra a aposta
+            # ──────────────────────────────────────────────────────────
+            await msg_buscando.edit(content=f"🎟️ {ctx.author.mention}, gerando o seu bilhete...")
 
             if palpite_escolha == "casa":
                 nome_palpite = f"{time_casa} (Casa)"
@@ -162,9 +211,12 @@ class Esportes(commands.Cog):
             db.registrar_aposta_esportiva(ctx.author.id, match_id, palpite_escolha, valor, odd_fixa)
             ganho_potencial = round(valor * odd_fixa, 2)
 
+            await msg_buscando.delete()
+
             embed = disnake.Embed(title="🎟️ BILHETE CADASTRADO!", color=disnake.Color.gold())
             embed.description = (
                 f"**Apostador:** {ctx.author.mention}\n"
+                f"**Jogo:** `{time_casa}` 🆚 `{time_fora}`\n"
                 f"**Jogo ID:** `{match_id}`\n"
                 f"**Palpite:** `{nome_palpite}`\n"
                 f"**Valor Apostado:** `{valor:.2f} C`\n"

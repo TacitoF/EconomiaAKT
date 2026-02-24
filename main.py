@@ -1,6 +1,7 @@
 import disnake
 from disnake.ext import commands
 import os
+import time
 from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
@@ -31,15 +32,103 @@ load_dotenv()
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_command=None)
 bot.is_locked = True
 
+# ─────────────────────────────────────────────
+# ANTI-SPAM GLOBAL
+# ─────────────────────────────────────────────
+# Cooldown padrão por usuário: 3 segundos entre o mesmo comando.
+ANTI_SPAM_COOLDOWN = 3  # segundos
+_spam_tracker: dict = {}  # chave: "user_id:comando" -> timestamp do último uso
+
 @bot.check
-async def global_maintenance_check(ctx):
+async def global_check(ctx):
+    # Comandos de admin nunca são bloqueados
     if ctx.command and ctx.command.name in ['ligar', 'desligar']:
         return True
+
+    # Verificação de manutenção
     if bot.is_locked:
-        await ctx.send(f"🛠️ {ctx.author.mention}, o sistema encontra-se em manutenção programada. Por favor, aguarde a normalização dos serviços para utilizar este comando.")
+        await ctx.send(
+            f"🛠️ {ctx.author.mention}, o sistema encontra-se em manutenção programada. "
+            f"Por favor, aguarde a normalização dos serviços para utilizar este comando."
+        )
         raise commands.CheckFailure("Bot em manutenção.")
+
+    # Anti-spam: cooldown por usuário + comando
+    chave = f"{ctx.author.id}:{ctx.command.name if ctx.command else 'unknown'}"
+    agora = time.time()
+    ultimo = _spam_tracker.get(chave, 0)
+    restante = ANTI_SPAM_COOLDOWN - (agora - ultimo)
+
+    if restante > 0:
+        try:
+            aviso = await ctx.send(
+                f"⏱️ {ctx.author.mention}, devagar! Aguarde **{restante:.1f}s** antes de repetir este comando."
+            )
+            await aviso.delete(delay=4)
+        except Exception:
+            pass
+        raise commands.CheckFailure("Anti-spam ativado.")
+
+    _spam_tracker[chave] = agora
     return True
 
+
+# ─────────────────────────────────────────────
+# CANAL DE STATUS
+# ─────────────────────────────────────────────
+# Crie um canal de texto com este nome exato no servidor.
+# Dica: deixe somente o bot com permissão de enviar mensagens lá.
+NOME_CANAL_STATUS = "📡・status-bot"
+
+async def atualizar_canal_status(online: bool):
+    """Atualiza (ou cria) o embed de status no canal dedicado."""
+    for guild in bot.guilds:
+        canal = disnake.utils.get(guild.text_channels, name=NOME_CANAL_STATUS)
+        if not canal:
+            continue
+
+        # Remove a última mensagem de status enviada pelo bot
+        try:
+            async for msg in canal.history(limit=20):
+                if msg.author == bot.user:
+                    await msg.delete()
+                    break
+        except Exception:
+            pass
+
+        if online:
+            embed = disnake.Embed(
+                title="🟢 BOT ONLINE",
+                description=(
+                    "**Gerente Conguito** está ativo e pronto para uso!\n\n"
+                    "Todos os comandos e funcionalidades estão liberados.\n"
+                    "Use `!ajuda` para ver a lista de comandos disponíveis."
+                ),
+                color=disnake.Color.green()
+            )
+        else:
+            embed = disnake.Embed(
+                title="🔴 BOT EM MANUTENÇÃO",
+                description=(
+                    "**Gerente Conguito** está temporariamente offline para melhorias.\n\n"
+                    "Os comandos estão bloqueados durante este período.\n"
+                    "Retornaremos em breve! 🔧"
+                ),
+                color=disnake.Color.red()
+            )
+
+        embed.set_footer(text="Última atualização")
+        embed.timestamp = disnake.utils.utcnow()
+
+        try:
+            await canal.send(embed=embed)
+        except Exception as e:
+            print(f"⚠️ Erro ao atualizar canal de status: {e}")
+
+
+# ─────────────────────────────────────────────
+# COMANDOS DE CONTROLE
+# ─────────────────────────────────────────────
 @bot.command()
 async def ligar(ctx):
     try: await ctx.message.delete()
@@ -50,6 +139,7 @@ async def ligar(ctx):
         return await ctx.send("⚠️ O bot já está ligado!")
     bot.is_locked = False
     await ctx.send("✅ SISTEMAS ATIVOS: Manutenção finalizada com sucesso. Todos os comandos e funcionalidades estão liberados!")
+    await atualizar_canal_status(online=True)
 
 
 @bot.command()
@@ -62,19 +152,25 @@ async def desligar(ctx):
         return await ctx.send("⚠️ O bot já está desligado!")
     bot.is_locked = True
     await ctx.send("🛠️ MANUTENÇÃO: Bot temporariamente offline para melhorias e testes. Retornaremos em breve.")
-    
+    await atualizar_canal_status(online=False)
 
+
+# ─────────────────────────────────────────────
+# EVENTOS
+# ─────────────────────────────────────────────
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=disnake.Game(name="!ajuda no AKTrovão"))
     print(f"✅ {bot.user} online! (MODO TRAVADO)")
+    # Atualiza o canal de status com o estado real ao iniciar
+    await atualizar_canal_status(online=not bot.is_locked)
+
 
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, (commands.CheckFailure, commands.CommandNotFound)):
         return
 
-    # Quando o usuário menciona alguém de forma inválida ou passa argumento errado
     if isinstance(error, (commands.MemberNotFound, commands.UserNotFound)):
         return await ctx.send(
             f"❌ {ctx.author.mention}, usuário não encontrado! "
@@ -95,6 +191,10 @@ async def on_command_error(ctx, error):
 
     print(f"❌ Erro não tratado: {error}")
 
+
+# ─────────────────────────────────────────────
+# CARREGAMENTO DE COGS
+# ─────────────────────────────────────────────
 def load_cogs():
     if not os.path.exists('./cogs'):
         return
@@ -103,12 +203,16 @@ def load_cogs():
             continue
         for filename in arquivos:
             if filename.endswith('.py'):
-                modulo = os.path.join(pasta_atual, filename).replace('./', '').replace('/', '.').replace('\\', '.')[:-3]
+                modulo = (
+                    os.path.join(pasta_atual, filename)
+                    .replace('./', '').replace('/', '.').replace('\\', '.')[:-3]
+                )
                 try:
                     bot.load_extension(modulo)
                     print(f"📦 {modulo}")
                 except Exception as e:
                     print(f"❌ Erro ao carregar {modulo}: {e}")
+
 
 if __name__ == "__main__":
     keep_alive()
