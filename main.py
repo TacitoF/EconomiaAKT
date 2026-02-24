@@ -32,10 +32,8 @@ load_dotenv()
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_command=None)
 bot.is_locked = True
 
-# ─────────────────────────────────────────────
 # ANTI-SPAM GLOBAL
-# ─────────────────────────────────────────────
-ANTI_SPAM_COOLDOWN = 3  # segundos
+ANTI_SPAM_COOLDOWN = 3  
 _spam_tracker: dict = {}
 
 @bot.check
@@ -68,9 +66,7 @@ async def global_check(ctx):
     _spam_tracker[chave] = agora
     return True
 
-# ─────────────────────────────────────────────
 # CANAL DE STATUS
-# ─────────────────────────────────────────────
 NOME_CANAL_STATUS = "📡・status-bot"
 ALLOWED_GUILDS = [1474556702861819967, 1438279770386206882] 
 
@@ -87,7 +83,6 @@ async def atualizar_canal_status(online: bool):
         if not canal:
             continue
 
-        # 🔄 LIMPEZA TOTAL: Apaga todas as mensagens do canal (limite de 100 mensagens)
         try:
             await canal.purge(limit=100)
         except Exception as e:
@@ -122,9 +117,7 @@ async def atualizar_canal_status(online: bool):
         except Exception as e:
             print(f"⚠️ Erro ao enviar status em {guild.name}: {e}")
 
-# ─────────────────────────────────────────────
 # COMANDOS DE CONTROLE
-# ─────────────────────────────────────────────
 @bot.command()
 async def ligar(ctx):
     try: await ctx.message.delete()
@@ -149,9 +142,7 @@ async def desligar(ctx):
     await ctx.send("🛠️ MANUTENÇÃO: Koba entrou em modo de suspensão.", delete_after=5)
     await atualizar_canal_status(online=False)
 
-# ─────────────────────────────────────────────
 # EVENTOS
-# ─────────────────────────────────────────────
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=disnake.Game(name="!trabalhar para começar ou !ajuda para o manual!"))
@@ -162,12 +153,9 @@ async def on_ready():
 async def on_command_error(ctx, error):
     if isinstance(error, (commands.CheckFailure, commands.CommandNotFound)):
         return
-    # Outros erros...
     print(f"❌ Erro não tratado: {error}")
 
-# ─────────────────────────────────────────────
 # CARREGAMENTO DE COGS
-# ─────────────────────────────────────────────
 def load_cogs():
     if not os.path.exists('./cogs'):
         return

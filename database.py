@@ -11,7 +11,6 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 client = gspread.authorize(creds)
 
-# ── NOVA LÓGICA: Lendo o ID da planilha através das variáveis de ambiente ──
 sheet_id = os.getenv("DATABASE_URL")
 
 if not sheet_id:
@@ -35,7 +34,6 @@ def handle_db_error(e):
 
 def get_user_data(user_id):
     try:
-        # Busca manual pela coluna A para evitar dependência de exceção específica do gspread
         col_a = sheet.col_values(1)
         try:
             row_index = col_a.index(str(user_id)) + 1 
@@ -72,14 +70,11 @@ def wipe_database():
     except Exception as e:
         handle_db_error(e)
 
-# =====================================================================
-# FUNÇÕES DE APOSTAS ESPORTIVAS (NOVO)
-# =====================================================================
+# FUNÇÕES DE APOSTAS ESPORTIVAS
 
 def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd):
     """Salva um novo palpite na aba Apostas_Esportivas."""
     try:
-        # Substitui ponto por vírgula para manter o padrão financeiro da planilha
         valor_str = str(valor).replace('.', ',')
         odd_str = str(odd).replace('.', ',')
         
@@ -93,14 +88,12 @@ def obter_apostas_pendentes():
         rows = sheet_apostas.get_all_values()
         apostas = []
         
-        # Começa do index 1 para pular o cabeçalho
         for i, row in enumerate(rows):
             if i == 0: continue 
             
-            # Verifica se a linha tem as 6 colunas e o status é Pendente
             if len(row) >= 6 and row[5] == "Pendente":
                 apostas.append({
-                    "row": i + 1, # +1 porque a API do Sheets não começa no 0
+                    "row": i + 1,
                     "user_id": row[0],
                     "match_id": int(row[1]),
                     "palpite": row[2],
