@@ -70,7 +70,7 @@ class Esportes(commands.Cog):
 
                 embed = disnake.Embed(
                     title="⚽ BETS DA SELVA - PRÓXIMOS JOGOS ⚽", 
-                    description="Para apostar use: `!palpite <ID> <casa/empate/fora> <valor>`\n*Todos os jogos têm Odd fixa de 1.95x no sistema grátis.*",
+                    description="Para apostar use: `!palpite <ID> <casa/empate/fora> <valor>`\n*Todos os jogos têm Odd fixa de 2.5x no sistema grátis.*",
                     color=disnake.Color.blue()
                 )
 
@@ -123,8 +123,8 @@ class Esportes(commands.Cog):
                 return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} C**!")
 
             # Como esta API gratuita não fornece as Odds de apostas, 
-            # fixamos em 1.95x (padrão de casa de aposta para jogo equilibrado)
-            odd_fixa = 2.0
+            # fixamos em 2.5x (padrão de casa de aposta para jogo equilibrado)
+            odd_fixa = 2.5
 
             # Desconta o saldo e salva a aposta diretamente no Google Sheets
             db.update_value(user['row'], 3, round(saldo - valor, 2))
