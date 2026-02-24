@@ -318,6 +318,7 @@ class Admin(commands.Cog):
                 "• O Dealer tirou um Ás (`A`)? Não entre em pânico!\n"
                 "• Agora você pode acionar o **Seguro** para recuperar **50% da sua aposta** e sair da rodada com segurança caso sinta que a banca vai vencer."
             )
+        )
 
         embed.set_footer(text="Koba: Mantendo a selva em ordem. 🌴")
 
