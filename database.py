@@ -6,7 +6,6 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 client = gspread.authorize(creds)
 
-# Conexão com as abas da planilha
 sheet = client.open("Discord_Economy").sheet1
 sheet_apostas = client.open("Discord_Economy").worksheet("Apostas_Esportivas")
 
@@ -28,9 +27,9 @@ def get_user_data(user_id):
         # Busca manual pela coluna A para evitar dependência de exceção específica do gspread
         col_a = sheet.col_values(1)
         try:
-            row_index = col_a.index(str(user_id)) + 1  # +1 pois listas são 0-indexed
+            row_index = col_a.index(str(user_id)) + 1 
         except ValueError:
-            return None  # Usuário não encontrado
+            return None
 
         row = sheet.row_values(row_index)
         return {"row": row_index, "data": row}

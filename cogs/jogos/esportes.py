@@ -71,7 +71,7 @@ class Esportes(commands.Cog):
 
                 embed = disnake.Embed(
                     title="⚽ BETS DA SELVA - PRÓXIMOS JOGOS ⚽", 
-                    description="Para apostar use: `!palpite <ID> <casa/empate/fora> <valor>`\n*Todos os jogos têm Odd fixa de 2.5x no sistema grátis.*",
+                    description="Para apostar use: `!palpite <ID> <casa/empate/fora> <valor>`\n*Todos os jogos têm Odd fixa de 2.0x no sistema grátis.*",
                     color=disnake.Color.blue()
                 )
 
@@ -148,8 +148,8 @@ class Esportes(commands.Cog):
             else:
                 nome_palpite = "Empate"
 
-            # Fixamos em 2.5x (padrão de casa de aposta para jogo equilibrado)
-            odd_fixa = 2.5
+            # Fixamos em 2.0x (padrão de casa de aposta para jogo equilibrado)
+            odd_fixa = 2.0
 
             # Desconta o saldo e salva a aposta diretamente no Google Sheets
             db.update_value(user['row'], 3, round(saldo - valor, 2))
