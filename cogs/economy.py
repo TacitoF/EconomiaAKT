@@ -77,12 +77,23 @@ class Economy(commands.Cog):
             db.update_value(user['row'], 3, round(saldo_atual + ganho, 2))
             db.update_value(user['row'], 5, agora)
 
+            # --- SISTEMA DE CONQUISTA: PROLETÁRIO PADRÃO ---
             tracker = self.bot.tracker_emblemas['trabalhos']
             if user_id not in tracker: tracker[user_id] = []
             tracker[user_id] = [t for t in tracker[user_id] if agora - t < 86400]
             tracker[user_id].append(agora)
 
-            await ctx.send(f"✅ {ctx.author.mention}, como **{cargo}**, você ganhou **{ganho:.2f} conguitos**!{imposto_msg}")
+            conquista_msg = ""
+            if len(tracker[user_id]) >= 5:
+                conquistas_user = str(user['data'][9]) if len(user['data']) > 9 else ""
+                lista_conquistas = [c.strip() for c in conquistas_user.split(',') if c.strip()]
+                if "proletario" not in lista_conquistas:
+                    lista_conquistas.append("proletario")
+                    db.update_value(user['row'], 10, ", ".join(lista_conquistas))
+                    conquista_msg = "\n🏆 Você desbloqueou a conquista **Proletário Padrão**!"
+            # ------------------------------------------------
+
+            await ctx.send(f"✅ {ctx.author.mention}, como **{cargo}**, você ganhou **{ganho:.2f} conguitos**!{imposto_msg}{conquista_msg}")
 
         except commands.CommandError:
             raise
@@ -178,10 +189,23 @@ class Economy(commands.Cog):
                 bounty_adicionado = min(round(valor_roubado * 0.12, 2), 2000.0)
                 self.bot.recompensas[ladrao_id] = round(self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado, 2)
 
+                # --- SISTEMA DE CONQUISTA: MESTRE DAS SOMBRAS ---
                 tracker = self.bot.tracker_emblemas['roubos_sucesso']
                 if ladrao_id not in tracker: tracker[ladrao_id] = []
+                # Limpa registros mais velhos que 24 horas
+                tracker[ladrao_id] = [t for t in tracker[ladrao_id] if agora - t < 86400]
                 tracker[ladrao_id].append(agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = 0
+                
+                conquista_msg = ""
+                if len(tracker[ladrao_id]) >= 5:
+                    conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
+                    lista_conquistas = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
+                    if "mestre_sombras" not in lista_conquistas:
+                        lista_conquistas.append("mestre_sombras")
+                        db.update_value(ladrao_data['row'], 10, ", ".join(lista_conquistas))
+                        conquista_msg = "\n🏆 Você desbloqueou a conquista **Mestre das Sombras**!"
+                # ------------------------------------------------
 
                 # ── MENSAGEM DINÂMICA ──
                 if is_pobre:
@@ -193,9 +217,10 @@ class Economy(commands.Cog):
                 if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} C**!"
                 mensagem += seguro_msg
                 mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} C** colocada na sua cabeça!*"
+                mensagem += conquista_msg
                 await ctx.send(mensagem)
             else:
-                # Multa: 10–15% do saldo do ladrão, mínimo 30 C, máximo 5.000 C
+                # Multa: 5–10% do saldo do ladrão, mínimo 30 C, máximo 5.000 C
                 pct_multa = random.uniform(0.05, 0.10)
                 multa = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
