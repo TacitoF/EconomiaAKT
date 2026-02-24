@@ -44,35 +44,15 @@ class Economy(commands.Cog):
 
             cargo = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
 
-            # ════════════════════════════════════════════════════════════════
-            # BALANCEAMENTO — dificuldade aumentada.
-            # Meta: Rei Símio em 4–6 semanas para jogador muito dedicado.
-            #
-            # REGRA: custo do próximo cargo = 20–25× salário médio do atual.
-            # Trabalho puro cobre apenas ~30% da progressão.
-            # Jogos, roubos e investimentos são OBRIGATÓRIOS para progredir.
-            #
-            # PROJEÇÃO (só trabalho, 8h ativas/dia):
-            #   Lêmure    → Macaquinho :  ~2 dias
-            #   Macaquinho → Babuíno   :  ~4 dias
-            #   Babuíno   → Chimpanzé  :  ~6 dias
-            #   Chimpanzé → Orangutango:  ~8 dias
-            #   Orangutango → Gorila   :  ~10 dias
-            #   Gorila    → Ancestral  :  ~13 dias
-            #   Ancestral → Rei Símio  :  ~18 dias
-            #   TOTAL SÓ TRABALHO: ~61 dias
-            #   COM JOGOS/ROUBOS (~50% extra): ~40–45 dias
-            #   JOGADOR MUITO DEDICADO (apostas altas + sorte): ~28–35 dias ✅
-            # ════════════════════════════════════════════════════════════════
             salarios = {
-                "Lêmure":      (40,   80),      # média 60 C/h
-                "Macaquinho":  (130,  230),     # média 180 C/h   (3×)
-                "Babuíno":     (320,  530),     # média 425 C/h   (2.4×)
-                "Chimpanzé":   (780,  1320),    # média 1.050 C/h (2.5×)
-                "Orangutango": (1900, 3200),    # média 2.550 C/h (2.4×)
-                "Gorila":      (4700, 7800),    # média 6.250 C/h (2.4×)
-                "Ancestral":   (11500, 19000),  # média 15.250 C/h (2.4×)
-                "Rei Símio":   (27000, 45000),  # média 36.000 C/h — endgame
+                "Lêmure":      (40,   80),
+                "Macaquinho":  (130,  230),
+                "Babuíno":     (320,  530),
+                "Chimpanzé":   (780,  1320),
+                "Orangutango": (1900, 3200),
+                "Gorila":      (4700, 7800),
+                "Ancestral":   (11500, 19000),
+                "Rei Símio":   (27000, 45000),
             }
             min_ganho, max_ganho = salarios.get(cargo, (40, 80))
             ganho = round(random.uniform(min_ganho, max_ganho), 2)
@@ -239,6 +219,7 @@ class Economy(commands.Cog):
         if valor <= 0:
             return await ctx.send("❌ O valor deve ser maior que zero!")
         valor = round(valor, 2)
+        
         try:
             pag = db.get_user_data(str(ctx.author.id))
             saldo_pag = db.parse_float(pag['data'][2]) if pag else 0.0
@@ -253,11 +234,21 @@ class Economy(commands.Cog):
             db.update_value(pag['row'], 3, round(saldo_pag - valor, 2))
             db.update_value(rec['row'], 3, round(db.parse_float(rec['data'][2]) + valor, 2))
 
-            await ctx.send(embed=disnake.Embed(
+            embed = disnake.Embed(
                 title="💸 PIX REALIZADO!",
                 description=f"**{ctx.author.mention}** enviou **{valor:.2f} C** para **{recebedor.mention}**.",
                 color=disnake.Color.green()
-            ))
+            )
+            await ctx.send(embed=embed)
+            
+            if valor == 0.01:
+                conquistas_pag = str(pag['data'][9]) if len(pag['data']) > 9 else ""
+                lista_conquistas = [c.strip() for c in conquistas_pag.split(',') if c.strip()]
+                
+                if "pix_irritante" not in lista_conquistas:
+                    lista_conquistas.append("pix_irritante")
+                    db.update_value(pag['row'], 10, ", ".join(lista_conquistas))
+
         except commands.CommandError:
             raise
         except Exception as e:
