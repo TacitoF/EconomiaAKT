@@ -43,22 +43,28 @@ class Profiles(commands.Cog):
             "• **Inimigo Público:** Recompensa de **5.000 C** ou mais pela cabeça.\n"
             "• **Rei do Crime:** Seja o macaco mais procurado (Top 1) da selva."
         ))
-        embed.add_field(name="🤫 Segredos Ocultos (Enigmas)", inline=False, value=(
+        
+        # O campo de segredos foi dividido em dois para não estourar o limite de 1024 caracteres do Discord
+        embed.add_field(name="🤫 Segredos Ocultos (Parte 1)", inline=False, value=(
             "🤡 **Palhaço:** *O espelho reflete o golpe que você mesmo desferiu.*\n"
             "🐢 **Casca Grossa:** *A carapaça ignora a fúria de quem tenta te tocar.*\n"
             "💸 **Pix Irritante:** *O menor dos tributos desperta a maior das indignações.*\n"
             "🍀 **Sortudo:** *A face tripla da fortuna sorriu no momento exato.*\n"
             "🥊 **Briguento:** *Um duelo mortal onde a recompensa é apenas poeira.*\n"
             "🍌 **Desastrado:** *Em um labirinto de zeros, você encontrou a única ruína.*\n"
-            "💣 **Esquadrão Suicida:** *Onde o fim era certo, sua audácia te trouxe de volta.*\n"
+            "💣 **Esquadrão Suicida:** *Onde o fim era certo, sua audácia te trouxe de volta.*"
+        ))
+        embed.add_field(name="🤫 Segredos Ocultos (Parte 2)", inline=False, value=(
             "🧲 **Imã de Desgraça:** *Entre muitos alvos, o destino te marcou primeiro.*\n"
             "🥥 **Veterano:** *O último a respirar quando a semente do caos explode.*\n"
             "📉 **Queda Livre:** *O chão te abraçou antes mesmo do salto começar.*\n"
             "🚀 **Astronauta:** *Acima das nuvens, onde o risco e o lucro não têm fim.*\n"
             "🏳️ **Covarde:** *A primeira luz foi suficiente para apagar sua coragem.*\n"
-            "🎖️ **Desarmador:** *Você caminhou pelo inferno e saiu sem uma arranhão.*\n"
-            "😭 **Quase Lá:** *A vitória estava ao alcance, mas o destino tinha outros planos.*"
+            "🎖️ **Desarmador:** *Você caminhou pelo inferno e saiu sem um arranhão.*\n"
+            "😭 **Quase Lá:** *A vitória estava ao alcance, mas o destino tinha outros planos.*\n"
+            "🔥 **Mestre dos Cocos:** *A bomba beijou sua mão três vezes e recuou com medo.*\n"
         ))
+        
         embed.set_footer(text="Apenas os astutos dominarão a selva. 🐒")
         await ctx.send(embed=embed)
 
@@ -124,10 +130,10 @@ class Profiles(commands.Cog):
                 "queda_livre":       "📉 **Queda Livre**",
                 "astronauta_cipo":   "🚀 **Astronauta**",
                 "esquadrao_suicida": "💣 **Esquadrão Suicida**",
-                # Novas conquistas do minas
                 "covarde":           "🏳️ **Covarde**",
                 "desarmador":        "🎖️ **Desarmador**",
                 "quase_la":          "😭 **Quase Lá**",
+                "invicto_coco":      "🔥 **Mestre dos Cocos**",
             }
 
             conquistas_db = str(user['data'][9]) if len(user['data']) > 9 else ""

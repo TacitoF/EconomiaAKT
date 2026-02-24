@@ -27,7 +27,6 @@ def save_achievement(user_data, slug):
         lista.append(slug)
         db.update_value(user_data['row'], 10, ", ".join(lista))
 
-
 class CocoEntrarView(disnake.ui.View):
     """Botão para entrar na Roleta do Coco Explosivo."""
     def __init__(self, cog, aposta: float):
@@ -57,7 +56,6 @@ class CocoEntrarView(disnake.ui.View):
         for item in self.children:
             item.disabled = True
 
-
 class Eventos(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -66,6 +64,7 @@ class Eventos(commands.Cog):
         self.coco_active = False
         self.coco_players = []
         self.coco_aposta = 0.0
+        self.coco_streak = {} # Memória de vitórias consecutivas no Coco
 
     async def cog_before_invoke(self, ctx):
         cmd = ctx.command.name
@@ -183,11 +182,11 @@ class Eventos(commands.Cog):
             view = CocoEntrarView(self, aposta)
             embed = disnake.Embed(
                 title="🚨 ROLETA DO COCO EXPLOSIVO! 🚨",
-                description=f"{ctx.author.mention} abriu uma roda mortal!\n\n💰 **Entrada:** `{aposta:.2f} C`\n⏳ **60 segundos** para entrar!\n\nClique no botão abaixo para participar.",
+                description=f"{ctx.author.mention} abriu uma roda mortal!\n\n💰 **Entrada:** `{aposta:.2f} C`\n⏳ **30 segundos** para entrar!\n\nClique no botão abaixo para participar.",
                 color=disnake.Color.dark_red()
             )
             await ctx.send(embed=embed, view=view)
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)
 
             # Disable the button after time
             for item in view.children:
@@ -219,6 +218,12 @@ class Eventos(commands.Cog):
 
                 eliminado = random.choice(jogadores)
                 jogadores.remove(eliminado)
+                
+                # Zera a streak de vitórias de quem perdeu
+                str_id_elim = str(eliminado.id)
+                if str_id_elim in self.coco_streak:
+                    self.coco_streak[str_id_elim] = 0
+
                 await ctx.send(f"💥 **KABOOOM!** O coco explodiu na cara de {eliminado.mention}! Fora da roda.")
 
                 if rodada == 1 and total_jogadores >= 4:
@@ -227,16 +232,32 @@ class Eventos(commands.Cog):
                 rodada += 1
 
             vencedor = jogadores[0]
-            v_db = db.get_user_data(str(vencedor.id))
+            vencedor_id = str(vencedor.id)
+            v_db = db.get_user_data(vencedor_id)
             if not v_db:
                 return await ctx.send("❌ Erro ao encontrar vencedor no banco de dados!")
 
-            lucro = round(pote_bruto - self.coco_aposta, 2)
-            db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + pote_bruto, 2))
-            await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} sobreviveu e faturou **{lucro:.2f} C** de lucro!")
+            # Adiciona 1 vitória na streak do vencedor
+            self.coco_streak[vencedor_id] = self.coco_streak.get(vencedor_id, 0) + 1
+            vit_seguidas = self.coco_streak[vencedor_id]
 
+            lucro = round(pote_bruto - self.coco_aposta, 2)
+            lucro_total = lucro + aposta
+            db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + pote_bruto, 2))
+            
+            # Anuncia a vitória
+            await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} sobreviveu e faturou **{lucro_total:.2f} C** de lucro!")
+
+            # Verifica as conquistas
             if total_jogadores >= 5:
                 save_achievement(v_db, "veterano_coco")
+                
+            # NOVA CONQUISTA: INVICTO NO COCO EXPLOSIVO (3 vitórias seguidas)
+            if vit_seguidas >= 3:
+                save_achievement(v_db, "invicto_coco")
+                await ctx.send(f"🔥 {vencedor.mention} venceu 3 vezes seguidas e garantiu a conquista **Mestre dos Cocos**! 🥥")
+                # Zera a streak depois de ganhar a conquista para não ficar floodando
+                self.coco_streak[vencedor_id] = 0
 
             self.coco_players = []
             self.coco_aposta = 0.0
