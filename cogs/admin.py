@@ -278,7 +278,7 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização oficiais no canal de comunicados."""
+        """Publica as notas de atualização focadas na nova experiência do Blackjack."""
         try: 
             await ctx.message.delete()
         except: 
@@ -287,37 +287,37 @@ class Admin(commands.Cog):
         if ctx.author.id != OWNER_ID:
             return
 
+        # ID do canal de patchnotes oficial
         canal_id = 1475606959247065118
         canal_patchnotes = self.bot.get_channel(canal_id)
 
         if not canal_patchnotes:
-            return await ctx.author.send("❌ Erro: Não consegui encontrar o canal de patchnotes. Verifique o ID.")
+            return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="📢 ATUALIZAÇÃO DA SELVA: NOTAS DA VERSÃO 🦍👑",
-            description="A economia e o submundo passaram por ajustes finos. Confira as mudanças de hoje!",
-            color=disnake.Color.dark_red()
+            title="🃏 REVOLUÇÃO NO CASSINO: BLACKJACK v4.5 🃏",
+            description="A mesa de 21 acaba de se tornar muito mais imersiva e estratégica. Preparem suas fichas!",
+            color=disnake.Color.gold() # Dourado combina com a vibe de cassino
         )
 
-        # Campo 1: Mudança no Roubo
+        # Novidade 1: Animação e Suspense
         embed.add_field(
-            name="🥷 Submundo Perigoso (!roubar)", 
+            name="🎭 Sistema de Suspense Real", 
             inline=False, 
             value=(
-                "• **Taxa de Sucesso:** A periculosidade aumentou! A taxa de êxito para roubos foi ajustada para **42%**.\n"
-                "• O crime agora exige mais estratégia (e sorte) para quem busca lucro rápido."
+                "• Chega de resultados instantâneos! Agora o Dealer revela sua mão e puxa cartas **em tempo real** (a cada 2 segundos).\n"
+                "• Sinta a adrenalina de Las Vegas enquanto a banca decide o seu destino carta por carta."
             )
         )
 
-        # Campo 2: Fix do Blackjack
+        # Novidade 2: Botão de Seguro
         embed.add_field(
-            name="🃏 Cassino Estabilizado (!blackjack)", 
+            name="🛡️ Nova Opção: Seguro (Insurance)", 
             inline=False, 
             value=(
-                "• **Correção de Interface:** O erro de 'interação desconhecida' que travava a mesa durante as jogadas do Dealer foi **corrigido**.\n"
-                "• Agora as mesas de 21 fluem com estabilidade total, sem interrupções nos pagamentos."
+                "• O Dealer tirou um Ás (`A`)? Não entre em pânico!\n"
+                "• Agora você pode acionar o **Seguro** para recuperar **50% da sua aposta** e sair da rodada com segurança caso sinta que a banca vai vencer."
             )
-        )
 
         embed.set_footer(text="Koba: Mantendo a selva em ordem. 🌴")
 
@@ -325,7 +325,7 @@ class Admin(commands.Cog):
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **NOVIDADES NA ÁREA!** @everyone 🚨\n",
+            content="🚨 **NOVIDADES NO CASSINO!** @everyone 🚨\n",
             embed=embed
         )
 
