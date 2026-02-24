@@ -44,7 +44,7 @@ class General(commands.Cog):
         ))
         embed.add_field(name="🏦 BANCO E INVESTIMENTOS", inline=False, value=(
             "🏛️ `!investir fixo <valor>` — +10% na hora (limite 5.000 C/dia)\n"
-            "📈 `!investir cripto <valor>` — -25% a +25% em 1 minuto"
+            "📈 `!investir cripto <valor>` — -25% a +20% em 30 segundos"
         ))
         embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
             "🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
