@@ -278,7 +278,7 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização focadas na nova experiência dos jogadores."""
+        """Publica as notas de atualização focadas na nova experiência do Blackjack."""
         try: 
             await ctx.message.delete()
         except: 
@@ -295,31 +295,19 @@ class Admin(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="🃏 ATUALIZAÇÃO DA SELVA: CASSINO & ESPORTES v6.1 🃏",
-            description="Visual novo, partidas mais rápidas e lucros direto na conta. Confiram as mudanças:",
+            title="🃏 ATUALIZAÇÃO DA SELVA: CASSINO v6.2 🃏",
+            description="O Blackjack da selva agora possui uma mecânica idêntica à de Las Vegas. Confiram as mudanças:",
             color=disnake.Color.gold()
         )
 
-        # Novidade 1: Esportes
+        # Novidade: Sistema de Sapato (Shoe)
         embed.add_field(
-            name="⚽ Esportes (!palpite)", 
+            name="🔀 Sistema de Baralho Fixo (Sapato)", 
             inline=False, 
             value=(
-                "• **Nova Interface:** O sistema de apostas de futebol está com um visual totalmente novo e muito melhor!\n"
-                "• **Lucro Imediato:** Pagamentos mais rápidos e um alerta automático marcando você assim que o seu bilhete for premiado."
-            )
-        )
-
-        # Novidade 2: Blackjack
-        embed.add_field(
-            name="♣️ Blackjack (21)", 
-            inline=False, 
-            value=(
-                "• **Mesas Maiores:** Reúna a galera! Agora até **6 macacos** podem jogar juntos na mesma mesa.\n"
-                "• **Sem Enrolação:** Estourou os 21? A sua derrota (ou vitória) sai na mesma hora, sem precisar esperar o Dealer.\n"
-                "• **Blackjack Natural:** Tirou 21 logo nas duas primeiras cartas? O bot já sabe e avança seu turno sozinho.\n"
-                "• **Botão de Seguro:** O Dealer abriu um Ás? Use o Seguro para recuperar **50% da aposta** e não perder tudo.\n"
-                "• **Suspense:** O Dealer agora revela as cartas com mais emoção, e as mensagens velhas somem para não poluir o chat."
+                "• **Cassino Real:** Esqueça o baralho infinito! Agora as mesas compartilham um 'Sapato' contendo **6 baralhos** (312 cartas) misturados que persistem entre as rodadas.\n"
+                "• **Estratégia e Contagem:** O rodapé da mesa agora mostra exatamente quantas cartas sobraram no monte. Ideal para quem gosta de contar cartas!\n"
+                "• **Reembaralhamento:** Assim que o monte esvaziar e chegar a 25% da capacidade, o Dealer enviará um aviso no chat e embaralhará as cartas automaticamente antes da próxima mão."
             )
         )
 
@@ -329,7 +317,7 @@ class Admin(commands.Cog):
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **NOVIDADES NA ÁREA!** @everyone 🚨\n",
+            content="🚨 **NOVIDADES NO CASSINO!** @everyone 🚨\n",
             embed=embed
         )
 

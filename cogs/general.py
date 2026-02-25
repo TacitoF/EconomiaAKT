@@ -52,6 +52,10 @@ class General(commands.Cog):
             "💣 `!minas` | ♠️ `!21`\n"
             "*Use `!jogos` no canal de apostas para ver detalhes*"
         ))
+        embed.add_field(name="⚽ APOSTAS ESPORTIVAS (Canal #🎰・akbet)", inline=False, value=(
+            "⚽ `!futebol` — Veja os próximos jogos e aposte pelo menu\n"
+            "🎟️ `!pule` — Veja seus bilhetes pendentes"
+        ))
         embed.add_field(name="🤐 CASTIGOS DE VOZ", inline=False, value=(
             "🔇 `!castigo mudo <1/5/10> @user`\n"
             "🎧 `!castigo surdo <1/5/10> @user`\n"

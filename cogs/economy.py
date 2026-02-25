@@ -153,6 +153,15 @@ class Economy(commands.Cog):
                 inv_alvo.remove("Escudo")
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
                 db.update_value(ladrao_data['row'], 7, agora)
+
+                # --- CONQUISTA: CASCA GROSSA (ladrão que bateu no Escudo) ---
+                conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
+                lista_c = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
+                if "casca_grossa" not in lista_c:
+                    lista_c.append("casca_grossa")
+                    db.update_value(ladrao_data['row'], 10, ", ".join(lista_c))
+                # -------------------------------------------------------------
+
                 return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!")
 
             if random.randint(1, 100) <= chance_sucesso:
@@ -192,7 +201,6 @@ class Economy(commands.Cog):
                 # --- SISTEMA DE CONQUISTA: MESTRE DAS SOMBRAS ---
                 tracker = self.bot.tracker_emblemas['roubos_sucesso']
                 if ladrao_id not in tracker: tracker[ladrao_id] = []
-                # Limpa registros mais velhos que 24 horas
                 tracker[ladrao_id] = [t for t in tracker[ladrao_id] if agora - t < 86400]
                 tracker[ladrao_id].append(agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = 0
@@ -213,7 +221,7 @@ class Economy(commands.Cog):
                 else:
                     mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} MC** de {vitima.mention}!"
                     
-                if chance_sucesso == 62: mensagem += " *(Usou Pé de Cabra 🕵️)*"
+                if chance_sucesso == 65: mensagem += " *(Usou Pé de Cabra 🕵️)*"
                 if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} MC**!"
                 mensagem += seguro_msg
                 mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} MC** colocada na sua cabeça!*"

@@ -188,7 +188,6 @@ class Eventos(commands.Cog):
             await ctx.send(embed=embed, view=view)
             await asyncio.sleep(30)
 
-            # Disable the button after time
             for item in view.children:
                 item.disabled = True
 
@@ -206,7 +205,6 @@ class Eventos(commands.Cog):
             pote_bruto = round(self.coco_aposta * total_jogadores, 2)
 
             await ctx.send(f"🔥 **A RODA FECHOU!** {total_jogadores} macacos corajosos — pote de **{pote_bruto:.2f} MC**!\nQue os jogos comecem...")
-            self.coco_active = False
 
             rodada = 1
             while len(jogadores) > 1:
@@ -219,7 +217,6 @@ class Eventos(commands.Cog):
                 eliminado = random.choice(jogadores)
                 jogadores.remove(eliminado)
                 
-                # Zera a streak de vitórias de quem perdeu
                 str_id_elim = str(eliminado.id)
                 if str_id_elim in self.coco_streak:
                     self.coco_streak[str_id_elim] = 0
@@ -237,7 +234,6 @@ class Eventos(commands.Cog):
             if not v_db:
                 return await ctx.send("❌ Erro ao encontrar vencedor no banco de dados!")
 
-            # Adiciona 1 vitória na streak do vencedor
             self.coco_streak[vencedor_id] = self.coco_streak.get(vencedor_id, 0) + 1
             vit_seguidas = self.coco_streak[vencedor_id]
 
@@ -245,22 +241,19 @@ class Eventos(commands.Cog):
             lucro_total = lucro + aposta
             db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + pote_bruto, 2))
             
-            # Anuncia a vitória
             await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} sobreviveu e faturou **{lucro_total:.2f} MC** de lucro!")
 
-            # Verifica as conquistas
             if total_jogadores >= 5:
                 save_achievement(v_db, "veterano_coco")
                 
-            # NOVA CONQUISTA: INVICTO NO COCO EXPLOSIVO (3 vitórias seguidas)
             if vit_seguidas >= 3:
                 save_achievement(v_db, "invicto_coco")
                 await ctx.send(f"🔥 {vencedor.mention} venceu 3 vezes seguidas e garantiu a conquista **Mestre dos Cocos**! 🥥")
-                # Zera a streak depois de ganhar a conquista para não ficar floodando
                 self.coco_streak[vencedor_id] = 0
 
             self.coco_players = []
             self.coco_aposta = 0.0
+            self.coco_active = False
 
         except commands.CommandError:
             raise
@@ -294,11 +287,10 @@ class Eventos(commands.Cog):
             "🎰 **!roleta** - Mesa de Roleta Multiplayer! (30s)\n"
             "🪙 **!apostar <valor> <opção>** - Entre na rodada da Roleta.\n"
             "  ↳ *Cores/Par/Ímpar pagam **2x** | Números exatos pagam **36x**!*\n"
-            "⚽ **!futebol** - Ver os jogos atuais.\n"
-            "  ↳ Use `!palpite <ID> <casa/empate/fora> <valor>` para apostar!\n"
-            "  ↳ Use `!palpites` para ver seus bilhetes ativos."
+            "⚽ **!futebol** - Ver os próximos jogos e apostar pelo menu.\n"
+            "  ↳ Use `!pule` para ver seus bilhetes de apostas esportivas."
         ))
-        embed.set_footer(text="Todos os jogos agora com interação por botões! 🐒")
+        embed.set_footer(text="Todos os jogos com interação por botões! 🐒")
         await ctx.send(embed=embed)
 
 def setup(bot):

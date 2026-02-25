@@ -2,7 +2,6 @@ import disnake
 from disnake.ext import commands
 import database as db
 
-# Limites de aposta alinhados com a nova economia
 LIMITES_CARGO = {
     "Lêmure":      400,
     "Macaquinho":  1500,
@@ -48,7 +47,7 @@ class Shop(commands.Cog):
             name="🛡️ Equipamentos",
             value=(
                 "🛡️ **Escudo** — `700 MC` | Bloqueia 1 roubo.\n"
-                "🕵️ **Pé de Cabra** — `1.100 MC` | Aumenta chance de roubo para 62%.\n"
+                "🕵️ **Pé de Cabra** — `1.100 MC` | Aumenta chance de roubo para 65%.\n"
                 "📄 **Seguro** — `950 MC` | Recupera 60% do valor se for roubado."
             ), inline=False
         )
@@ -77,12 +76,6 @@ class Shop(commands.Cog):
             if not user:
                 return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
-            # ════════════════════════════════════════════════════════════════
-            # PREÇOS — custo ≈ 20–22× salário médio do cargo ATUAL
-            # Sem jogos: ~20h de trabalho puro por evolução.
-            # Com jogos/roubos: ~10–12h por evolução.
-            # Rei Símio só alcançável por jogadores muito dedicados.
-            # ════════════════════════════════════════════════════════════════
             loja = {
                 "macaquinho":        {"nome": "Macaquinho",        "preco": 1200.0,   "tipo": "cargo"},
                 "babuíno":           {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},

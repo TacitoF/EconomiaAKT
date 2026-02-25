@@ -174,9 +174,6 @@ class PvP(commands.Cog):
             if aposta > get_limite(cargo):
                 return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
-            if aposta == 1.0:
-                save_achievement(ladrao, "briga_de_bar")
-
             view = AceitarView(vitima, aposta, "briga")
             await ctx.send(
                 f"🥊 {vitima.mention}, {ctx.author.mention} te desafiou para uma **briga** por **{aposta:.2f} MC**!",
@@ -192,6 +189,10 @@ class PvP(commands.Cog):
             a_atual = db.get_user_data(str(vitima.id))
             if db.parse_float(l_atual['data'][2]) < aposta or db.parse_float(a_atual['data'][2]) < aposta:
                 return await ctx.send("🚨 Fraude detectada! Briga cancelada.")
+
+            # Conquista concedida apenas após o aceite confirmado
+            if aposta == 1.0:
+                save_achievement(l_atual, "briga_de_bar")
 
             vencedor = random.choice([ctx.author, vitima])
             perdedor = vitima if vencedor == ctx.author else ctx.author

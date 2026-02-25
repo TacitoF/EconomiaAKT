@@ -34,20 +34,17 @@ class Profiles(commands.Cog):
             "• **Passa Fome:** Zere completamente sua conta (**0 MC**)."
         ))
         embed.add_field(name="🏃 Atividade Diária", inline=False, value=(
-            "• **Proletário Padrão:** Realize 5 trabalhos em um único dia.\n"
+            "• **Proletário Padrão:** Realize 10 trabalhos em um único dia.\n"
             "• **Mestre das Sombras:** Realize 5 roubos bem-sucedidos em um único dia.\n"
-            "• **Freguês:** Seja enviado para a prisão 3 vezes consecutivas.\n"
-            "• **Invasor:** Adquira um **Pé de Cabra** na loja."
+            "• **Invasor:** Tenha um **Pé de Cabra** no inventário."
         ))
         embed.add_field(name="🚨 Submundo", inline=False, value=(
             "• **Inimigo Público:** Recompensa de **5.000 MC** ou mais pela cabeça.\n"
             "• **Rei do Crime:** Seja o macaco mais procurado (Top 1) da selva."
         ))
-        
-        # O campo de segredos foi dividido em dois para não estourar o limite de 1024 caracteres do Discord
         embed.add_field(name="🤫 Segredos Ocultos (Parte 1)", inline=False, value=(
             "🤡 **Palhaço:** *O espelho reflete o golpe que você mesmo desferiu.*\n"
-            "🐢 **Casca Grossa:** *A carapaça ignora a fúria de quem tenta te tocar.*\n"
+            "🐢 **Casca Grossa:** *A carapaça ignorou a fúria de quem tentou te tocar.*\n"
             "💸 **Pix Irritante:** *O menor dos tributos desperta a maior das indignações.*\n"
             "🍀 **Sortudo:** *A face tripla da fortuna sorriu no momento exato.*\n"
             "🥊 **Briguento:** *Um duelo mortal onde a recompensa é apenas poeira.*\n"
@@ -64,7 +61,6 @@ class Profiles(commands.Cog):
             "😭 **Quase Lá:** *A vitória estava ao alcance, mas o destino tinha outros planos.*\n"
             "🔥 **Mestre dos Cocos:** *A bomba beijou sua mão três vezes e recuou com medo.*\n"
         ))
-        
         embed.set_footer(text="Apenas os astutos dominarão a selva. 🐒")
         await ctx.send(embed=embed)
 
@@ -117,7 +113,6 @@ class Profiles(commands.Cog):
             except:
                 pass
 
-            # Mapa de todas as conquistas incluindo as novas do minas
             mapa_conquistas = {
                 "palhaco":           "🤡 **Palhaço**",
                 "filho_da_sorte":    "🍀 **Sortudo**",
@@ -134,8 +129,8 @@ class Profiles(commands.Cog):
                 "desarmador":        "🎖️ **Desarmador**",
                 "quase_la":          "😭 **Quase Lá**",
                 "invicto_coco":      "🔥 **Mestre dos Cocos**",
-                "mestre_sombras":  "🥷 **Mestre das Sombras**",
-                "proletario":      "⚒️ **Proletário Padrão**",
+                "mestre_sombras":    "🥷 **Mestre das Sombras**",
+                "proletario":        "⚒️ **Proletário Padrão**",
             }
 
             conquistas_db = str(user['data'][9]) if len(user['data']) > 9 else ""
@@ -153,10 +148,10 @@ class Profiles(commands.Cog):
             embed = disnake.Embed(title=f"🐒 Perfil de {membro.display_name}", color=disnake.Color.gold())
             embed.set_thumbnail(url=membro.display_avatar.url)
             embed.add_field(name="💰 Saldo",     value=f"`{saldo:.2f} MC`", inline=True)
-            embed.add_field(name="💼 Cargo",     value=f"`{cargo}`",       inline=True)
-            embed.add_field(name="🔨 Trabalho",  value=status_work,        inline=True)
-            embed.add_field(name="🔫 Roubo",     value=status_roubo,       inline=True)
-            embed.add_field(name="🎒 Inventário",value=inv_formatado,       inline=False)
+            embed.add_field(name="💼 Cargo",     value=f"`{cargo}`",        inline=True)
+            embed.add_field(name="🔨 Trabalho",  value=status_work,         inline=True)
+            embed.add_field(name="🔫 Roubo",     value=status_roubo,        inline=True)
+            embed.add_field(name="🎒 Inventário",value=inv_formatado,        inline=False)
             embed.add_field(name="🏆 Conquistas",value=" | ".join(emblemas) if emblemas else "Nenhuma", inline=False)
             if rec > 0:
                 embed.add_field(name="🚨 PROCURADO", value=f"`{rec:.2f} MC` pela sua cabeça!", inline=False)
