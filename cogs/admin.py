@@ -278,7 +278,7 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização focadas na nova experiência do Blackjack."""
+        """Publica as notas de atualização focadas na nova experiência dos jogadores."""
         try: 
             await ctx.message.delete()
         except: 
@@ -295,28 +295,31 @@ class Admin(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="🃏 REVOLUÇÃO NO CASSINO: BLACKJACK v4.5 🃏",
-            description="A mesa de 21 acaba de se tornar muito mais imersiva e estratégica. Preparem suas fichas!",
-            color=disnake.Color.gold() # Dourado combina com a vibe de cassino
+            title="🃏 ATUALIZAÇÃO DA SELVA: CASSINO & ESPORTES v6.1 🃏",
+            description="Visual novo, partidas mais rápidas e lucros direto na conta. Confiram as mudanças:",
+            color=disnake.Color.gold()
         )
 
-        # Novidade 1: Animação e Suspense
+        # Novidade 1: Esportes
         embed.add_field(
-            name="🎭 Sistema de Suspense Real", 
+            name="⚽ Esportes (!palpite)", 
             inline=False, 
             value=(
-                "• Chega de resultados instantâneos! Agora o Dealer revela sua mão e puxa cartas **em tempo real** (a cada 2 segundos).\n"
-                "• Sinta a adrenalina de Las Vegas enquanto a banca decide o seu destino carta por carta."
+                "• **Nova Interface:** O sistema de apostas de futebol está com um visual totalmente novo e muito melhor!\n"
+                "• **Lucro Imediato:** Pagamentos mais rápidos e um alerta automático marcando você assim que o seu bilhete for premiado."
             )
         )
 
-        # Novidade 2: Botão de Seguro
+        # Novidade 2: Blackjack
         embed.add_field(
-            name="🛡️ Nova Opção: Seguro (Insurance)", 
+            name="♣️ Blackjack (21)", 
             inline=False, 
             value=(
-                "• O Dealer tirou um Ás (`A`)? Não entre em pânico!\n"
-                "• Agora você pode acionar o **Seguro** para recuperar **50% da sua aposta** e sair da rodada com segurança caso sinta que a banca vai vencer."
+                "• **Mesas Maiores:** Reúna a galera! Agora até **6 macacos** podem jogar juntos na mesma mesa.\n"
+                "• **Sem Enrolação:** Estourou os 21? A sua derrota (ou vitória) sai na mesma hora, sem precisar esperar o Dealer.\n"
+                "• **Blackjack Natural:** Tirou 21 logo nas duas primeiras cartas? O bot já sabe e avança seu turno sozinho.\n"
+                "• **Botão de Seguro:** O Dealer abriu um Ás? Use o Seguro para recuperar **50% da aposta** e não perder tudo.\n"
+                "• **Suspense:** O Dealer agora revela as cartas com mais emoção, e as mensagens velhas somem para não poluir o chat."
             )
         )
 
@@ -326,7 +329,7 @@ class Admin(commands.Cog):
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **NOVIDADES NO CASSINO!** @everyone 🚨\n",
+            content="🚨 **NOVIDADES NA ÁREA!** @everyone 🚨\n",
             embed=embed
         )
 
