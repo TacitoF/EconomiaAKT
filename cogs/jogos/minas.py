@@ -18,15 +18,6 @@ def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 400)
 
 # ── Multiplicadores ───────────────────────────────────
-# Fórmula: mult = round((1 + fator) ^ casas_reveladas, 2)
-#
-# Tetos máximos (revelar TODAS as casas seguras):
-#   1 bomba  (15 casas) → 1.94x (Antes: 1.75x)
-#   2 bombas (14 casas) → 2.75x (Antes: 2.26x)
-#   3 bombas (13 casas) → 3.88x (Antes: 3.07x)
-#   4 bombas (12 casas) → 5.63x (Antes: 4.11x)
-#   5 bombas (11 casas) → 8.14x (Antes: 5.37x)
-# ─────────────────────────────────────────────────────────────────────────
 FATORES = {1: 0.045, 2: 0.075, 3: 0.110, 4: 0.155, 5: 0.210}
 
 def calcular_mult(bombas: int, casas_reveladas: int) -> float:
@@ -143,10 +134,8 @@ class MinasView(disnake.ui.View):
                     u = db.get_user_data(str(inter.author.id))
                     if u:
                         db.update_value(u['row'], 3, round(db.parse_float(u['data'][2]) + ganho, 2))
-                        # Conquista: revelou tudo com 5 bombas
                         if self.bombas == 5:
                             salvar_conquista(u, "esquadrao_suicida")
-                        # Conquista: revelou tudo com 3+ bombas
                         if self.bombas >= 3:
                             salvar_conquista(u, "desarmador")
 
@@ -179,6 +168,8 @@ class MinasView(disnake.ui.View):
             if self.reveladas == 1:
                 salvar_conquista(u, "covarde")
 
+        # Revela todas as casas ao sacar
+        self.abertas = set(range(self.GRID))
         self._build_buttons()
         await inter.response.edit_message(
             embed=self._build_embed(sacou=True, ganho=ganho, mult=mult), view=self
@@ -225,14 +216,34 @@ class MinasView(disnake.ui.View):
         return embed
 
     async def on_timeout(self):
-        if not self.terminado:
-            self.terminado = True
-            for item in self.children:
-                item.disabled = True
-            try:
+        """
+        FIX BUG 6: devolve a aposta principal se o jogo expirar sem o jogador
+        ter sacado nem explodido. Antes, o jogador simplesmente perdia o dinheiro
+        por inatividade (ex.: fechou o Discord, queda de internet).
+        """
+        if self.terminado:
+            return
+
+        self.terminado = True
+        for item in self.children:
+            item.disabled = True
+
+        # Devolve a aposta se o jogador não tiver sacado nem explodido
+        try:
+            u = db.get_user_data(str(self.ctx.author.id))
+            if u:
+                saldo = db.parse_float(u['data'][2])
+                db.update_value(u['row'], 3, round(saldo + self.aposta, 2))
                 await self.ctx.channel.send(
                     f"⏰ {self.ctx.author.mention}, o tempo acabou! "
-                    f"Sua aposta de **{self.aposta:.2f} MC** foi perdida."
+                    f"Sua aposta de **{self.aposta:.2f} MC** foi devolvida."
+                )
+        except Exception as e:
+            print(f"❌ Erro ao devolver aposta no timeout do minas: {e}")
+            try:
+                await self.ctx.channel.send(
+                    f"⏰ {self.ctx.author.mention}, o tempo acabou e houve um erro ao devolver sua aposta. "
+                    f"Contate um administrador!"
                 )
             except:
                 pass

@@ -85,10 +85,6 @@ ORDEM_CARTA = {"A": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6,
 
 
 def avaliar_21_3(c1: dict, c2: dict, cd: dict) -> tuple[str | None, int]:
-    """
-    Avalia a combinação 21+3.
-    Retorna (nome_da_combinação, multiplicador) ou (None, 0) se não ganhou.
-    """
     cartas = [c1, c2, cd]
     valores = [c["valor"] for c in cartas]
     naipes  = [c["naipe"] for c in cartas]
@@ -97,7 +93,6 @@ def avaliar_21_3(c1: dict, c2: dict, cd: dict) -> tuple[str | None, int]:
     mesmo_naipe  = len(set(naipes)) == 1
     mesmo_valor  = len(set(valores)) == 1
     sequencia    = (ordens[2] - ordens[0] == 2 and len(set(ordens)) == 3)
-    # caso especial A-Q-K como sequência
     if set(valores) == {"A", "Q", "K"}:
         sequencia = True
     if set(valores) == {"A", "2", "3"}:
@@ -117,10 +112,6 @@ def avaliar_21_3(c1: dict, c2: dict, cd: dict) -> tuple[str | None, int]:
 
 
 def avaliar_perfect_pairs(c1: dict, c2: dict) -> tuple[str | None, int]:
-    """
-    Avalia o Perfect Pairs.
-    Retorna (nome_do_par, multiplicador) ou (None, 0) se não ganhou.
-    """
     if c1["valor"] != c2["valor"]:
         return None, 0
 
@@ -136,13 +127,11 @@ def avaliar_perfect_pairs(c1: dict, c2: dict) -> tuple[str | None, int]:
 
 
 NOME_PT = {
-    # 21+3
     "flush":           "Flush (mesmo naipe)",
     "sequencia":       "Sequência",
     "trio":            "Trio",
     "sequencia_color": "Sequência Colorida",
     "trio_perfeito":   "Trio Perfeito",
-    # Perfect Pairs
     "par_misto":       "Par Misto",
     "par_colorido":    "Par Colorido",
     "par_perfeito":    "Par Perfeito",
@@ -153,18 +142,13 @@ NOME_PT = {
 #  MODAL — valor de um side bet específico
 # ──────────────────────────────────────────────
 class ModalValorSideBet(disnake.ui.Modal):
-    """
-    Segundo passo: aberto após o usuário clicar em 🃏 21+3 ou 💎 Perfect Pairs.
-    Pede apenas o valor. Substituição e cancelamento (valor 0) são suportados.
-    Após submeter, colapsa a mensagem ephemeral da ViewEscolhaSideBet.
-    """
     def __init__(self, tipo: str, aposta_principal: float, lobby: "LobbyView",
                  p_id: int, view_inter: disnake.MessageInteraction):
-        self.tipo             = tipo   # "21_3" ou "pp"
+        self.tipo             = tipo
         self.aposta_principal = aposta_principal
         self.lobby            = lobby
         self.p_id             = p_id
-        self.view_inter       = view_inter  # inter da ViewEscolhaSideBet para editar depois
+        self.view_inter       = view_inter
 
         nome   = "21+3" if tipo == "21_3" else "Perfect Pairs"
         maximo = round(aposta_principal * 0.50, 2)
@@ -199,7 +183,6 @@ class ModalValorSideBet(disnake.ui.Modal):
 
         sb_anterior = self.lobby.side_bets.get(self.p_id, {}).get(tipo)
 
-        # Valor 0 = cancelar
         if valor == 0:
             if sb_anterior:
                 u_db = db.get_user_data(str(self.p_id))
@@ -210,7 +193,7 @@ class ModalValorSideBet(disnake.ui.Modal):
                 resultado = f"🗑️ **{nome}** cancelado — **{sb_anterior:.2f} MC** devolvidos."
             else:
                 resultado = f"ℹ️ Você não tinha aposta no **{nome}**."
-            
+
             await self._colapsar_view(resultado)
             await inter.delete_original_response()
             await self._atualizar_lobby()
@@ -239,13 +222,12 @@ class ModalValorSideBet(disnake.ui.Modal):
 
         acao      = "atualizada" if sb_anterior else "registrada"
         resultado = f"✅ **{nome}** {acao}: **{valor:.2f} MC**"
-        
+
         await self._colapsar_view(resultado)
         await inter.delete_original_response()
         await self._atualizar_lobby()
 
     async def _colapsar_view(self, texto: str):
-        """Substitui a mensagem ephemeral da ViewEscolhaSideBet por uma linha curta sem botões."""
         try:
             await self.view_inter.edit_original_response(content=texto, view=None)
         except:
@@ -263,11 +245,6 @@ class ModalValorSideBet(disnake.ui.Modal):
 #  VIEW — escolha do tipo de side bet (ephemeral)
 # ──────────────────────────────────────────────
 class ViewEscolhaSideBet(disnake.ui.View):
-    """
-    Primeiro passo: aparece como ephemeral quando o usuário clica em 🎰 Aposta Lateral.
-    Mostra dois botões (21+3 e Perfect Pairs) com odds e status atual de cada um.
-    Clicar em qualquer botão abre o ModalValorSideBet correspondente.
-    """
     def __init__(self, aposta_principal: float, lobby: "LobbyView", p_id: int):
         super().__init__(timeout=60)
         self.aposta_principal = aposta_principal
@@ -333,7 +310,6 @@ class LobbyView(disnake.ui.View):
         self.started   = False
         self.cancelled = False
         self.msg       = None
-        # {player_id: {"21_3": float|None, "pp": float|None}}
         self.side_bets: dict = {}
 
     MAX_JOGADORES = 6
@@ -359,13 +335,11 @@ class LobbyView(disnake.ui.View):
 
         db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - self.aposta, 2))
         self.players.append(inter.author)
-        # Inicializa o slot de side bets desse jogador
         self.side_bets[inter.author.id] = {"21_3": None, "pp": None}
         await inter.response.edit_message(content=self._lobby_text())
 
     @disnake.ui.button(label="🎰 Aposta Lateral", style=disnake.ButtonStyle.blurple, row=0)
     async def aposta_lateral(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
-        # Quem não entrou ainda recebe aviso ephemeral
         if inter.author not in self.players:
             return await inter.response.send_message(
                 "❌ Entre na mesa primeiro clicando em **🃏 Entrar**!", ephemeral=True
@@ -394,7 +368,6 @@ class LobbyView(disnake.ui.View):
     def _lobby_text(self) -> str:
         nomes = ", ".join([p.display_name for p in self.players])
 
-        # Resume side bets de quem já apostou
         sb_linhas = []
         for p in self.players:
             sb = self.side_bets.get(p.id, {})
@@ -419,18 +392,43 @@ class LobbyView(disnake.ui.View):
         )
 
     async def on_timeout(self):
+        """
+        FIX BUG 1: Devolve aposta principal + side bets de TODOS os jogadores
+        que entraram pelo botão (players[1:]), pois o criador (players[0]) é
+        reembolsado separadamente no blackjack() ao detectar cancelled=True.
+        """
         self.cancelled = True
-        # Devolve apostas laterais que foram cobradas
-        for p_id, sb in self.side_bets.items():
-            total_sb = sum(v for v in sb.values() if v)
-            if total_sb > 0:
+
+        # Devolve aposta principal + side bets dos jogadores que entraram pelo botão
+        for p in self.players[1:]:  # pula o criador (index 0), tratado no blackjack()
+            total_devolver = self.aposta
+            sb = self.side_bets.get(p.id, {})
+            total_devolver += sum(v for v in sb.values() if v)
+            total_devolver = round(total_devolver, 2)
+            if total_devolver <= 0:
+                continue
+            try:
+                u_db = db.get_user_data(str(p.id))
+                if u_db:
+                    saldo = db.parse_float(u_db['data'][2])
+                    db.update_value(u_db['row'], 3, round(saldo + total_devolver, 2))
+            except Exception as e:
+                print(f"❌ Erro ao devolver aposta no timeout do lobby para {p.id}: {e}")
+
+        # Devolve só os side bets do criador (aposta principal dele é tratada no blackjack())
+        criador = self.players[0] if self.players else None
+        if criador:
+            sb_criador = self.side_bets.get(criador.id, {})
+            total_sb_criador = round(sum(v for v in sb_criador.values() if v), 2)
+            if total_sb_criador > 0:
                 try:
-                    u_db = db.get_user_data(str(p_id))
+                    u_db = db.get_user_data(str(criador.id))
                     if u_db:
                         saldo = db.parse_float(u_db['data'][2])
-                        db.update_value(u_db['row'], 3, round(saldo + total_sb, 2))
-                except:
-                    pass
+                        db.update_value(u_db['row'], 3, round(saldo + total_sb_criador, 2))
+                except Exception as e:
+                    print(f"❌ Erro ao devolver side bet do criador no timeout: {e}")
+
         self.stop()
 
 
@@ -440,9 +438,6 @@ class LobbyView(disnake.ui.View):
 class BlackjackView(disnake.ui.View):
     def __init__(self, ctx, bot, aposta_base, players, sapato: Sapato,
                  side_bets: dict | None = None):
-        """
-        side_bets: {player_id: {"21_3": float|None, "pp": float|None}}
-        """
         super().__init__(timeout=120)
         self.ctx         = ctx
         self.bot         = bot
@@ -455,7 +450,9 @@ class BlackjackView(disnake.ui.View):
             p.id: {
                 "member": p, "hand": [], "hand2": [], "status": "jogando",
                 "aposta": round(float(aposta_base), 2), "splitted": False, "current_hand": 1,
-                # resultados dos side bets (preenchidos após distribuição)
+                # flag para rastrear se o ás de cada mão já foi da mão inicial
+                "hand_ases_iniciais": 0,
+                "hand2_ases_iniciais": 0,
                 "sb_21_3_resultado": None,
                 "sb_pp_resultado":   None,
             }
@@ -471,26 +468,55 @@ class BlackjackView(disnake.ui.View):
     def _puxar_carta(self) -> dict:
         return self.sapato.puxar()
 
-    def _calcular_pontos(self, hand):
-        pontos, ases_iniciais = 0, 0
-        valores_map = {"J": 10, "Q": 10, "K": 10}
-        
+    def _calcular_pontos(self, hand, ases_iniciais: int = None):
+        """
+        FIX BUG 5: Em vez de usar a posição da carta no array (i < 2) para decidir
+        se um Ás vale 11, usamos o parâmetro ases_iniciais que rastreia quantos Ases
+        vieram nas duas primeiras cartas da mão. Isso garante comportamento correto
+        após Split, onde hand2 começa com índice 0 mas pode ter sido formada por hit.
+
+        Se ases_iniciais não for fornecido, usa o comportamento legado (posição i<2)
+        para compatibilidade com chamadas que não passam o contexto da mão.
+        """
+        pontos = 0
+        ases_flexiveis = 0  # Ases que ainda valem 11 e podem ser rebaixados
+
         for i, carta in enumerate(hand):
             if carta["valor"] == "A":
-                if i < 2: # Ás na mão inicial (2 primeiras cartas)
-                    ases_iniciais += 1
-                    pontos += 11
-                else: # Ás obtido ao pedir cartas (hit)
-                    pontos += 1
+                # Decide se este Ás pode valer 11 (flexível)
+                if ases_iniciais is not None:
+                    # Usa contagem explícita: só Ases das primeiras 2 cartas são flexíveis
+                    if ases_flexiveis + (pontos // 11) < ases_iniciais:
+                        pontos += 11
+                        ases_flexiveis += 1
+                    else:
+                        pontos += 1
+                else:
+                    # Comportamento legado: Ás nas posições 0 e 1 valem 11
+                    if i < 2:
+                        pontos += 11
+                        ases_flexiveis += 1
+                    else:
+                        pontos += 1
             else:
-                pontos += valores_map.get(carta["valor"], int(carta["valor"]) if carta["valor"].isdigit() else 0)
-                
-        # Só abaixa o valor (de 11 para 1) se estourar e o ás for das duas primeiras cartas
-        while pontos > 21 and ases_iniciais > 0:
+                valores_map = {"J": 10, "Q": 10, "K": 10}
+                pontos += valores_map.get(carta["valor"],
+                           int(carta["valor"]) if carta["valor"].isdigit() else 0)
+
+        # Rebaixa Ases flexíveis de 11 para 1 se estourar
+        while pontos > 21 and ases_flexiveis > 0:
             pontos -= 10
-            ases_iniciais -= 1
-            
+            ases_flexiveis -= 1
+
         return pontos
+
+    def _get_pontos_mao(self, p_id: int, mao: int = 1) -> int:
+        """Calcula pontos de uma mão usando o rastreamento correto de Ases iniciais."""
+        p = self.players_data[p_id]
+        if mao == 1:
+            return self._calcular_pontos(p["hand"], p["hand_ases_iniciais"])
+        else:
+            return self._calcular_pontos(p["hand2"], p["hand2_ases_iniciais"])
 
     def _formatar_mao(self, hand, ocultar_primeira=False, dealer_aguardando=False):
         if not hand: return "Espere..."
@@ -507,19 +533,13 @@ class BlackjackView(disnake.ui.View):
         return f"🃏 Sapato: {restantes}/{total} cartas ({pct:.0f}%)"
 
     def _resolver_side_bets_iniciais(self):
-        """
-        Avalia 21+3 e Perfect Pairs logo após distribuir as cartas.
-        Credita ou registra resultado em players_data.
-        Retorna lista de strings para exibir no embed.
-        """
         msgs = []
-        carta_dealer_aberta = self.dealer_hand[1]  # segunda carta do dealer é visível
+        carta_dealer_aberta = self.dealer_hand[1]
 
         for p_id, p in self.players_data.items():
             sb = self.side_bets.get(p_id, {})
             c1, c2 = p["hand"][0], p["hand"][1]
 
-            # ── Perfect Pairs ──────────────────────────────
             val_pp = sb.get("pp")
             if val_pp:
                 nome_pp, mult_pp = avaliar_perfect_pairs(c1, c2)
@@ -533,7 +553,6 @@ class BlackjackView(disnake.ui.View):
                 else:
                     p["sb_pp_resultado"] = f"❌ Sem par (perdeu {val_pp:.2f} MC)"
 
-            # ── 21+3 ───────────────────────────────────────
             val_21 = sb.get("21_3")
             if val_21:
                 nome_21, mult_21 = avaliar_21_3(c1, c2, carta_dealer_aberta)
@@ -550,7 +569,6 @@ class BlackjackView(disnake.ui.View):
         return msgs
 
     def _dealer_mostra_as(self) -> bool:
-        """Verifica se a carta ABERTA do dealer é um Ás (segunda carta na distribuição)."""
         return len(self.dealer_hand) > 1 and self.dealer_hand[1]["valor"] == "A"
 
     async def atualizar_embed(self):
@@ -598,10 +616,10 @@ class BlackjackView(disnake.ui.View):
                 "🏳️" if p["status"] == "seguro"   else
                 "✋" if p["status"] == "parou"     else "✅"
             )
-            p_p = self._calcular_pontos(p["hand"])
+            p_p = self._get_pontos_mao(p_id, 1)
 
             if p["splitted"]:
-                p2_p  = self._calcular_pontos(p["hand2"])
+                p2_p  = self._get_pontos_mao(p_id, 2)
                 ind1  = "👉 " if em_turno and p["current_hand"] == 1 else ""
                 ind2  = "👉 " if em_turno and p["current_hand"] == 2 else ""
                 mao_str = f"{ind1}Mão 1: `{self._formatar_mao(p['hand'])}` ({p_p})\n{ind2}Mão 2: `{self._formatar_mao(p['hand2'])}` ({p2_p})"
@@ -611,20 +629,22 @@ class BlackjackView(disnake.ui.View):
             res_txt = ""
             if self.terminado:
                 def resultado_mao(pm, aposta_mao, status, dealer_pts=d_p):
-                    if status == "seguro":                     return f"🏳️ Seguro (**{(aposta_mao * 0.5):.2f} MC** recuperados)"
+                    if status == "seguro":                     return f"🛡️ Acionou Seguro (devolvido: **{(aposta_mao * 0.5):.2f} MC**)"
                     if pm > 21:                                return "❌ Estourou"
-                    if dealer_pts > 21 or pm > dealer_pts:     return f"🏆 Venceu (**{(aposta_mao * 2):.2f} MC**)"
+                    if dealer_pts > 21 or pm > dealer_pts:
+                        lucro = aposta_mao
+                        return f"🏆 Venceu (**{(aposta_mao + lucro):.2f} MC**)"
                     if pm == dealer_pts:                       return f"🤝 Empatou (**{aposta_mao:.2f} MC**)"
                     return "💀 Perdeu"
 
                 if p["splitted"]:
+                    p2_p_final = self._get_pontos_mao(p_id, 2)
                     res_txt = (f"\nResultados:\n"
                                f"Mão 1: **{resultado_mao(p_p, p['aposta'], p['status'])}**\n"
-                               f"Mão 2: **{resultado_mao(p2_p, p['aposta'], p['status'])}**")
+                               f"Mão 2: **{resultado_mao(p2_p_final, p['aposta'], p['status'])}**")
                 else:
                     res_txt = f"\nResultado: **{resultado_mao(p_p, p['aposta'], p['status'])}**"
 
-                # Resultados das apostas laterais
                 sb_txt = ""
                 if p.get("sb_pp_resultado"):
                     sb_txt += f"\n💎 PP: {p['sb_pp_resultado']}"
@@ -632,7 +652,6 @@ class BlackjackView(disnake.ui.View):
                     sb_txt += f"\n🃏 21+3: {p['sb_21_3_resultado']}"
                 res_txt += sb_txt
             else:
-                # Mostra resultados de PP e 21+3 mesmo durante o jogo
                 sb_txt = ""
                 if p.get("sb_pp_resultado"):
                     sb_txt += f"\n💎 PP: {p['sb_pp_resultado']}"
@@ -671,15 +690,21 @@ class BlackjackView(disnake.ui.View):
 
         await inter.response.defer()
         p = self.players_data[inter.author.id]
-        mao_atual = p["hand"] if not p["splitted"] or p["current_hand"] == 1 else p["hand2"]
-        mao_atual.append(self._puxar_carta())
+        nova_carta = self._puxar_carta()
 
-        if self._calcular_pontos(mao_atual) >= 21:
+        if p["splitted"] and p["current_hand"] == 2:
+            p["hand2"].append(nova_carta)
+            pontos_mao = self._get_pontos_mao(inter.author.id, 2)
+        else:
+            p["hand"].append(nova_carta)
+            pontos_mao = self._get_pontos_mao(inter.author.id, 1)
+
+        if pontos_mao >= 21:
             if p["splitted"] and p["current_hand"] == 1:
                 p["current_hand"] = 2
                 await self.atualizar_embed()
             else:
-                p["status"] = "estourou" if self._calcular_pontos(mao_atual) > 21 else "parou"
+                p["status"] = "estourou" if pontos_mao > 21 else "parou"
                 await self.atualizar_embed()
                 await self._proximo_turno()
         else:
@@ -717,7 +742,8 @@ class BlackjackView(disnake.ui.View):
             db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - p["aposta"], 2))
             p["aposta"] *= 2
             p["hand"].append(self._puxar_carta())
-            p["status"] = "estourou" if self._calcular_pontos(p["hand"]) > 21 else "parou"
+            pontos = self._get_pontos_mao(p_id, 1)
+            p["status"] = "estourou" if pontos > 21 else "parou"
             await self.atualizar_embed()
             await self._proximo_turno()
         except Exception as e:
@@ -739,18 +765,19 @@ class BlackjackView(disnake.ui.View):
             db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) - p["aposta"], 2))
             p["splitted"] = True
             carta_separada = p["hand"].pop()
-            p["hand2"] = [carta_separada, self._puxar_carta()]
             p["hand"].append(self._puxar_carta())
+            p["hand2"] = [carta_separada, self._puxar_carta()]
+
+            # FIX BUG 5: rastreia os Ases iniciais de cada mão após o split
+            p["hand_ases_iniciais"]  = sum(1 for c in p["hand"][:2]  if c["valor"] == "A")
+            p["hand2_ases_iniciais"] = sum(1 for c in p["hand2"][:2] if c["valor"] == "A")
+
             await self.atualizar_embed()
         except Exception as e:
             print(f"❌ Erro no Split: {e}")
 
     @disnake.ui.button(label="Seguro (Insurance)", style=disnake.ButtonStyle.secondary, disabled=True, row=1)
     async def insurance(self, button, inter):
-        """
-        Seguro / Rendição (Surrender): aparece quando dealer mostra Ás.
-        Recupera automaticamente 50% da aposta principal e abandona a mão.
-        """
         if self.terminado or self.current_player_idx >= len(self.player_ids): return
         p_id = inter.author.id
         if p_id != self.player_ids[self.current_player_idx]:
@@ -758,27 +785,23 @@ class BlackjackView(disnake.ui.View):
 
         await inter.response.defer()
         p = self.players_data[p_id]
-        
-        # O Seguro devolve metade do valor que o jogador apostou na mesa
+
         valor_recuperado = round(p["aposta"] * 0.5, 2)
-        
+
         try:
             u_db = db.get_user_data(str(p_id))
             if not u_db:
                 return await inter.followup.send("❌ Conta não encontrada!", ephemeral=True)
-                
+
             saldo = db.parse_float(u_db['data'][2])
-            
-            # Devolve imediatamente os 50% recuperados para a conta
             db.update_value(u_db['row'], 3, round(saldo + valor_recuperado, 2))
-            
-            # Muda o status para 'seguro' para garantir que ele não ganhe nem perca a aposta normal
+
             p["status"] = "seguro"
             self._insurance_resolvido = True
-            
+
             await self.atualizar_embed()
             await self._proximo_turno()
-            
+
         except Exception as e:
             print(f"❌ Erro no Seguro: {e}")
 
@@ -843,18 +866,16 @@ class BlackjackView(disnake.ui.View):
             return 0.0
 
         for p_id, p in self.players_data.items():
-            # Se o status for seguro, ele é totalmente ignorado para pagamentos normais
-            # pois já recebeu os 50% no momento em que clicou no botão!
             if p["status"] == "seguro":
                 continue
-                
+
             try:
                 u_db = db.get_user_data(str(p_id))
                 if not u_db: continue
                 saldo = db.parse_float(u_db['data'][2])
-                ganho = lucro_mao(self._calcular_pontos(p["hand"]), p["aposta"])
+                ganho = lucro_mao(self._get_pontos_mao(p_id, 1), p["aposta"])
                 if p["splitted"]:
-                    ganho += lucro_mao(self._calcular_pontos(p["hand2"]), p["aposta"])
+                    ganho += lucro_mao(self._get_pontos_mao(p_id, 2), p["aposta"])
 
                 if ganho > 0:
                     db.update_value(u_db['row'], 3, round(saldo + ganho, 2))
@@ -921,17 +942,16 @@ class BlackjackCog(commands.Cog):
             await lobby_view.wait()
 
             if lobby_view.cancelled and not lobby_view.started:
-                for p in players:
-                    p_db = db.get_user_data(str(p.id))
-                    if p_db:
-                        db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) + aposta, 2))
+                # Devolve aposta principal do criador (outros jogadores são devolvidos no on_timeout)
+                p_db = db.get_user_data(str(ctx.author.id))
+                if p_db:
+                    db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) + aposta, 2))
                 return await ctx.send("⏰ Mesa cancelada por inatividade. Valores devolvidos.")
 
             if not lobby_view.started:
-                for p in players:
-                    p_db = db.get_user_data(str(p.id))
-                    if p_db:
-                        db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) + aposta, 2))
+                p_db = db.get_user_data(str(ctx.author.id))
+                if p_db:
+                    db.update_value(p_db['row'], 3, round(db.parse_float(p_db['data'][2]) + aposta, 2))
                 return await ctx.send("⏰ Mesa cancelada. Valores devolvidos.")
 
             try:
@@ -939,25 +959,28 @@ class BlackjackCog(commands.Cog):
             except:
                 pass
 
-            # ── Inicia o jogo (side_bets já coletados no lobby) ───────────
-            view = BlackjackView(ctx, self.bot, aposta, players, sapato, side_bets=lobby_view.side_bets)
+            # ── Inicia o jogo ──────────────────────────────────────────────
+            view = BlackjackView(ctx, self.bot, aposta, lobby_view.players, sapato,
+                                 side_bets=lobby_view.side_bets)
 
             view.dealer_hand = [view._puxar_carta(), view._puxar_carta()]
             for p_id in view.player_ids:
-                view.players_data[p_id]["hand"] = [view._puxar_carta(), view._puxar_carta()]
+                p = view.players_data[p_id]
+                p["hand"] = [view._puxar_carta(), view._puxar_carta()]
+                # FIX BUG 5: registra quantos Ases vieram nas 2 primeiras cartas
+                p["hand_ases_iniciais"] = sum(1 for c in p["hand"] if c["valor"] == "A")
 
             embed_loading = disnake.Embed(title="🃏 Distribuindo as cartas...", color=disnake.Color.dark_purple())
             msg = await ctx.send(embed=embed_loading)
             view.message = msg
 
-            # Resolve PP e 21+3 imediatamente após distribuir
             msgs_side = view._resolver_side_bets_iniciais()
             if msgs_side:
                 await ctx.send("🎰 **Resultados das Apostas Laterais:**\n" + "\n".join(msgs_side), delete_after=15)
 
             # Blackjack Natural
             for p_id in view.player_ids:
-                if view._calcular_pontos(view.players_data[p_id]["hand"]) == 21:
+                if view._get_pontos_mao(p_id, 1) == 21:
                     view.players_data[p_id]["status"] = "parou"
 
             await view.atualizar_embed()

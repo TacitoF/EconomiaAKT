@@ -34,6 +34,7 @@ class General(commands.Cog):
         ))
         embed.add_field(name="😈 ROUBOS, CAÇADAS E SABOTAGEM", inline=False, value=(
             "🥷 `!roubar @user` — Tente roubar alguém (cooldown 2h)\n"
+            "🛡️ `!escudo` — Ativa seu Escudo ou consulta o tempo restante\n"
             "🚨 `!recompensa @user <valor>` — Coloque cabeça a prêmio\n"
             "📜 `!recompensas` — Lista de procurados\n"
             "🍌 `!casca @user` — Usa Casca de Banana\n"

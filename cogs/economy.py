@@ -12,6 +12,8 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'impostos'): bot.impostos = {}
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
+        # Escudos ativos: {user_id: timestamp_expiracao}
+        if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -111,9 +113,10 @@ class Economy(commands.Cog):
         if vitima.id == ctx.author.id:
             ladrao_data = db.get_user_data(ladrao_id)
             if ladrao_data:
-                conquistas = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
-                if "palhaco" not in conquistas:
-                    db.update_value(ladrao_data['row'], 10, f"{conquistas}, palhaco".strip(", "))
+                lista_p = [c.strip() for c in str(ladrao_data['data'][9]).split(',') if c.strip()]
+                if "palhaco" not in lista_p:
+                    lista_p.append("palhaco")
+                    db.update_value(ladrao_data['row'], 10, ", ".join(lista_p))
             return await ctx.send("🐒 Palhaço! Não pode roubar a si mesmo.")
 
         try:
@@ -149,9 +152,23 @@ class Economy(commands.Cog):
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
-            if "Escudo" in inv_alvo:
+            # ── ESCUDO COM DURAÇÃO DE TEMPO ──────────────────────────────────
+            # Verifica se o alvo tem escudo ativo (tanto no cache em memória quanto no inventário)
+            escudo_ativo = False
+            escudo_expiracao = self.bot.escudos_ativos.get(vitima_id, 0)
+
+            if escudo_expiracao > agora:
+                # Escudo ainda válido no cache de memória
+                escudo_ativo = True
+            elif "Escudo" in inv_alvo:
+                # Escudo no inventário ainda não foi ativado — ativa agora ao receber ataque
+                escudo_expiracao = agora + (6 * 3600)  # 6 horas
+                self.bot.escudos_ativos[vitima_id] = escudo_expiracao
                 inv_alvo.remove("Escudo")
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
+                escudo_ativo = True
+
+            if escudo_ativo:
                 db.update_value(ladrao_data['row'], 7, agora)
 
                 # --- CONQUISTA: CASCA GROSSA (ladrão que bateu no Escudo) ---
@@ -162,21 +179,25 @@ class Economy(commands.Cog):
                     db.update_value(ladrao_data['row'], 10, ", ".join(lista_c))
                 # -------------------------------------------------------------
 
-                return await ctx.send(f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!")
+                return await ctx.send(
+                    f"🛡️ {vitima.mention} está protegido por um **Escudo** e bloqueou seu ataque!\n"
+                    f"🕐 A proteção expira <t:{int(escudo_expiracao)}:R>."
+                )
+            # ─────────────────────────────────────────────────────────────────
 
             if random.randint(1, 100) <= chance_sucesso:
                 # ── NOVA LÓGICA DE BALANCEAMENTO DE POBREZA ──
                 if saldo_alvo < 500:
-                    pct = random.uniform(0.01, 0.05) # Roubo com pena: 1% a 5%
+                    pct = random.uniform(0.01, 0.05)  # Roubo com pena: 1% a 5%
                     is_pobre = True
                 else:
-                    pct = random.uniform(0.05, 0.10) # Roubo normal: 5% a 10%
+                    pct = random.uniform(0.05, 0.10)  # Roubo normal: 5% a 10%
                     is_pobre = False
-                    
+
                 valor_roubado = min(round(saldo_alvo * pct, 2), 12000.0)
 
+                # FIX BUG 3: se o valor calculado for irrisório, cancela sem aplicar cooldown
                 if valor_roubado < 5:
-                    db.update_value(ladrao_data['row'], 7, agora)
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco.")
 
                 bounty_ganho = self.bot.recompensas.pop(vitima_id, 0.0)
@@ -204,7 +225,7 @@ class Economy(commands.Cog):
                 tracker[ladrao_id] = [t for t in tracker[ladrao_id] if agora - t < 86400]
                 tracker[ladrao_id].append(agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = 0
-                
+
                 conquista_msg = ""
                 if len(tracker[ladrao_id]) >= 5:
                     conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
@@ -220,7 +241,7 @@ class Economy(commands.Cog):
                     mensagem = f"🥷 **SUCESSO (Mas com pena)...** {vitima.mention} está quase na miséria, então você levou só as moedinhas: **{valor_roubado:.2f} MC**."
                 else:
                     mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} MC** de {vitima.mention}!"
-                    
+
                 if chance_sucesso == 65: mensagem += " *(Usou Pé de Cabra 🕵️)*"
                 if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} MC**!"
                 mensagem += seguro_msg
@@ -252,7 +273,7 @@ class Economy(commands.Cog):
         if valor <= 0:
             return await ctx.send("❌ O valor deve ser maior que zero!")
         valor = round(valor, 2)
-        
+
         try:
             pag = db.get_user_data(str(ctx.author.id))
             saldo_pag = db.parse_float(pag['data'][2]) if pag else 0.0
@@ -273,11 +294,11 @@ class Economy(commands.Cog):
                 color=disnake.Color.green()
             )
             await ctx.send(embed=embed)
-            
+
             if valor == 0.01:
                 conquistas_pag = str(pag['data'][9]) if len(pag['data']) > 9 else ""
                 lista_conquistas = [c.strip() for c in conquistas_pag.split(',') if c.strip()]
-                
+
                 if "pix_irritante" not in lista_conquistas:
                     lista_conquistas.append("pix_irritante")
                     db.update_value(pag['row'], 10, ", ".join(lista_conquistas))

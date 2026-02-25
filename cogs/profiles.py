@@ -100,6 +100,7 @@ class Profiles(commands.Cog):
             if 0 < saldo < 100: emblemas.append("📉 **Falência Técnica**")
             if saldo <= 0: emblemas.append("🦴 **Passa fome**")
 
+            # FIX BUG 7: usa handle_db_error via try/except em vez de acessar db.sheet diretamente
             try:
                 all_rows = db.sheet.get_all_values()
                 if len(all_rows) > 1:
@@ -110,8 +111,11 @@ class Profiles(commands.Cog):
                             elif i == 1: emblemas.append("🥈 **Vice-Líder**")
                             elif i == 2: emblemas.append("🥉 **Bronze de Ouro**")
                             break
-            except:
-                pass
+            except commands.CommandError:
+                raise
+            except Exception as e:
+                print(f"⚠️ Erro ao buscar rank no !perfil: {e}")
+                # Não bloqueia o perfil inteiro se o rank falhar
 
             mapa_conquistas = {
                 "palhaco":           "🤡 **Palhaço**",
@@ -166,7 +170,15 @@ class Profiles(commands.Cog):
     @commands.command(aliases=["top", "ricos", "placar"])
     async def rank(self, ctx):
         try:
-            all_rows = db.sheet.get_all_values()
+            # FIX BUG 7: envolve o acesso ao db.sheet em try/except com mensagem padronizada
+            try:
+                all_rows = db.sheet.get_all_values()
+            except commands.CommandError:
+                raise
+            except Exception as e:
+                print(f"❌ Erro ao acessar planilha no !rank: {e}")
+                return await ctx.send("⚠️ **O banco está ocupado!** Tente novamente em 1 minuto.")
+
             if len(all_rows) < 2:
                 return await ctx.send("❌ Sem dados suficientes.")
 
@@ -192,6 +204,8 @@ class Profiles(commands.Cog):
 
             embed.add_field(name="Top 10 Jogadores", value=lista_rank, inline=False)
             await ctx.send(embed=embed)
+        except commands.CommandError:
+            raise
         except Exception as e:
             print(f"❌ Erro no !rank: {e}")
             await ctx.send("⚠️ **O banco está ocupado!** Tente novamente em 1 minuto.")

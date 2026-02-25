@@ -36,7 +36,7 @@ def get_user_data(user_id):
     try:
         col_a = sheet.col_values(1)
         try:
-            row_index = col_a.index(str(user_id)) + 1 
+            row_index = col_a.index(str(user_id)) + 1
         except ValueError:
             return None
 
@@ -56,6 +56,19 @@ def update_value(row, col, value):
         handle_db_error(e)
 
 def create_user(user_id, name):
+    """
+    Colunas:
+      1  - user_id
+      2  - name
+      3  - saldo
+      4  - cargo
+      5  - timestamp_trabalho
+      6  - inventario
+      7  - timestamp_roubo
+      8  - timestamp_investimento_fixo
+      9  - cripto_usos  (FIX BUG 4: antes vazia, agora persiste usos diários de cripto)
+      10 - conquistas
+    """
     try:
         sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", ""])
     except Exception as e:
@@ -70,14 +83,45 @@ def wipe_database():
     except Exception as e:
         handle_db_error(e)
 
-# FUNÇÕES DE APOSTAS ESPORTIVAS
+# ──────────────────────────────────────────────────────────────────────────────
+#  CRIPTO — persistência de usos diários (coluna 9 / data[8])
+#  Formato armazenado: "quantidade|timestamp_primeiro_uso"
+#  Ex: "3|1718000000.0"
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_cripto_usos(user_data: dict) -> tuple[int, float]:
+    """
+    Lê e retorna (quantidade_usos, timestamp_primeiro_uso) da coluna 9.
+    Retorna (0, 0.0) se estiver vazio ou corrompido.
+    """
+    raw = str(user_data['data'][8]) if len(user_data['data']) > 8 else ""
+    raw = raw.strip()
+    if not raw:
+        return 0, 0.0
+    try:
+        partes = raw.split("|")
+        return int(partes[0]), float(partes[1])
+    except (IndexError, ValueError):
+        return 0, 0.0
+
+def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
+    """Salva (quantidade_usos|timestamp_primeiro_uso) na coluna 9."""
+    try:
+        valor = f"{quantidade}|{timestamp_inicio}"
+        sheet.update_cell(row, 9, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  FUNÇÕES DE APOSTAS ESPORTIVAS
+# ──────────────────────────────────────────────────────────────────────────────
 
 def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd):
     """Salva um novo palpite na aba Apostas_Esportivas."""
     try:
         valor_str = str(valor).replace('.', ',')
         odd_str = str(odd).replace('.', ',')
-        
+
         sheet_apostas.append_row([str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente"])
     except Exception as e:
         handle_db_error(e)
@@ -87,10 +131,10 @@ def obter_apostas_pendentes():
     try:
         rows = sheet_apostas.get_all_values()
         apostas = []
-        
+
         for i, row in enumerate(rows):
-            if i == 0: continue 
-            
+            if i == 0: continue
+
             if len(row) >= 6 and row[5] == "Pendente":
                 apostas.append({
                     "row": i + 1,

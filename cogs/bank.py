@@ -8,9 +8,6 @@ import asyncio
 class Bank(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Dicionário para rastrear os limites diários do Cripto na memória RAM
-        # Formato: {'user_id': [quantidade_usos, timestamp_primeiro_uso]}
-        self.cripto_usos = {}
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -45,7 +42,7 @@ class Bank(commands.Cog):
             # ── RENDA FIXA ────────────────────────────────────────────────────
             if tipo == 'fixo':
                 if valor > 5000.0:
-                    return await ctx.send("❌ O banco só aceita até **5.000 MC** na Renda Fixa por operação!")
+                    return await ctx.send("❌ O banco só aceita até **5.000 MC** na Renda Fixa por dia!")
 
                 ultimo_invest = db.parse_float(user['data'][7] if len(user['data']) > 7 else None)
                 if agora - ultimo_invest < 86400:
@@ -58,25 +55,29 @@ class Bank(commands.Cog):
 
             # ── CRIPTO ────────────────────────────────────────────────────────
             elif tipo == 'cripto':
-                # Verifica o limite de 4 vezes ao dia
-                if user_id_str not in self.cripto_usos:
-                    self.cripto_usos[user_id_str] = [0, agora]
-                
+                # FIX BUG 4: lê usos do banco de dados (persistente entre restarts)
+                usos_atual, timestamp_inicio = db.get_cripto_usos(user)
+
                 # Se já passou 24h desde o primeiro uso, reseta o contador
-                if agora - self.cripto_usos[user_id_str][1] >= 86400:
-                    self.cripto_usos[user_id_str] = [0, agora]
+                if agora - timestamp_inicio >= 86400:
+                    usos_atual = 0
+                    timestamp_inicio = agora
 
                 # Se já usou 4 vezes, bloqueia
-                if self.cripto_usos[user_id_str][0] >= 4:
-                    tempo_restauracao = int(self.cripto_usos[user_id_str][1] + 86400)
-                    return await ctx.send(f"⏳ {ctx.author.mention}, você já operou cripto 4 vezes hoje! O mercado reabre para você <t:{tempo_restauracao}:R>.")
+                if usos_atual >= 4:
+                    tempo_restauracao = int(timestamp_inicio + 86400)
+                    return await ctx.send(
+                        f"⏳ {ctx.author.mention}, você já operou cripto 4 vezes hoje! "
+                        f"O mercado reabre para você <t:{tempo_restauracao}:R>."
+                    )
 
                 # Debita o saldo ANTES do sleep para evitar double-spend
                 db.update_value(user['row'], 3, round(saldo - valor, 2))
-                
-                # Incrementa o contador de usos
-                self.cripto_usos[user_id_str][0] += 1
-                
+
+                # Incrementa e persiste o contador no banco
+                usos_atual += 1
+                db.set_cripto_usos(user['row'], usos_atual, timestamp_inicio)
+
                 aviso = await ctx.send(
                     f"📈 {ctx.author.mention} comprou **{valor:.2f} MC** em BNN (Banana). "
                     f"O mercado fecha em 30 segundos... 💸"
@@ -85,15 +86,14 @@ class Bank(commands.Cog):
                 try:
                     await asyncio.sleep(30)
 
-                    # Rebusca o saldo atualizado após o sleep (pode ter mudado por outros comandos)
+                    # Rebusca o saldo atualizado após o sleep
                     user_atual = db.get_user_data(user_id_str)
                     if not user_atual:
                         raise ValueError("Conta não encontrada após o sleep.")
 
-                    # Novas variações fixas
                     opcoes_variacao = [-0.25, -0.15, -0.05, 0.0, 0.05, 0.10, 0.20]
                     variacao  = random.choice(opcoes_variacao)
-                    
+
                     retorno   = round(valor * (1 + variacao), 2)
                     lucro     = round(retorno - valor, 2)
 
@@ -107,15 +107,17 @@ class Bank(commands.Cog):
                         await ctx.send(f"📉 **CRASH!** {ctx.author.mention} resgatou apenas **{retorno:.2f} MC** (Prejuízo: `{lucro:.2f} MC`).")
 
                 except Exception as inner_e:
-                    # ── CORREÇÃO: qualquer erro após o débito devolve o valor ──
+                    # Qualquer erro após o débito devolve o valor e decrementa o contador
                     print(f"❌ Erro durante o sleep do !investir cripto de {ctx.author}: {inner_e}")
                     try:
                         user_refund = db.get_user_data(user_id_str)
                         if user_refund:
                             saldo_refund = db.parse_float(user_refund['data'][2])
                             db.update_value(user_refund['row'], 3, round(saldo_refund + valor, 2))
-                            # Devolve também a chance de tentar de novo, já que deu erro
-                            self.cripto_usos[user_id_str][0] -= 1
+                            # Decrementa o uso pois o investimento não completou
+                            usos_refund, ts_refund = db.get_cripto_usos(user_refund)
+                            if usos_refund > 0:
+                                db.set_cripto_usos(user_refund['row'], usos_refund - 1, ts_refund)
                             await ctx.send(
                                 f"⚠️ {ctx.author.mention}, ocorreu um erro durante o investimento. "
                                 f"Seus **{valor:.2f} MC** foram devolvidos automaticamente."

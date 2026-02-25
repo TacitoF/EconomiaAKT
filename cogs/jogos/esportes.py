@@ -116,7 +116,6 @@ class ModalValorAposta(disnake.ui.Modal):
 
 # ──────────────────────────────────────────────
 #  VIEW — botões Casa / Empate / Fora
-#  (aparece após o usuário selecionar um jogo)
 # ──────────────────────────────────────────────
 class ViewPalpiteJogo(disnake.ui.View):
     def __init__(self, match_id: int, time_casa: str, time_fora: str, liga: str, horario: str):
@@ -148,7 +147,6 @@ class ViewPalpiteJogo(disnake.ui.View):
 
     @disnake.ui.button(label="↩️ Voltar", style=disnake.ButtonStyle.secondary, row=1)
     async def btn_voltar(self, button, inter: disnake.MessageInteraction):
-        """Volta para a mensagem original do select menu — edita de volta no lugar."""
         await inter.response.defer()
         await inter.delete_original_response()
 
@@ -211,7 +209,6 @@ class SelectJogo(disnake.ui.StringSelect):
             liga      = liga_nome,
             horario   = horario,
         )
-        # Responde de forma efêmera — só o usuário que clicou vê
         await inter.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
@@ -230,7 +227,7 @@ class Esportes(commands.Cog):
         self.api_url  = "https://api.football-data.org/v4"
         self.headers  = {"X-Auth-Token": os.getenv("FOOTBALL_API_KEY") or ""}
         self.cache_embed = None
-        self.cache_jogos = None   # lista raw dos jogos para recriar a view
+        self.cache_jogos = None
         self.cache_time  = None
         self.checar_resultados.start()
 
@@ -241,9 +238,6 @@ class Esportes(commands.Cog):
             await ctx.send(f"⚽ {ctx.author.mention}, as apostas esportivas ficam no {mencao}!", delete_after=10)
             raise commands.CommandError("Canal incorreto.")
 
-    # ──────────────────────────────────────────
-    #  !futebol — uma mensagem, select menu
-    # ──────────────────────────────────────────
     @commands.command(aliases=["jogos_hoje"])
     async def futebol(self, ctx):
         """Lista os próximos jogos num menu dropdown para apostas"""
@@ -276,16 +270,14 @@ class Esportes(commands.Cog):
                     if 'matches' not in data or not data['matches']:
                         return await ctx.send("⚽ Nenhum jogo das grandes ligas programado para os próximos 3 dias.")
 
-                    jogos = data['matches'][:25]  # limite do Select Menu
+                    jogos = data['matches'][:25]
 
-                    # Monta embed resumo com todos os jogos
                     embed = disnake.Embed(
                         title       = "⚽ BETS DA SELVA — PRÓXIMOS JOGOS",
                         description = "Selecione um jogo no menu abaixo para fazer sua aposta!\n💰 Odd fixa de **2.0x** · 📋 Veja seus bilhetes com `!pule`",
                         color       = disnake.Color.blue()
                     )
 
-                    # Agrupa por liga para o embed ficar organizado
                     ligas_vistas = {}
                     for j in jogos:
                         liga_code = j.get('competition', {}).get('code', '')
@@ -321,101 +313,7 @@ class Esportes(commands.Cog):
             print(f"❌ Erro no !futebol: {e}")
             await ctx.send("⚠️ Ocorreu um erro ao buscar os jogos. Tente novamente!")
 
-    # ──────────────────────────────────────────
-    #  !palpite — mantido para compatibilidade
-    # ──────────────────────────────────────────
-    @commands.command()
-    async def palpite(self, ctx, match_id: int = None, palpite_escolha: str = None, valor: float = None):
-        """Faz uma aposta em um jogo (use !futebol para apostar com botões)"""
-        if match_id is None or palpite_escolha is None or valor is None:
-            return await ctx.send(
-                f"⚠️ {ctx.author.mention}, use: `!palpite <ID> <casa/empate/fora> <valor>`\n"
-                f"💡 Mais fácil: use `!futebol` e selecione o jogo no menu!"
-            )
-
-        palpite_escolha = palpite_escolha.lower()
-        if palpite_escolha not in ["casa", "empate", "fora"]:
-            return await ctx.send("❌ Opção inválida! Escolha entre: `casa`, `empate` ou `fora`.")
-        if valor <= 0:
-            return await ctx.send("❌ O valor da aposta deve ser maior que zero!")
-        valor = round(valor, 2)
-
-        try:
-            user = db.get_user_data(str(ctx.author.id))
-            if not user:
-                return await ctx.send(f"❌ {ctx.author.mention}, conta não encontrada!")
-
-            saldo = db.parse_float(user['data'][2])
-            cargo = user['data'][3] if len(user['data']) > 3 else "Lêmure"
-
-            if saldo < valor:
-                return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
-            if valor > get_limite(cargo):
-                return await ctx.send(f"🚫 Limite para **{cargo}** é de **{get_limite(cargo)} MC**!")
-
-            msg = await ctx.send(f"📊 {ctx.author.mention}, validando a partida...")
-
-            time_casa = time_fora = status_jogo = horario_jogo = liga_jogo = None
-
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.api_url}/matches/{match_id}", headers=self.headers) as resp:
-                    if resp.status == 404:
-                        await msg.delete()
-                        return await ctx.send(f"❌ ID `{match_id}` não encontrado. Use `!futebol`.")
-                    if resp.status != 200:
-                        await msg.delete()
-                        return await ctx.send(f"⚠️ Erro {resp.status} ao validar partida. Tente novamente.")
-
-                    md = await resp.json()
-                    if 'id' not in md:
-                        await msg.delete()
-                        return await ctx.send(f"❌ ID `{match_id}` inválido. Use `!futebol`.")
-
-                    status_jogo  = md.get('status', '')
-                    time_casa    = md['homeTeam']['name']
-                    time_fora    = md['awayTeam']['name']
-                    horario_jogo = hora_br(md['utcDate'])
-                    liga_jogo    = md.get('competition', {}).get('name', '')
-
-            if status_jogo in ('FINISHED', 'IN_PLAY', 'PAUSED', 'SUSPENDED', 'CANCELLED', 'POSTPONED'):
-                await msg.delete()
-                status_pt = {'FINISHED': 'já encerrado', 'IN_PLAY': 'em andamento', 'PAUSED': 'pausado',
-                             'SUSPENDED': 'suspenso', 'CANCELLED': 'cancelado', 'POSTPONED': 'adiado'}.get(status_jogo, status_jogo)
-                return await ctx.send(f"⛔ Partida **{status_pt}**! Use `!futebol` para jogos disponíveis.")
-
-            await msg.edit(content=f"🎟️ {ctx.author.mention}, gerando bilhete...")
-
-            odd_fixa        = 2.0
-            ganho_potencial = round(valor * odd_fixa, 2)
-            EMOJI           = {"casa": "🏠", "empate": "🤝", "fora": "✈️"}
-            LABELS          = {"casa": time_casa, "empate": "Empate", "fora": time_fora}
-
-            db.update_value(user['row'], 3, round(saldo - valor, 2))
-            db.registrar_aposta_esportiva(ctx.author.id, match_id, palpite_escolha, valor, odd_fixa)
-            await msg.delete()
-
-            embed = disnake.Embed(title="🎟️ BILHETE REGISTRADO!", color=disnake.Color.gold())
-            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-            embed.add_field(name="⚽ Partida",                                    value=f"**{time_casa}** vs **{time_fora}**",          inline=False)
-            embed.add_field(name="🏆 Liga",                                       value=liga_jogo or "—",                               inline=True)
-            embed.add_field(name="⏰ Data/Hora",                                  value=horario_jogo or "—",                            inline=True)
-            embed.add_field(name="🆔 ID",                                         value=f"`{match_id}`",                                inline=True)
-            embed.add_field(name=f"{EMOJI.get(palpite_escolha,'🎯')} Palpite",   value=f"**{LABELS.get(palpite_escolha,'—')}**",       inline=True)
-            embed.add_field(name="💸 Apostado",                                   value=f"`{valor:.2f} MC`",                            inline=True)
-            embed.add_field(name="💰 Retorno",                                    value=f"`{ganho_potencial:.2f} MC`",                  inline=True)
-            embed.set_footer(text="Pagamento automático ao fim da partida • !pule para ver seus bilhetes")
-            await ctx.send(embed=embed)
-
-        except commands.CommandError:
-            raise
-        except Exception as e:
-            print(f"❌ Erro no !palpite de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro ao registrar a aposta.")
-
-    # ──────────────────────────────────────────
-    #  !pule — bilhetes pendentes
-    # ──────────────────────────────────────────
-    @commands.command(aliases=["palpites", "cupom", "cupoms", "cupons"])
+    @commands.command(aliases=["cupom", "cupoms", "cupons"])
     async def pule(self, ctx):
         """Mostra os bilhetes pendentes do usuário"""
         try:
@@ -503,97 +401,136 @@ class Esportes(commands.Cog):
 
     # ──────────────────────────────────────────
     #  Loop — checa resultados a cada 60 min
+    #  FIX BUG 11: retry automático em caso de falha na API, com logging detalhado
     # ──────────────────────────────────────────
     @tasks.loop(minutes=60, reconnect=True)
     async def checar_resultados(self):
-        print("🔄 checar_resultados: verificando apostas pendentes...")
+        print(f"🔄 [{datetime.utcnow().strftime('%H:%M:%S')}] checar_resultados: iniciando verificação...")
+
         apostas_pendentes = db.obter_apostas_pendentes()
         if not apostas_pendentes:
-            print("ℹ️ Nenhuma aposta pendente.")
+            print("ℹ️ checar_resultados: nenhuma aposta pendente.")
             return
-        print(f"📋 {len(apostas_pendentes)} aposta(s) pendente(s).")
+        print(f"📋 checar_resultados: {len(apostas_pendentes)} aposta(s) pendente(s).")
 
         agora       = datetime.utcnow()
         data_inicio = (agora - timedelta(days=3)).strftime("%Y-%m-%d")
         data_fim    = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                params = {"status": "FINISHED", "dateFrom": data_inicio, "dateTo": data_fim}
-                async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
-                    if resp.status != 200:
-                        print(f"⚠️ Erro na API (Status: {resp.status})")
-                        return
-                    data = await resp.json()
-                    if 'matches' not in data:
-                        return
+        # FIX BUG 11: tenta até 3 vezes em caso de falha na API antes de desistir
+        MAX_TENTATIVAS = 3
+        ESPERA_RETRY   = 15  # segundos entre tentativas
 
-                    canal_cassino = disnake.utils.get(self.bot.get_all_channels(), name='🎰・akbet')
-                    if not canal_cassino:
-                        print('⚠️ Canal #🎰・akbet não encontrado!')
-                    else:
-                        print(f'✅ Canal encontrado → {canal_cassino.guild.name}')
+        for tentativa in range(1, MAX_TENTATIVAS + 1):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    params = {"status": "FINISHED", "dateFrom": data_inicio, "dateTo": data_fim}
+                    async with session.get(
+                        f"{self.api_url}/matches", headers=self.headers,
+                        params=params, timeout=aiohttp.ClientTimeout(total=30)
+                    ) as resp:
 
-                    for aposta in apostas_pendentes:
-                        aposta_id       = str(aposta['match_id'])
-                        jogo_encontrado = next((m for m in data['matches'] if str(m['id']) == aposta_id), None)
-                        if not jogo_encontrado:
+                        if resp.status == 429:
+                            print(f"⚠️ checar_resultados: rate limit atingido (tentativa {tentativa}/{MAX_TENTATIVAS}). "
+                                  f"Aguardando {ESPERA_RETRY}s...")
+                            await asyncio.sleep(ESPERA_RETRY)
                             continue
 
-                        gols_casa = jogo_encontrado['score']['fullTime']['home']
-                        gols_fora = jogo_encontrado['score']['fullTime']['away']
-                        home_nome = jogo_encontrado['homeTeam']['name']
-                        away_nome = jogo_encontrado['awayTeam']['name']
-                        placar    = f"{gols_casa} x {gols_fora}"
-                        liga_nome = jogo_encontrado.get('competition', {}).get('name', '')
+                        if resp.status != 200:
+                            print(f"⚠️ checar_resultados: API retornou status {resp.status} "
+                                  f"(tentativa {tentativa}/{MAX_TENTATIVAS}).")
+                            if tentativa < MAX_TENTATIVAS:
+                                await asyncio.sleep(ESPERA_RETRY)
+                                continue
+                            else:
+                                print("❌ checar_resultados: todas as tentativas falharam. Abortando ciclo.")
+                                return
 
-                        if gols_casa > gols_fora:   resultado_real = "casa"
-                        elif gols_fora > gols_casa: resultado_real = "fora"
-                        else:                       resultado_real = "empate"
+                        data = await resp.json()
+                        if 'matches' not in data:
+                            print("ℹ️ checar_resultados: nenhum jogo finalizado na janela de tempo.")
+                            return
 
-                        try:
-                            jogador = self.bot.get_user(int(aposta['user_id'])) or await self.bot.fetch_user(int(aposta['user_id']))
-                        except Exception as e:
-                            print(f'⚠️ Usuário {aposta["user_id"]} não encontrado: {e}')
-                            jogador = None
-
-                        se_venceu = aposta['palpite'].lower() == resultado_real
-                        LABEL     = {"casa": home_nome, "fora": away_nome, "empate": "Empate"}
-
-                        if se_venceu:
-                            db.atualizar_status_aposta(aposta['row'], 'Venceu')
-                            user_db = db.get_user_data(str(aposta['user_id']))
-                            if user_db:
-                                saldo_atual = db.parse_float(user_db['data'][2])
-                                premio      = round(aposta['valor'] * aposta['odd'], 2)
-                                db.update_value(user_db['row'], 3, round(saldo_atual + premio, 2))
-                                if canal_cassino and jogador:
-                                    embed = disnake.Embed(title="🏆 APOSTA VENCEDORA!", color=disnake.Color.green())
-                                    embed.add_field(name="⚽ Partida",  value=f"**{home_nome}** vs **{away_nome}**",     inline=False)
-                                    embed.add_field(name="🏆 Liga",     value=liga_nome or "—",                          inline=True)
-                                    embed.add_field(name="📊 Placar",   value=f"**{placar}**",                           inline=True)
-                                    embed.add_field(name="\u200b",      value="\u200b",                                  inline=True)
-                                    embed.add_field(name="🎯 Palpite",  value=LABEL.get(aposta['palpite'].lower(), "—"), inline=True)
-                                    embed.add_field(name="💸 Apostado", value=f"`{aposta['valor']:.2f} MC`",             inline=True)
-                                    embed.add_field(name="💰 Prêmio",   value=f"**{premio:.2f} MC**",                   inline=True)
-                                    embed.set_footer(text="O saldo já foi creditado na sua conta!")
-                                    await canal_cassino.send(content=f"🎉 {jogador.mention}", embed=embed)
+                        canal_cassino = disnake.utils.get(self.bot.get_all_channels(), name='🎰・akbet')
+                        if not canal_cassino:
+                            print('⚠️ checar_resultados: canal #🎰・akbet não encontrado!')
                         else:
-                            db.atualizar_status_aposta(aposta['row'], 'Perdeu')
-                            if canal_cassino and jogador:
-                                embed = disnake.Embed(title="💀 APOSTA PERDIDA", color=disnake.Color.red())
-                                embed.add_field(name="⚽ Partida",      value=f"**{home_nome}** vs **{away_nome}**",     inline=False)
-                                embed.add_field(name="🏆 Liga",         value=liga_nome or "—",                          inline=True)
-                                embed.add_field(name="📊 Placar",       value=f"**{placar}**",                           inline=True)
-                                embed.add_field(name="\u200b",          value="\u200b",                                  inline=True)
-                                embed.add_field(name="✅ Resultado",    value=LABEL.get(resultado_real, resultado_real),  inline=True)
-                                embed.add_field(name="❌ Seu Palpite",  value=LABEL.get(aposta['palpite'].lower(), "—"), inline=True)
-                                embed.add_field(name="💸 Perdido",      value=f"`{aposta['valor']:.2f} MC`",             inline=True)
-                                embed.set_footer(text="Veja jogos com !futebol")
-                                await canal_cassino.send(content=f"{jogador.mention}", embed=embed)
+                            print(f'✅ checar_resultados: canal → {canal_cassino.guild.name}')
 
-        except Exception as e:
-            print(f"❌ Erro no checar_resultados: {e}")
+                        processadas = 0
+                        for aposta in apostas_pendentes:
+                            aposta_id       = str(aposta['match_id'])
+                            jogo_encontrado = next((m for m in data['matches'] if str(m['id']) == aposta_id), None)
+                            if not jogo_encontrado:
+                                continue
+
+                            gols_casa = jogo_encontrado['score']['fullTime']['home']
+                            gols_fora = jogo_encontrado['score']['fullTime']['away']
+                            home_nome = jogo_encontrado['homeTeam']['name']
+                            away_nome = jogo_encontrado['awayTeam']['name']
+                            placar    = f"{gols_casa} x {gols_fora}"
+                            liga_nome = jogo_encontrado.get('competition', {}).get('name', '')
+
+                            if gols_casa > gols_fora:   resultado_real = "casa"
+                            elif gols_fora > gols_casa: resultado_real = "fora"
+                            else:                       resultado_real = "empate"
+
+                            try:
+                                jogador = self.bot.get_user(int(aposta['user_id'])) or \
+                                          await self.bot.fetch_user(int(aposta['user_id']))
+                            except Exception as e:
+                                print(f'⚠️ checar_resultados: usuário {aposta["user_id"]} não encontrado: {e}')
+                                jogador = None
+
+                            se_venceu = aposta['palpite'].lower() == resultado_real
+                            LABEL     = {"casa": home_nome, "fora": away_nome, "empate": "Empate"}
+                            processadas += 1
+
+                            if se_venceu:
+                                db.atualizar_status_aposta(aposta['row'], 'Venceu')
+                                user_db = db.get_user_data(str(aposta['user_id']))
+                                if user_db:
+                                    saldo_atual = db.parse_float(user_db['data'][2])
+                                    premio      = round(aposta['valor'] * aposta['odd'], 2)
+                                    db.update_value(user_db['row'], 3, round(saldo_atual + premio, 2))
+                                    if canal_cassino and jogador:
+                                        embed = disnake.Embed(title="🏆 APOSTA VENCEDORA!", color=disnake.Color.green())
+                                        embed.add_field(name="⚽ Partida",  value=f"**{home_nome}** vs **{away_nome}**",     inline=False)
+                                        embed.add_field(name="🏆 Liga",     value=liga_nome or "—",                          inline=True)
+                                        embed.add_field(name="📊 Placar",   value=f"**{placar}**",                           inline=True)
+                                        embed.add_field(name="\u200b",      value="\u200b",                                  inline=True)
+                                        embed.add_field(name="🎯 Palpite",  value=LABEL.get(aposta['palpite'].lower(), "—"), inline=True)
+                                        embed.add_field(name="💸 Apostado", value=f"`{aposta['valor']:.2f} MC`",             inline=True)
+                                        embed.add_field(name="💰 Prêmio",   value=f"**{premio:.2f} MC**",                   inline=True)
+                                        embed.set_footer(text="O saldo já foi creditado na sua conta!")
+                                        await canal_cassino.send(content=f"🎉 {jogador.mention}", embed=embed)
+                            else:
+                                db.atualizar_status_aposta(aposta['row'], 'Perdeu')
+                                if canal_cassino and jogador:
+                                    embed = disnake.Embed(title="💀 APOSTA PERDIDA", color=disnake.Color.red())
+                                    embed.add_field(name="⚽ Partida",      value=f"**{home_nome}** vs **{away_nome}**",     inline=False)
+                                    embed.add_field(name="🏆 Liga",         value=liga_nome or "—",                          inline=True)
+                                    embed.add_field(name="📊 Placar",       value=f"**{placar}**",                           inline=True)
+                                    embed.add_field(name="\u200b",          value="\u200b",                                  inline=True)
+                                    embed.add_field(name="✅ Resultado",    value=LABEL.get(resultado_real, resultado_real),  inline=True)
+                                    embed.add_field(name="❌ Seu Palpite",  value=LABEL.get(aposta['palpite'].lower(), "—"), inline=True)
+                                    embed.add_field(name="💸 Perdido",      value=f"`{aposta['valor']:.2f} MC`",             inline=True)
+                                    embed.set_footer(text="Veja jogos com !futebol")
+                                    await canal_cassino.send(content=f"{jogador.mention}", embed=embed)
+
+                        print(f"✅ checar_resultados: {processadas} aposta(s) processada(s).")
+                        return  # sucesso — sai do loop de tentativas
+
+            except asyncio.TimeoutError:
+                print(f"⏱️ checar_resultados: timeout na tentativa {tentativa}/{MAX_TENTATIVAS}.")
+                if tentativa < MAX_TENTATIVAS:
+                    await asyncio.sleep(ESPERA_RETRY)
+            except Exception as e:
+                print(f"❌ checar_resultados: erro na tentativa {tentativa}/{MAX_TENTATIVAS}: {e}")
+                if tentativa < MAX_TENTATIVAS:
+                    await asyncio.sleep(ESPERA_RETRY)
+                else:
+                    print("❌ checar_resultados: todas as tentativas falharam. Abortando ciclo.")
 
     @checar_resultados.before_loop
     async def before_checar_resultados(self):

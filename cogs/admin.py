@@ -7,6 +7,16 @@ from datetime import datetime, timedelta
 
 OWNER_ID = 757752617722970243
 
+LIGAS_EMOJI = {
+    "BSA": "🇧🇷",
+    "PL":  "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "PD":  "🇪🇸",
+    "CL":  "⭐",
+    "SA":  "🇮🇹",
+    "BL1": "🇩🇪",
+    "PPL": "🇵🇹",
+}
+
 def sanitizar(valor: str) -> str:
     """Remove caracteres surrogate inválidos que causam o erro UTF-8 do disnake."""
     if not isinstance(valor, str):
@@ -176,7 +186,7 @@ class Admin(commands.Cog):
                         color=cor
                     )
                     embed.description = status_msg
-                    embed.add_field(name="🔑 Tipo de Conta",                       value=f"`{conta_tipo}`",         inline=False)
+                    embed.add_field(name="🔑 Tipo de Conta",                       value=f"`{conta_tipo}`",              inline=False)
                     embed.add_field(name="⏱️ Requisições Livres (Neste Minuto)",   value=f"`{disponivel_minuto} de 10`", inline=False)
                     embed.set_footer(text="A cota de 10 chamadas reinicia a cada 60 segundos.")
 
@@ -198,9 +208,9 @@ class Admin(commands.Cog):
         if not apostas_pendentes:
             return await msg.edit(content="✅ Nenhuma aposta pendente encontrada no banco de dados.")
 
-        agora = datetime.utcnow()
+        agora       = datetime.utcnow()
         data_inicio = (agora - timedelta(days=3)).strftime("%Y-%m-%d")
-        data_fim = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
+        data_fim    = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
 
         api_url = "https://api.football-data.org/v4"
         api_key = os.getenv("FOOTBALL_API_KEY") or ""
@@ -212,9 +222,8 @@ class Admin(commands.Cog):
                 async with session.get(f"{api_url}/matches", headers=headers, params=params) as resp:
                     if resp.status != 200:
                         return await msg.edit(content=f"⚠️ Erro ao acessar a API: Status {resp.status}")
-                    
-                    data = await resp.json()
 
+                    data = await resp.json()
                     if 'matches' not in data:
                         return await msg.edit(content="⚠️ Nenhum jogo finalizado encontrado na janela de tempo informada.")
 
@@ -222,27 +231,36 @@ class Admin(commands.Cog):
                     processadas = 0
 
                     for aposta in apostas_pendentes:
-                        aposta_id = str(aposta['match_id'])
-                        
-                        jogo_encontrado = None
-                        for match in data['matches']:
-                            if str(match['id']) == aposta_id:
-                                jogo_encontrado = match
-                                break
-                        
+                        aposta_id       = str(aposta['match_id'])
+                        jogo_encontrado = next((m for m in data['matches'] if str(m['id']) == aposta_id), None)
                         if not jogo_encontrado:
                             continue
 
                         gols_casa = jogo_encontrado['score']['fullTime']['home']
                         gols_fora = jogo_encontrado['score']['fullTime']['away']
+                        home_nome = jogo_encontrado['homeTeam']['name']
+                        away_nome = jogo_encontrado['awayTeam']['name']
+                        placar    = f"{gols_casa} x {gols_fora}"
+                        liga_nome = jogo_encontrado.get('competition', {}).get('name', '')
+                        liga_code = jogo_encontrado.get('competition', {}).get('code', '')
 
                         if gols_casa > gols_fora:   resultado_real = "casa"
                         elif gols_fora > gols_casa: resultado_real = "fora"
                         else:                       resultado_real = "empate"
 
-                        jogador = self.bot.get_user(int(aposta['user_id']))
-                        se_venceu = (aposta['palpite'].lower() == resultado_real)
+                        LABEL = {"casa": home_nome, "fora": away_nome, "empate": "Empate"}
 
+                        palpite_key = aposta['palpite'].lower()
+                        palpite_fmt = LABEL.get(palpite_key, aposta['palpite'])
+
+                        try:
+                            jogador = self.bot.get_user(int(aposta['user_id'])) or \
+                                      await self.bot.fetch_user(int(aposta['user_id']))
+                        except Exception as e:
+                            print(f'⚠️ Usuário {aposta["user_id"]} não encontrado: {e}')
+                            jogador = None
+
+                        se_venceu = (palpite_key == resultado_real)
                         processadas += 1
 
                         if se_venceu:
@@ -250,23 +268,35 @@ class Admin(commands.Cog):
                             user_db = db.get_user_data(str(aposta['user_id']))
                             if user_db:
                                 saldo_atual = db.parse_float(user_db['data'][2])
-                                premio = round(aposta['valor'] * aposta['odd'], 2)
+                                premio      = round(aposta['valor'] * aposta['odd'], 2)
                                 db.update_value(user_db['row'], 3, round(saldo_atual + premio, 2))
-                                
+
                                 if canal_cassino and jogador:
-                                    await canal_cassino.send(
-                                        f"🏆 **APOSTA ESPORTIVA VENCEDORA!**\n"
-                                        f"{jogador.mention} acertou que `{resultado_real.upper()}` venceria "
-                                        f"no jogo `{aposta_id}` e faturou **{premio:.2f} MC**!"
-                                    )
+                                    embed = disnake.Embed(title="🏆 APOSTA VENCEDORA!", color=disnake.Color.green())
+                                    embed.set_author(name=jogador.display_name, icon_url=jogador.display_avatar.url)
+                                    embed.add_field(name="⚽ Partida",  value=f"**{home_nome}** vs **{away_nome}**", inline=False)
+                                    embed.add_field(name="🏆 Liga",     value=liga_nome or "—",                      inline=True)
+                                    embed.add_field(name="📊 Placar",   value=f"**{placar}**",                       inline=True)
+                                    embed.add_field(name="\u200b",      value="\u200b",                              inline=True)
+                                    embed.add_field(name="🎯 Palpite",  value=palpite_fmt,                           inline=True)
+                                    embed.add_field(name="💸 Apostado", value=f"`{aposta['valor']:.2f} MC`",         inline=True)
+                                    embed.add_field(name="💰 Prêmio",   value=f"**{premio:.2f} MC**",               inline=True)
+                                    embed.set_footer(text="O saldo já foi creditado na sua conta!")
+                                    await canal_cassino.send(content=f"🎉 {jogador.mention}", embed=embed)
                         else:
                             db.atualizar_status_aposta(aposta['row'], 'Perdeu')
                             if canal_cassino and jogador:
-                                await canal_cassino.send(
-                                    f"💀 **APOSTA PERDIDA!**\n"
-                                    f"O jogo `{aposta_id}` terminou com vitória de `{resultado_real.upper()}`. "
-                                    f"{jogador.mention} perdeu o bilhete."
-                                )
+                                embed = disnake.Embed(title="💀 APOSTA PERDIDA", color=disnake.Color.red())
+                                embed.set_author(name=jogador.display_name, icon_url=jogador.display_avatar.url)
+                                embed.add_field(name="⚽ Partida",     value=f"**{home_nome}** vs **{away_nome}**", inline=False)
+                                embed.add_field(name="🏆 Liga",        value=liga_nome or "—",                      inline=True)
+                                embed.add_field(name="📊 Placar",      value=f"**{placar}**",                       inline=True)
+                                embed.add_field(name="\u200b",         value="\u200b",                              inline=True)
+                                embed.add_field(name="✅ Resultado",   value=LABEL.get(resultado_real, resultado_real), inline=True)
+                                embed.add_field(name="❌ Seu Palpite", value=palpite_fmt,                           inline=True)
+                                embed.add_field(name="💸 Perdido",     value=f"`{aposta['valor']:.2f} MC`",         inline=True)
+                                embed.set_footer(text="Veja jogos com !futebol")
+                                await canal_cassino.send(content=f"{jogador.mention}", embed=embed)
 
                     if processadas > 0:
                         await msg.edit(content=f"✅ Verificação concluída! **{processadas}** apostas foram processadas e os resultados postados no canal.")
@@ -276,77 +306,6 @@ class Admin(commands.Cog):
         except Exception as e:
             await msg.edit(content=f"❌ Erro ao forçar pagamentos: `{e}`")
 
-    @commands.command()
-    async def patchnotes(self, ctx):
-        """Publica as notas de atualização focadas no novo sistema Beta do Blackjack."""
-        try: 
-            await ctx.message.delete()
-        except: 
-            pass
-
-        # Verificação de permissão (Dono do Bot)
-        if ctx.author.id != OWNER_ID:
-            return
-
-        # ID do canal de patchnotes oficial
-        canal_id = 1475606959247065118
-        canal_patchnotes = self.bot.get_channel(canal_id)
-
-        if not canal_patchnotes:
-            return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
-
-        embed = disnake.Embed(
-            title="🃏 ATUALIZAÇÃO DO CASSINO: BLACKJACK BETA v7.0 🃏",
-            description=(
-                "O sistema de Blackjack foi totalmente reformulado para trazer mais realismo e novas mecânicas de estratégia. "
-                "**Estamos em fase BETA de testes!**\n\n"
-                "⚠️ **Aviso:** Caso encontrem qualquer comportamento estranho ou erro, avisem a administração imediatamente. "
-                "**Qualquer valor perdido devido a bugs do sistema será adicionado de volta à sua conta integralmente.**"
-            ),
-            color=disnake.Color.blue()
-        )
-
-        # Nova Regra do Ás
-        embed.add_field(
-            name="⭐ Dinâmica do Ás (A)",
-            inline=False,
-            value=(
-                "• **Mão Inicial:** O Ás vale **11** apenas se vier nas suas duas primeiras cartas.\n"
-                "• **Pedido de Carta (Hit):** Caso você peça uma carta e venha um Ás, ele passará a valer obrigatoriamente **1**.\n"
-                "• **Ajuste Automático:** Se você tiver um Ás de 11 na mão inicial e estourar (passar de 21), ele ainda será reduzido para 1 para te salvar!"
-            )
-        )
-
-        # Novo Sistema de Seguro (Rendição)
-        embed.add_field(
-            name="🛡️ Novo Seguro (Rendição Segura)",
-            inline=False,
-            value=(
-                "• **Como funciona:** Quando o Dealer mostrar um Ás, o botão de Seguro ficará disponível.\n"
-                "• **Segurança Instantânea:** Ao clicar, você recupera **50% do valor apostado** imediatamente e abandona a mão atual.\n"
-                "• **Saída Estratégica:** Você não ganha nem perde contra a mão do Dealer; você simplesmente encerra sua participação naquela rodada com metade do seu dinheiro garantido no bolso."
-            )
-        )
-
-        # Estabilidade e Bugs
-        embed.add_field(
-            name="⚙️ Correções e Estabilidade",
-            inline=False,
-            value=(
-                "• **Duplicação de Mensagens:** Corrigimos o erro que exibia confirmações duplicadas ao registrar apostas laterais.\n"
-                "• **Sincronização do Saldo:** Melhoramos a comunicação com o banco de dados para garantir que os débitos e créditos ocorram sem atrasos."
-            )
-        )
-
-        embed.set_footer(text="Koba: Monitorando cada carta na selva. 🌴")
-
-        if self.bot.user.display_avatar:
-            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-
-        await canal_patchnotes.send(
-            content="🚨 **ATENÇÃO: O NOVO BLACKJACK CHEGOU!** @everyone 🚨\n",
-            embed=embed
-        )
 
 def setup(bot):
     bot.add_cog(Admin(bot))

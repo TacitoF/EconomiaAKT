@@ -62,6 +62,9 @@ class CrashGame(commands.Cog):
             return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
         aposta = round(aposta, 2)
 
+        # Flag para controlar se o débito já foi feito (para reembolso em caso de erro)
+        debito_realizado = False
+
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
@@ -75,6 +78,7 @@ class CrashGame(commands.Cog):
                 return await ctx.send(f"🚫 Limite de aposta para **{cargo}** é de **{get_limite(cargo)} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - aposta, 2))
+            debito_realizado = True
 
             chance = random.random()
             if chance < 0.05:      crash_point = 1.0
@@ -101,7 +105,8 @@ class CrashGame(commands.Cog):
                     item.disabled = True
                 await msg.edit(embed=embed, view=view)
                 user_atual = db.get_user_data(str(ctx.author.id))
-                save_achievement(user_atual, "queda_livre")
+                if user_atual:
+                    save_achievement(user_atual, "queda_livre")
                 return
 
             current_mult = 1.0
@@ -142,7 +147,30 @@ class CrashGame(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !crash de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            # FIX BUG 2: reembolsa o jogador se o débito já foi feito antes do erro
+            if debito_realizado:
+                try:
+                    user_refund = db.get_user_data(str(ctx.author.id))
+                    if user_refund:
+                        s = db.parse_float(user_refund['data'][2])
+                        db.update_value(user_refund['row'], 3, round(s + aposta, 2))
+                        await ctx.send(
+                            f"⚠️ {ctx.author.mention}, ocorreu um erro durante o jogo. "
+                            f"Seus **{aposta:.2f} MC** foram devolvidos automaticamente."
+                        )
+                    else:
+                        await ctx.send(
+                            f"⚠️ {ctx.author.mention}, ocorreu um erro e não foi possível encontrar sua conta "
+                            f"para devolver os **{aposta:.2f} MC**. Contate um administrador!"
+                        )
+                except Exception as refund_e:
+                    print(f"❌ CRÍTICO: falha ao devolver saldo do crash para {ctx.author}: {refund_e}")
+                    await ctx.send(
+                        f"🚨 {ctx.author.mention}, erro crítico. "
+                        f"Informe um admin para recuperar seus **{aposta:.2f} MC**."
+                    )
+            else:
+                await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(CrashGame(bot))

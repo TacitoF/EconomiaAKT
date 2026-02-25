@@ -4,11 +4,15 @@ import database as db
 import time
 import asyncio
 
+DURACAO_ESCUDO = 6 * 3600  # 6 horas em segundos
+
 class Items(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         if not hasattr(bot, 'cascas'): bot.cascas = set()
         if not hasattr(bot, 'impostos'): bot.impostos = {}
+        # Cache dos escudos ativos: {user_id_str: timestamp_expiracao}
+        if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -118,6 +122,70 @@ class Items(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !apelidar de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    @commands.command(aliases=["ativar_escudo", "status_escudo"])
+    async def escudo(self, ctx, alvo: disnake.Member = None):
+        """
+        Sem argumentos: consulta o status do seu próprio escudo.
+        Com !escudo @usuario: ativa um Escudo do inventário para protegê-lo.
+        Se usado sem argumento e sem escudo ativo, permite ativar o escudo de si mesmo.
+        """
+        # Se não passou argumento, consulta o status do próprio jogador
+        if alvo is None:
+            alvo = ctx.author
+
+        alvo_id = str(alvo.id)
+        agora = time.time()
+
+        # Verifica cache em memória primeiro
+        exp = self.bot.escudos_ativos.get(alvo_id, 0)
+        if exp > agora:
+            restante = int(exp)
+            if alvo.id == ctx.author.id:
+                return await ctx.send(
+                    f"🛡️ {ctx.author.mention}, seu Escudo está **ativo** e expira <t:{restante}:R>."
+                )
+            else:
+                return await ctx.send(
+                    f"🛡️ {alvo.mention} está protegido por um Escudo que expira <t:{restante}:R>."
+                )
+
+        # Sem escudo ativo no cache — verifica inventário
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return await ctx.send("❌ Conta não encontrada!")
+
+            inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
+
+            # Se quer ativar para si mesmo e tem escudo no inventário
+            if alvo.id == ctx.author.id and "Escudo" in inv_list:
+                exp_novo = agora + DURACAO_ESCUDO
+                self.bot.escudos_ativos[alvo_id] = exp_novo
+                inv_list.remove("Escudo")
+                db.update_value(user['row'], 6, ", ".join(inv_list))
+                return await ctx.send(
+                    f"🛡️ {ctx.author.mention} ativou seu **Escudo**! "
+                    f"Você está protegido contra roubos até <t:{int(exp_novo)}:f> *(6 horas)*."
+                )
+
+            # Sem escudo ativo e sem item no inventário
+            if alvo.id == ctx.author.id:
+                return await ctx.send(
+                    f"🛡️ {ctx.author.mention}, você não tem nenhum Escudo ativo nem no inventário.\n"
+                    f"Compre um na `!loja` por **700 MC**!"
+                )
+            else:
+                return await ctx.send(
+                    f"🛡️ {alvo.mention} não tem nenhum Escudo ativo no momento."
+                )
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !escudo de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
