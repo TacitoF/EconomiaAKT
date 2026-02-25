@@ -86,7 +86,7 @@ class BlackjackView(disnake.ui.View):
         self.player_ids = [p.id for p in players]
         self.current_player_idx = 0
         self.terminado = False
-        self.dealer_jogando = False # Nova flag para controlar o suspense do Dealer
+        self.dealer_jogando = False 
 
     def _gerar_baralho(self):
         naipes = ["♠️", "♥️", "♦️", "♣️"]
@@ -106,26 +106,32 @@ class BlackjackView(disnake.ui.View):
             ases -= 1
         return pontos
 
-    def _formatar_mao(self, hand, ocultar_primeira=False):
+    def _formatar_mao(self, hand, ocultar_primeira=False, dealer_puxando=False):
         if not hand: return "Espere..."
         if ocultar_primeira: return f"❓, {hand[1]['valor']}{hand[1]['naipe']}"
-        return ", ".join([f"{c['valor']}{c['naipe']}" for c in hand])
+        mao_formatada = ", ".join([f"{c['valor']}{c['naipe']}" for c in hand])
+        # Adiciona a interrogação no final da mão do dealer enquanto ele puxa cartas
+        if dealer_puxando:
+            mao_formatada += ", ❓"
+        return mao_formatada
 
     async def atualizar_embed(self, inter=None):
         cor = disnake.Color.dark_purple() if not self.terminado else disnake.Color.gold()
         if self.dealer_jogando:
-            cor = disnake.Color.blue() # Cor diferente enquanto o Dealer pensa
+            cor = disnake.Color.blue() 
 
         embed = disnake.Embed(title="🃏 MESA DE BLACKJACK (21)", color=cor)
 
         d_p = self._calcular_pontos(self.dealer_hand)
         
-        # O dealer só revela tudo se estiver jogando ou se o jogo já terminou
         mostrar_dealer = self.dealer_jogando or self.terminado
         
+        # Formata a mão do dealer com a interrogação se ele estiver jogando
+        mao_dealer_str = self._formatar_mao(self.dealer_hand, not mostrar_dealer, self.dealer_jogando)
+
         embed.add_field(
-            name="🏦 Dealer (Bot)" + (" ⏳ (Pensando...)" if self.dealer_jogando else ""),
-            value=f"Mão: `{self._formatar_mao(self.dealer_hand, not mostrar_dealer)}`\nPontos: {d_p if mostrar_dealer else '?'}",
+            name="🏦 Dealer (Bot)",
+            value=f"Mão: `{mao_dealer_str}`\nPontos: {d_p if mostrar_dealer else '?'}",
             inline=False
         )
 
@@ -162,7 +168,6 @@ class BlackjackView(disnake.ui.View):
                 mao_str = f"Mão: `{self._formatar_mao(p['hand'])}`\nPontos: `{p_p}`"
 
             res_txt = ""
-            # O resultado só aparece se 'self.terminado' for True de fato
             if self.terminado:
                 def resultado_mao(pm, aposta_mao, status):
                     if status == "seguro": return "🛡️ Acionou Seguro"
@@ -189,7 +194,7 @@ class BlackjackView(disnake.ui.View):
         if self.terminado:
             embed.set_footer(text="Partida finalizada! Prêmios entregues.")
         elif self.dealer_jogando:
-            embed.set_footer(text="Aguarde o Dealer terminar de puxar suas cartas...")
+            embed.set_footer(text="Aguarde o Dealer...")
 
         try:
             if inter:
@@ -311,25 +316,20 @@ class BlackjackView(disnake.ui.View):
         self.current_player_idx += 1
         
         if self.current_player_idx >= len(self.player_ids):
-            # Acabou a vez dos jogadores, mas NÃO marcamos 'self.terminado = True' ainda!
             self.dealer_jogando = True 
             
-            # Passo 1: Atualiza para mostrar a carta oculta do dealer, sem resultados.
             await self.atualizar_embed(inter)
             await asyncio.sleep(1.5) 
             
-            # Passo 2: O Dealer puxa as cartas de forma animada
             while self._calcular_pontos(self.dealer_hand) < 17:
                 self.dealer_hand.append(self.deck.pop())
-                await self.atualizar_embed() # Mostra a nova carta sem imprimir o resultado
+                await self.atualizar_embed() 
                 await asyncio.sleep(2.0)
                 
-            # Passo 3: O Dealer terminou. Agora sim, acabou o jogo.
             self.dealer_jogando = False
             self.terminado = True
             await self._processar_pagamentos()
             
-            # Passo 4: Exibe o quadro final com as Vitórias/Derrotas
             await self.atualizar_embed()
 
     async def _processar_pagamentos(self):
