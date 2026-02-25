@@ -316,21 +316,34 @@ class BlackjackView(disnake.ui.View):
         self.current_player_idx += 1
         
         if self.current_player_idx >= len(self.player_ids):
-            self.dealer_jogando = True 
-            
-            await self.atualizar_embed(inter)
-            await asyncio.sleep(1.5) 
-            
-            while self._calcular_pontos(self.dealer_hand) < 17:
-                self.dealer_hand.append(self.deck.pop())
-                await self.atualizar_embed() 
-                await asyncio.sleep(2.0)
+            # Verifica se TODOS os jogadores na mesa estouraram ou acionaram seguro
+            # Se sim, não há por que o dealer fazer a animação de puxar cartas
+            precisa_animar = False
+            for p in self.players_data.values():
+                if p["status"] == "parou":
+                    precisa_animar = True
+                    break
+
+            if precisa_animar:
+                self.dealer_jogando = True 
                 
-            self.dealer_jogando = False
+                await self.atualizar_embed(inter)
+                await asyncio.sleep(1.5) 
+                
+                while self._calcular_pontos(self.dealer_hand) < 17:
+                    self.dealer_hand.append(self.deck.pop())
+                    await self.atualizar_embed() 
+                    await asyncio.sleep(2.0)
+                    
+                self.dealer_jogando = False
+            else:
+                # Se ninguém parou normalmente (todos estouraram ou pegaram seguro),
+                # o dealer não precisa animar, ele só revela o que já tinha e o jogo acaba.
+                pass 
+
             self.terminado = True
             await self._processar_pagamentos()
-            
-            await self.atualizar_embed()
+            await self.atualizar_embed(inter) # Passa o inter aqui para tentar atualizar de primeira
 
     async def _processar_pagamentos(self):
         d_p = self._calcular_pontos(self.dealer_hand)
