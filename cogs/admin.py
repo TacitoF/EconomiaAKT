@@ -278,12 +278,13 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização focadas na nova experiência do Blackjack."""
+        """Publica as notas de atualização focadas no novo sistema Beta do Blackjack."""
         try: 
             await ctx.message.delete()
         except: 
             pass
 
+        # Verificação de permissão (Dono do Bot)
         if ctx.author.id != OWNER_ID:
             return
 
@@ -295,29 +296,55 @@ class Admin(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="🃏 ATUALIZAÇÃO DA SELVA: CASSINO v6.2 🃏",
-            description="O Blackjack da selva agora possui uma mecânica idêntica à de Las Vegas. Confiram as mudanças:",
-            color=disnake.Color.gold()
+            title="🃏 ATUALIZAÇÃO DO CASSINO: BLACKJACK BETA v7.0 🃏",
+            description=(
+                "O sistema de Blackjack foi totalmente reformulado para trazer mais realismo e novas mecânicas de estratégia. "
+                "**Estamos em fase BETA de testes!**\n\n"
+                "⚠️ **Aviso:** Caso encontrem qualquer comportamento estranho ou erro, avisem a administração imediatamente. "
+                "**Qualquer valor perdido devido a bugs do sistema será adicionado de volta à sua conta integralmente.**"
+            ),
+            color=disnake.Color.blue()
         )
 
-        # Novidade: Sistema de Sapato (Shoe)
+        # Nova Regra do Ás
         embed.add_field(
-            name="🔀 Sistema de Baralho Fixo (Sapato)", 
-            inline=False, 
+            name="⭐ Dinâmica do Ás (A)",
+            inline=False,
             value=(
-                "• **Cassino Real:** Esqueça o baralho infinito! Agora as mesas compartilham um 'Sapato' contendo **6 baralhos** (312 cartas) misturados que persistem entre as rodadas.\n"
-                "• **Estratégia e Contagem:** O rodapé da mesa agora mostra exatamente quantas cartas sobraram no monte. Ideal para quem gosta de contar cartas!\n"
-                "• **Reembaralhamento:** Assim que o monte esvaziar e chegar a 25% da capacidade, o Dealer enviará um aviso no chat e embaralhará as cartas automaticamente antes da próxima mão."
+                "• **Mão Inicial:** O Ás vale **11** apenas se vier nas suas duas primeiras cartas.\n"
+                "• **Pedido de Carta (Hit):** Caso você peça uma carta e venha um Ás, ele passará a valer obrigatoriamente **1**.\n"
+                "• **Ajuste Automático:** Se você tiver um Ás de 11 na mão inicial e estourar (passar de 21), ele ainda será reduzido para 1 para te salvar!"
             )
         )
 
-        embed.set_footer(text="Koba: Mantendo a selva em ordem. 🌴")
+        # Novo Sistema de Seguro (Rendição)
+        embed.add_field(
+            name="🛡️ Novo Seguro (Rendição Segura)",
+            inline=False,
+            value=(
+                "• **Como funciona:** Quando o Dealer mostrar um Ás, o botão de Seguro ficará disponível.\n"
+                "• **Segurança Instantânea:** Ao clicar, você recupera **50% do valor apostado** imediatamente e abandona a mão atual.\n"
+                "• **Saída Estratégica:** Você não ganha nem perde contra a mão do Dealer; você simplesmente encerra sua participação naquela rodada com metade do seu dinheiro garantido no bolso."
+            )
+        )
+
+        # Estabilidade e Bugs
+        embed.add_field(
+            name="⚙️ Correções e Estabilidade",
+            inline=False,
+            value=(
+                "• **Duplicação de Mensagens:** Corrigimos o erro que exibia confirmações duplicadas ao registrar apostas laterais.\n"
+                "• **Sincronização do Saldo:** Melhoramos a comunicação com o banco de dados para garantir que os débitos e créditos ocorram sem atrasos."
+            )
+        )
+
+        embed.set_footer(text="Koba: Monitorando cada carta na selva. 🌴")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **NOVIDADES NO CASSINO!** @everyone 🚨\n",
+            content="🚨 **ATENÇÃO: O NOVO BLACKJACK CHEGOU!** @everyone 🚨\n",
             embed=embed
         )
 
