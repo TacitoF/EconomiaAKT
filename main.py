@@ -33,7 +33,7 @@ bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_comma
 bot.is_locked = True
 
 # ANTI-SPAM GLOBAL
-ANTI_SPAM_COOLDOWN = 3  
+ANTI_SPAM_COOLDOWN = 3
 _spam_tracker: dict = {}
 
 @bot.check
@@ -68,7 +68,7 @@ async def global_check(ctx):
 
 # CANAL DE STATUS
 NOME_CANAL_STATUS = "📡・status-bot"
-ALLOWED_GUILDS = [1474556702861819967, 1438279770386206882] 
+ALLOWED_GUILDS = [1474556702861819967, 1438279770386206882]
 
 @bot.check
 async def restrict_servers(ctx):
@@ -82,7 +82,6 @@ async def atualizar_canal_status(online: bool):
         canal = disnake.utils.get(guild.text_channels, name=NOME_CANAL_STATUS)
         if not canal:
             continue
-
         try:
             await canal.purge(limit=100)
         except Exception as e:
@@ -155,24 +154,51 @@ async def on_command_error(ctx, error):
         return
     print(f"❌ Erro não tratado: {error}")
 
-# CARREGAMENTO DE COGS
+# ──────────────────────────────────────────────
+#  CARREGAMENTO DE COGS
+#  Suporta tanto arquivos soltos (ex: economy.py) quanto
+#  pacotes com __init__.py (ex: blackjack/__init__.py).
+# ──────────────────────────────────────────────
 def load_cogs():
     if not os.path.exists('./cogs'):
         return
-    for pasta_atual, _, arquivos in os.walk('./cogs'):
+
+    for pasta_atual, subdirs, arquivos in os.walk('./cogs'):
         if '__pycache__' in pasta_atual:
             continue
+
+        # ── Pacotes: pasta com __init__.py ───────────────────────────────
+        # Se a pasta tem __init__.py, carrega ela como módulo único e
+        # ignora seus arquivos internos (subdirs já são visitados pelo walk,
+        # mas nenhum deles deve ser carregado individualmente).
+        if '__init__.py' in arquivos:
+            modulo = (
+                pasta_atual
+                .replace('./', '').replace('/', '.').replace('\\', '.')
+            )
+            try:
+                bot.load_extension(modulo)
+                print(f"📦 {modulo} (pacote)")
+            except Exception as e:
+                print(f"❌ Erro ao carregar pacote {modulo}: {e}")
+            # Impede o os.walk de descer nos subdiretórios deste pacote
+            subdirs.clear()
+            continue
+
+        # ── Arquivos soltos: .py normais ──────────────────────────────────
         for filename in arquivos:
-            if filename.endswith('.py'):
-                modulo = (
-                    os.path.join(pasta_atual, filename)
-                    .replace('./', '').replace('/', '.').replace('\\', '.')[:-3]
-                )
-                try:
-                    bot.load_extension(modulo)
-                    print(f"📦 {modulo}")
-                except Exception as e:
-                    print(f"❌ Erro ao carregar {modulo}: {e}")
+            if not filename.endswith('.py') or filename == '__init__.py':
+                continue
+            modulo = (
+                os.path.join(pasta_atual, filename)
+                .replace('./', '').replace('/', '.').replace('\\', '.')[:-3]
+            )
+            try:
+                bot.load_extension(modulo)
+                print(f"📦 {modulo}")
+            except Exception as e:
+                print(f"❌ Erro ao carregar {modulo}: {e}")
+
 
 if __name__ == "__main__":
     keep_alive()
