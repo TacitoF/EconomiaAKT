@@ -15,9 +15,6 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
         # Escudos ativos: {user_id: cargas_restantes}
-        # O escudo é ativado automaticamente na primeira tentativa de roubo recebida.
-        # Cada bloqueio consome 1 carga. Ao chegar em 0 o escudo quebra e é removido do dict.
-        # O Pé de Cabra ignora o escudo mas também NÃO consome carga.
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
 
     async def cog_before_invoke(self, ctx):
@@ -172,33 +169,26 @@ class Economy(commands.Cog):
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
 
             escudo_ativo = cargas_atuais > 0
-
             msg_escudo = ""
-            if escudo_ativo:
-                if usou_pe_de_cabra:
-                    # Pé de Cabra perfura o escudo sem consumir carga — roubo prossegue normalmente
-                    msg_escudo = (
-                        f"\n🛠️ O seu **Pé de Cabra** arrombou a porta e ignorou o **Escudo** de {vitima.mention}! "
-                        f"*(Cargas restantes do escudo: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️)*"
-                    )
-                else:
-                    # Bloqueia o ataque e consome 1 carga
-                    cargas_atuais -= 1
-                    db.update_value(ladrao_data['row'], 7, agora)
 
-                    if cargas_atuais > 0:
-                        self.bot.escudos_ativos[vitima_id] = cargas_atuais
-                        msg_bloqueio = (
-                            f"🛡️ {vitima.mention} está protegido por um **Escudo** e bloqueou seu ataque!\n"
-                            f"⚡ O escudo absorveu o golpe. Cargas restantes: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️"
-                        )
-                    else:
-                        # Última carga consumida — escudo quebra
-                        del self.bot.escudos_ativos[vitima_id]
-                        msg_bloqueio = (
-                            f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!\n"
-                            f"💥 Mas era a última carga — o escudo **QUEBROU** com o impacto! {vitima.mention} ficou desprotegido."
-                        )
+            if escudo_ativo:
+                # Independentemente de ter pé de cabra ou não, o escudo perde 1 carga
+                cargas_atuais -= 1
+                db.update_value(ladrao_data['row'], 7, agora) # O tempo do roubo reseta
+
+                if cargas_atuais > 0:
+                    self.bot.escudos_ativos[vitima_id] = cargas_atuais
+                    texto_carga = f"*(Cargas restantes: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️)*"
+                else:
+                    del self.bot.escudos_ativos[vitima_id]
+                    texto_carga = f"*(O escudo **QUEBROU** com o impacto! {vitima.mention} está desprotegido 💥)*"
+
+                if usou_pe_de_cabra:
+                    # Pé de Cabra perfura a defesa (roubo prossegue), mas a carga foi consumida
+                    msg_escudo = f"\n🛠️ Seu **Pé de Cabra** arrombou a porta e danificou o **Escudo** de {vitima.mention}! {texto_carga}"
+                else:
+                    # Sem pé de cabra, o escudo bloqueia o ataque, avisa e cancela o roubo
+                    msg_bloqueio = f"🛡️ {vitima.mention} se defendeu com um **Escudo** e bloqueou seu ataque!\n{texto_carga}"
 
                     # Conquista: tentou roubar alguém com escudo
                     conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""

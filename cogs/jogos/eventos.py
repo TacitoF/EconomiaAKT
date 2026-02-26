@@ -59,8 +59,6 @@ class CocoEntrarView(disnake.ui.View):
 class Eventos(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.loteria_participantes = []
-        self.loteria_pote = 0.0
         self.coco_active = False
         self.coco_players = []
         self.coco_aposta = 0.0
@@ -68,89 +66,11 @@ class Eventos(commands.Cog):
 
     async def cog_before_invoke(self, ctx):
         cmd = ctx.command.name
-        canais_loteria = ['loteria', 'bilhete', 'loto', 'sortear_loteria', 'pote', 'premio', 'acumulado']
-        if cmd in canais_loteria:
-            if ctx.channel.name not in ['🐒・conguitos', '🎰・akbet']:
-                await ctx.send(f"⚠️ {ctx.author.mention}, use a loteria no canal #🐒・conguitos ou #🎰・akbet.")
-                raise commands.CommandError("Canal incorreto para loteria.")
-            return
         if cmd != 'jogos' and ctx.channel.name != '🎰・akbet':
             canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
             await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para {mencao}.")
             raise commands.CommandError("Canal incorreto.")
-
-    @commands.command(aliases=["premio", "acumulado"])
-    async def pote(self, ctx):
-        if self.loteria_pote == 0.0:
-            return await ctx.send(f"🎫 {ctx.author.mention}, o pote está zerado! Seja o primeiro com `!loteria` (500 MC).")
-        embed = disnake.Embed(
-            title="💰 Pote da Loteria da Selva",
-            description=f"Prêmio acumulado: **{self.loteria_pote:.2f} MC**\n\n👥 **Bilhetes vendidos:** `{len(self.loteria_participantes)}`",
-            color=disnake.Color.gold()
-        )
-        embed.set_footer(text="Garanta sua chance com !loteria")
-        await ctx.send(embed=embed)
-
-    @commands.command(aliases=["bilhete", "loto"])
-    async def loteria(self, ctx):
-        custo = 500.0
-        user_id = ctx.author.id
-        if user_id in self.loteria_participantes:
-            return await ctx.send(f"🎫 {ctx.author.mention}, você já tem um bilhete! Pote atual: **{self.loteria_pote:.2f} MC**.")
-
-        try:
-            user = db.get_user_data(str(user_id))
-            saldo = db.parse_float(user['data'][2]) if user else 0.0
-            if not user or saldo < custo:
-                return await ctx.send(f"❌ {ctx.author.mention}, você precisa de **{custo:.2f} MC** para um bilhete!")
-
-            db.update_value(user['row'], 3, round(saldo - custo, 2))
-            self.loteria_participantes.append(user_id)
-            self.loteria_pote += custo
-            await ctx.send(f"🎫 **BILHETE COMPRADO!** {ctx.author.mention} entrou na loteria.\n💰 Pote agora em **{self.loteria_pote:.2f} MC**!")
-
-        except commands.CommandError:
-            raise
-        except Exception as e:
-            print(f"❌ Erro no !loteria de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
-
-    @commands.command()
-    async def sortear_loteria(self, ctx):
-        if ctx.author.id != OWNER_ID:
-            return await ctx.send("❌ Apenas o Admin pode sortear a loteria!")
-        if not self.loteria_participantes:
-            return await ctx.send("❌ Nenhum bilhete foi vendido para esta rodada.")
-
-        await ctx.send("🎰 **O GLOBO ESTÁ GIRANDO...**")
-        await asyncio.sleep(3)
-
-        try:
-            ganhador_id = random.choice(self.loteria_participantes)
-            ganhador = await self.bot.fetch_user(ganhador_id)
-            premio = round(self.loteria_pote, 2)
-
-            user_db = db.get_user_data(str(ganhador_id))
-            if not user_db:
-                return await ctx.send("❌ Erro ao encontrar o ganhador no banco de dados!")
-
-            db.update_value(user_db['row'], 3, round(db.parse_float(user_db['data'][2]) + premio, 2))
-
-            embed = disnake.Embed(
-                title="🎉 TEMOS UM VENCEDOR! 🎉",
-                description=f"O sortudo é **{ganhador.mention}**!\nEle faturou **{premio:.2f} MC**!",
-                color=disnake.Color.gold()
-            )
-            embed.set_footer(text="A próxima rodada começa agora!")
-            await ctx.send(embed=embed)
-
-            self.loteria_participantes = []
-            self.loteria_pote = 0.0
-
-        except Exception as e:
-            print(f"❌ Erro no !sortear_loteria: {e}")
-            await ctx.send("⚠️ Ocorreu um erro ao sortear. Tente novamente!")
 
     @commands.command(aliases=["roleta_coco", "coco_explosivo"])
     async def coco(self, ctx, aposta: float = None):
@@ -216,7 +136,7 @@ class Eventos(commands.Cog):
 
                 eliminado = random.choice(jogadores)
                 jogadores.remove(eliminado)
-                
+
                 str_id_elim = str(eliminado.id)
                 if str_id_elim in self.coco_streak:
                     self.coco_streak[str_id_elim] = 0
@@ -240,12 +160,12 @@ class Eventos(commands.Cog):
             lucro = round(pote_bruto - self.coco_aposta, 2)
             lucro_total = lucro + aposta
             db.update_value(v_db['row'], 3, round(db.parse_float(v_db['data'][2]) + pote_bruto, 2))
-            
+
             await ctx.send(f"🏆 **FIM DE JOGO!** {vencedor.mention} sobreviveu e faturou **{lucro_total:.2f} MC** de lucro!")
 
             if total_jogadores >= 5:
                 save_achievement(v_db, "veterano_coco")
-                
+
             if vit_seguidas >= 3:
                 save_achievement(v_db, "invicto_coco")
                 await ctx.send(f"🔥 {vencedor.mention} venceu 3 vezes seguidas e garantiu a conquista **Mestre dos Cocos**! 🥥")
@@ -274,13 +194,13 @@ class Eventos(commands.Cog):
         embed = disnake.Embed(
             title       = "🎰 AK-BET — CASSINO DA SELVA",
             description = "Escolha seu veneno e transforme seus **Macacoins** em fortuna!\nTodos os jogos usam **botões interativos**. 🐒",
-            color       = disnake.Color.from_rgb(255, 180, 0)  # dourado
+            color       = disnake.Color.from_rgb(255, 180, 0),
         )
 
         embed.add_field(
             name  = "🃏 Jogos Solo",
             value = (
-                "🚀 **!crash `<valor>`**\n"
+                "🚀 **!crash `<valor>`** *(alias: `!cipo`)*\n"
                 "╰ Suba no cipó e saque antes de arrebentar!\n"
                 "♠️ **!21 `<valor>`**\n"
                 "╰ Blackjack completo contra o dealer.\n"
@@ -288,8 +208,8 @@ class Eventos(commands.Cog):
                 "╰ Caça-níquel — 3 iguais = JACKPOT `10x`!\n"
                 "💣 **!minas `<1-5 bombas>` `<valor>`**\n"
                 "╰ Campo minado — mais bombas, mais risco, mais lucro.\n"
-                "🌴 **!coqueiro `<valor>` `[1-5 cocos]`**\n"
-                "╰ Plinko da selva — jogue os cocos e mire no jackpot das bordas!\n"
+                "🌴 **!coqueiro `<valor>` `[1-5 cocos]`** *(alias: `!plinko`)*\n"
+                "╰ Jogue cocos pela palmeira! Bordas = **até 10x**, centro = 0.3x."
             ),
             inline = False,
         )
@@ -301,7 +221,9 @@ class Eventos(commands.Cog):
                 "╰ Escolha um animal via botão e torça! Paga **4x**.\n"
                 "🐒 **!corrida `<animal>` `<valor>`**\n"
                 "╰ Macaquinho, Gorila ou Orangutango — paga **2x**.\n"
-                "🦁 *Animais do bicho:* Leão · Cobra · Jacaré · Arara · Elefante"
+                "🦁 *Animais do bicho:* Leão · Cobra · Jacaré · Arara · Elefante\n"
+                "🎫 **!raspadinha `<valor>`** — jogue instantaneamente (mín. 50 MC, máx 500 MC).\n"
+                "Prêmios: 1.5x · 2x · 3x · 5x · **Jackpot 10x**"
             ),
             inline = False,
         )
@@ -338,17 +260,7 @@ class Eventos(commands.Cog):
             inline = False,
         )
 
-        embed.add_field(
-            name  = "🎫 Loteria",
-            value = (
-                "**!loteria** — compre um bilhete por **500 MC**.\n"
-                "**!pote** — veja o prêmio acumulado.\n"
-                "╰ Sorteio manual pelo Admin com `!sortear_loteria`."
-            ),
-            inline = False,
-        )
-
-        embed.set_footer(text="💡 Dica: use !saldo para ver seus MC antes de apostar. | Interação via botões! 🐒")
+        embed.set_footer(text="💡 Dica: use !saldo para ver seus MC antes de apostar.")
         await ctx.send(embed=embed)
 
 def setup(bot):

@@ -3,6 +3,8 @@ from disnake.ext import commands
 import database as db
 import time
 
+ESCUDO_CARGAS = 3
+
 class Profiles(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -60,6 +62,7 @@ class Profiles(commands.Cog):
             "🎖️ **Desarmador:** *Você caminhou pelo inferno e saiu sem um arranhão.*\n"
             "😭 **Quase Lá:** *A vitória estava ao alcance, mas o destino tinha outros planos.*\n"
             "🔥 **Mestre dos Cocos:** *A bomba beijou sua mão três vezes e recuou com medo.*\n"
+            "🕵️ **Detetive:** *Você farejou a mentira antes que ela te engolisse.*\n"
         ))
         embed.set_footer(text="Apenas os astutos dominarão a selva. 🐒")
         await ctx.send(embed=embed)
@@ -92,6 +95,11 @@ class Profiles(commands.Cog):
                 for item in inv_list: contagem[item] = contagem.get(item, 0) + 1
                 inv_formatado = " | ".join([f"`{q}x {i}`" if q > 1 else f"`{i}`" for i, q in contagem.items()])
 
+            # Escudo: mostra cargas ativas se houver
+            cargas_escudo = self.bot.escudos_ativos.get(user_id, 0) if hasattr(self.bot, 'escudos_ativos') else 0
+            if cargas_escudo > 0:
+                inv_formatado += f" | 🛡️ `Escudo ({cargas_escudo}/{ESCUDO_CARGAS} cargas)`"
+
             emblemas = []
             if saldo >= 500000: emblemas.append("🤑 **Burguês Safado**")
             elif saldo >= 100000: emblemas.append("💎 **Magnata**")
@@ -100,7 +108,6 @@ class Profiles(commands.Cog):
             if 0 < saldo < 100: emblemas.append("📉 **Falência Técnica**")
             if saldo <= 0: emblemas.append("🦴 **Passa fome**")
 
-            # FIX BUG 7: usa handle_db_error via try/except em vez de acessar db.sheet diretamente
             try:
                 all_rows = db.sheet.get_all_values()
                 if len(all_rows) > 1:
@@ -115,7 +122,6 @@ class Profiles(commands.Cog):
                 raise
             except Exception as e:
                 print(f"⚠️ Erro ao buscar rank no !perfil: {e}")
-                # Não bloqueia o perfil inteiro se o rank falhar
 
             mapa_conquistas = {
                 "palhaco":           "🤡 **Palhaço**",
@@ -135,6 +141,7 @@ class Profiles(commands.Cog):
                 "invicto_coco":      "🔥 **Mestre dos Cocos**",
                 "mestre_sombras":    "🥷 **Mestre das Sombras**",
                 "proletario":        "⚒️ **Proletário Padrão**",
+                "detetive":          "🕵️ **Detetive**",
             }
 
             conquistas_db = str(user['data'][9]) if len(user['data']) > 9 else ""
@@ -170,7 +177,6 @@ class Profiles(commands.Cog):
     @commands.command(aliases=["top", "ricos", "placar"])
     async def rank(self, ctx):
         try:
-            # FIX BUG 7: envolve o acesso ao db.sheet em try/except com mensagem padronizada
             try:
                 all_rows = db.sheet.get_all_values()
             except commands.CommandError:

@@ -9,7 +9,7 @@ class Patchnotes(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização do Coqueiro no canal oficial."""
+        """Publica as notas de atualização v7.4 no canal oficial."""
         try:
             await ctx.message.delete()
         except:
@@ -25,52 +25,73 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="🌴 ATUALIZAÇÃO DA SELVA: O COQUEIRO CHEGOU! 🌴",
+            title="📜 REGISTRO DE ATUALIZAÇÕES: v7.4 — EVOLUÇÃO TÁTICA",
             description=(
-                "A selva acaba de ganhar um novo jogo! Vá até o canal de apostas e experimente o **Coqueiro** (Plinko)."
+                "Implementamos uma série de novos sistemas e otimizações para aprimorar a estabilidade da economia e a experiência de jogo no Koba."
             ),
             color=disnake.Color.dark_green()
         )
 
         embed.add_field(
-            name="🥥 Como Jogar",
+            name="🎲 NOVIDADE: Blefe de Dados (!mentira)",
             inline=False,
             value=(
-                "Use o comando `!coqueiro <valor> [quantidade de cocos]`.\n"
-                "Você pode jogar de **1 a 5 cocos** de uma vez. "
-                "Eles cairão pela palmeira rebatendo nos galhos até chegarem na base."
+                "Um novo jogo multiplayer focado em estratégia e blefe foi adicionado. "
+                "Desafie seus amigos em uma mesa de 2 a 6 jogadores e use sua astúcia para levar o pote total."
             )
         )
 
         embed.add_field(
-            name="💰 Multiplicadores",
+            name="🎰 REFORMULADO: Roleta Interativa (!roleta)",
             inline=False,
             value=(
-                "O objetivo é que o seu coco caia nas **bordas** para pegar os Jackpots!\n"
-                "• **Bordas:** Lucros altos (Até 15x)\n"
-                "• **Centro:** Paga menos que a aposta (0.2x a 0.5x)\n\n"
-                "*(Dica: Jogar vários cocos ao mesmo tempo pode equilibrar as perdas do centro com os ganhos das bordas)*"
+                "A Roleta agora funciona totalmente via **botões e janelas (Modals)**. "
+                "O comando `!apostar` foi removido para tornar o chat mais limpo e a jogabilidade mais rápida."
             )
         )
 
         embed.add_field(
-            name="⚠️ AVISO IMPORTANTE: FASE DE TESTES (BETA)",
+            name="🎫 NOVIDADE: Raspadinha da Selva (!raspadinha)",
             inline=False,
             value=(
-                "O jogo foi recém-lançado e está em período de **testes de balanceamento**. "
-                "Isso significa que os multiplicadores podem mudar nos próximos dias. "
-                "**Quaisquer valores ganhos indevidamente (ou perdidos) devido a bugs graves ou falhas de economia poderão ser revertidos sem aviso prévio.** "
-                "Jogue com responsabilidade!"
+                "Substituindo o antigo sistema de loteria, a Raspadinha agora conta com uma mecânica visual de revelação acelerada e suspense aprimorado."
             )
         )
 
-        embed.set_footer(text="Koba: Que a sorte dos ancestrais guie os seus cocos! 🐒")
+        embed.add_field(
+            name="🛡️ AJUSTE: Escudo vs Pé de Cabra",
+            inline=False,
+            value=(
+                "O sistema de defesa foi recalibrado. Agora, o **Pé de Cabra** perfura a proteção mas **consome 1 carga** do escudo do alvo no processo. "
+                "A vítima perde a carga, mas o roubo não é bloqueado."
+            )
+        )
+
+        embed.add_field(
+            name="♻️ Comunicado: Remoção do 'Coqueiro'",
+            inline=False,
+            value=(
+                "Após a fase de testes, decidimos remover o jogo Coqueiro permanentemente devido a falhas de renderização na interface do Discord que comprometiam a experiência."
+            )
+        )
+
+        embed.add_field(
+            name="🛠️ Melhorias Gerais",
+            inline=False,
+            value=(
+                "• **Estabilidade:** Correção de bug crítico de reembolso duplo em jogos multiplayer.\n"
+                "• **Performance:** Ajuste fino nos tempos de animação e suspenses de todos os minigames solo.\n"
+                "• **Menus:** Comandos `!ajuda` e `!jogos` totalmente atualizados com os novos sistemas."
+            )
+        )
+
+        embed.set_footer(text="Koba: Evoluindo a sobrevivência na selva. 🌴")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **NOVO JOGO DISPONÍVEL! (BETA)** @everyone 🚨\n",
+            content="📢 **ATUALIZAÇÃO DE SISTEMA DISPONÍVEL (v7.4)** @everyone",
             embed=embed
         )
 

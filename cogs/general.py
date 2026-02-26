@@ -48,9 +48,9 @@ class General(commands.Cog):
             "📈 `!investir cripto <valor>` — -25% a +20% em 30 segundos"
         ))
         embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
-            "🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
-            "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!loteria` | 💰 `!pote` | 🃏 `!carta`\n"
-            "💣 `!minas` | ♠️ `!21` | 🌴 `!coqueiro`\n"
+            "🚀 `!crash` *(alias: `!cipo`)* | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
+            "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!raspadinha <valor>` | 🃏 `!carta`\n"
+            "💣 `!minas` | ♠️ `!21` | 🎲 `!mentira`\n"
             "*Use `!jogos` no canal de apostas para ver detalhes*"
         ))
         embed.add_field(name="⚽ APOSTAS ESPORTIVAS (Canal #🎰・akbet)", inline=False, value=(

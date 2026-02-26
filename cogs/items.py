@@ -4,14 +4,14 @@ import database as db
 import time
 import asyncio
 
-DURACAO_ESCUDO = 6 * 3600  # 6 horas em segundos
+ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
 
 class Items(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         if not hasattr(bot, 'cascas'): bot.cascas = set()
         if not hasattr(bot, 'impostos'): bot.impostos = {}
-        # Cache dos escudos ativos: {user_id_str: timestamp_expiracao}
+        # Escudos ativos: {user_id_str: cargas_restantes}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
 
     async def cog_before_invoke(self, ctx):
@@ -128,30 +128,31 @@ class Items(commands.Cog):
     async def escudo(self, ctx, alvo: disnake.Member = None):
         """
         Sem argumentos: consulta o status do seu próprio escudo.
-        Com !escudo @usuario: ativa um Escudo do inventário para protegê-lo.
-        Se usado sem argumento e sem escudo ativo, permite ativar o escudo de si mesmo.
+        Com !escudo @usuario: verifica o escudo de outro jogador.
+        O escudo é ativado automaticamente ao receber o primeiro roubo.
+        Tem 3 cargas — cada roubo bloqueado consome 1 carga.
+        O Pé de Cabra perfura o escudo sem consumir carga.
         """
-        # Se não passou argumento, consulta o status do próprio jogador
         if alvo is None:
             alvo = ctx.author
 
         alvo_id = str(alvo.id)
-        agora = time.time()
 
-        # Verifica cache em memória primeiro
-        exp = self.bot.escudos_ativos.get(alvo_id, 0)
-        if exp > agora:
-            restante = int(exp)
+        # Verifica cargas ativas em memória
+        cargas = self.bot.escudos_ativos.get(alvo_id, 0)
+
+        if cargas > 0:
             if alvo.id == ctx.author.id:
                 return await ctx.send(
-                    f"🛡️ {ctx.author.mention}, seu Escudo está **ativo** e expira <t:{restante}:R>."
+                    f"🛡️ {ctx.author.mention}, seu Escudo está **ativo** com **{cargas}/{ESCUDO_CARGAS} cargas** restantes.\n"
+                    f"Cada tentativa de roubo bloqueada consome 1 carga."
                 )
             else:
                 return await ctx.send(
-                    f"🛡️ {alvo.mention} está protegido por um Escudo que expira <t:{restante}:R>."
+                    f"🛡️ {alvo.mention} está protegido por um Escudo com **{cargas}/{ESCUDO_CARGAS} cargas** restantes."
                 )
 
-        # Sem escudo ativo no cache — verifica inventário
+        # Sem escudo ativo — verifica inventário
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
@@ -160,18 +161,18 @@ class Items(commands.Cog):
             inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
 
-            # Se quer ativar para si mesmo e tem escudo no inventário
+            # Ativa o escudo do próprio jogador se tiver no inventário
             if alvo.id == ctx.author.id and "Escudo" in inv_list:
-                exp_novo = agora + DURACAO_ESCUDO
-                self.bot.escudos_ativos[alvo_id] = exp_novo
+                self.bot.escudos_ativos[alvo_id] = ESCUDO_CARGAS
                 inv_list.remove("Escudo")
                 db.update_value(user['row'], 6, ", ".join(inv_list))
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention} ativou seu **Escudo**! "
-                    f"Você está protegido contra roubos até <t:{int(exp_novo)}:f> *(6 horas)*."
+                    f"Você está protegido contra **{ESCUDO_CARGAS} tentativas de roubo**.\n"
+                    f"💡 *O Pé de Cabra perfura o escudo, mas também consome 1 carga.*"
                 )
 
-            # Sem escudo ativo e sem item no inventário
+            # Sem escudo ativo nem no inventário
             if alvo.id == ctx.author.id:
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention}, você não tem nenhum Escudo ativo nem no inventário.\n"
