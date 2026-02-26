@@ -146,45 +146,56 @@ class Economy(commands.Cog):
             inv_ladrao = [i.strip() for i in str(ladrao_data['data'][5] if len(ladrao_data['data']) > 5 else "").split(',') if i.strip()]
             inv_alvo   = [i.strip() for i in str(alvo_data['data'][5]   if len(alvo_data['data'])   > 5 else "").split(',') if i.strip()]
 
-            chance_sucesso = 45
+            # ── USO DO PÉ DE CABRA ───────────────────────────────────────────
+            usou_pe_de_cabra = False
+            chance_sucesso = 45  # Chance base sem itens
+            
             if "Pé de Cabra" in inv_ladrao:
-                chance_sucesso = 65
-                inv_ladrao.remove("Pé de Cabra")
+                chance_sucesso = 65  # Aumenta para 65%
+                usou_pe_de_cabra = True
+                inv_ladrao.remove("Pé de Cabra")  # Consome o item do ladrão
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
             # ── ESCUDO COM DURAÇÃO DE TEMPO ──────────────────────────────────
-            # Verifica se o alvo tem escudo ativo (tanto no cache em memória quanto no inventário)
             escudo_ativo = False
             escudo_expiracao = self.bot.escudos_ativos.get(vitima_id, 0)
 
+            # Verifica se o alvo já está com o escudo ativado na memória
             if escudo_expiracao > agora:
-                # Escudo ainda válido no cache de memória
                 escudo_ativo = True
+            # Se não está ativo, mas ele tem no inventário, ativa agora ao receber o ataque!
             elif "Escudo" in inv_alvo:
-                # Escudo no inventário ainda não foi ativado — ativa agora ao receber ataque
-                escudo_expiracao = agora + (6 * 3600)  # 6 horas
+                escudo_expiracao = agora + (6 * 3600)  # Ativa por 6 horas
                 self.bot.escudos_ativos[vitima_id] = escudo_expiracao
-                inv_alvo.remove("Escudo")
+                inv_alvo.remove("Escudo")  # Remove do inventário pois agora está em uso
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
                 escudo_ativo = True
 
+            msg_escudo_inutilizado = ""
             if escudo_ativo:
-                db.update_value(ladrao_data['row'], 7, agora)
+                if usou_pe_de_cabra:
+                    # Se usou pé de cabra, apenas avisa e IGNORA o escudo (segue o código para roubar)
+                    # O Escudo do alvo NÃO é destruído, ele continua na lista 'escudos_ativos' protegendo contra outros
+                    msg_escudo_inutilizado = f"\n🛠️ O seu **Pé de Cabra** arrombou a porta e ignorou o **Escudo** de {vitima.mention}! *(O escudo dele continua ativo contra ladrões comuns)*"
+                else:
+                    # Ladrão normal sem pé de cabra: esbarra no escudo e é bloqueado
+                    db.update_value(ladrao_data['row'], 7, agora)
 
-                # --- CONQUISTA: CASCA GROSSA (ladrão que bateu no Escudo) ---
-                conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
-                lista_c = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
-                if "casca_grossa" not in lista_c:
-                    lista_c.append("casca_grossa")
-                    db.update_value(ladrao_data['row'], 10, ", ".join(lista_c))
-                # -------------------------------------------------------------
+                    # --- CONQUISTA: CASCA GROSSA ---
+                    conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
+                    lista_c = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
+                    if "casca_grossa" not in lista_c:
+                        lista_c.append("casca_grossa")
+                        db.update_value(ladrao_data['row'], 10, ", ".join(lista_c))
+                    # --------------------------------
 
-                return await ctx.send(
-                    f"🛡️ {vitima.mention} está protegido por um **Escudo** e bloqueou seu ataque!\n"
-                    f"🕐 A proteção expira <t:{int(escudo_expiracao)}:R>."
-                )
+                    return await ctx.send(
+                        f"🛡️ {vitima.mention} está protegido por um **Escudo** e bloqueou seu ataque!\n"
+                        f"🕐 A proteção expira <t:{int(escudo_expiracao)}:R>."
+                    )
             # ─────────────────────────────────────────────────────────────────
 
+            # Rola os dados do roubo: 45% (normal) ou 65% (se usou pé de cabra)
             if random.randint(1, 100) <= chance_sucesso:
                 # ── NOVA LÓGICA DE BALANCEAMENTO DE POBREZA ──
                 if saldo_alvo < 500:
@@ -242,8 +253,12 @@ class Economy(commands.Cog):
                 else:
                     mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} MC** de {vitima.mention}!"
 
-                if chance_sucesso == 65: mensagem += " *(Usou Pé de Cabra 🕵️)*"
-                if bounty_ganho > 0: mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} MC**!"
+                if usou_pe_de_cabra: 
+                    mensagem += " *(Usou Pé de Cabra 🕵️)*"
+                if bounty_ganho > 0: 
+                    mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} MC**!"
+                
+                mensagem += msg_escudo_inutilizado
                 mensagem += seguro_msg
                 mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} MC** colocada na sua cabeça!*"
                 mensagem += conquista_msg
@@ -256,7 +271,13 @@ class Economy(commands.Cog):
                 db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
-                await ctx.send(f"👮 **PRESO!** O roubo falhou e você pagou **{multa:.2f} MC** de multa para {vitima.mention}.")
+                
+                mensagem_falha = f"👮 **PRESO!** O roubo falhou e você pagou **{multa:.2f} MC** de multa para {vitima.mention}."
+                if usou_pe_de_cabra:
+                    mensagem_falha += " *(Usou Pé de Cabra mas deu azar 🕵️)*"
+                mensagem_falha += msg_escudo_inutilizado
+                
+                await ctx.send(mensagem_falha)
 
         except commands.CommandError:
             raise

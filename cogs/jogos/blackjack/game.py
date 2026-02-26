@@ -177,16 +177,27 @@ class BlackjackView(disnake.ui.View):
 
         # Campo de cada jogador
         for p_id in self.player_ids:
-            p       = self.players_data[p_id]
+            p = self.players_data[p_id]
             em_turno = (not self.terminado and not self.dealer_jogando and p_atual_id == p_id)
-            p_p     = self._get_pontos_mao(p_id, 1)
+            p_p = self._get_pontos_mao(p_id, 1)
 
-            status_emoji = (
-                "⏳" if em_turno           else
-                "💥" if p["status"] == "estourou" else
-                "🏳️" if p["status"] == "seguro"   else
-                "✋" if p["status"] == "parou"     else "✅"
-            )
+            # LÓGICA DE EMOJIS REFORMULADA
+            if self.terminado:
+                # Se o jogo acabou, todo mundo ganha um "Visto" final (o resultado exato tá no texto)
+                status_emoji = "✅" 
+            else:
+                if p["status"] == "estourou":
+                    status_emoji = "💥" # Já perdeu
+                elif p["status"] == "seguro":
+                    status_emoji = "🛡️" # Saiu da rodada
+                elif p["status"] == "parou":
+                    status_emoji = "✋" # Congelou a mão
+                elif p["status"] == "jogando":
+                    if em_turno:
+                        status_emoji = "👉" # 👉 A VEZ É DESSE JOGADOR (Foco nele)
+                    else:
+                        status_emoji = "⏳" # ⏳ AGUARDANDO: Esperando a vez chegar
+
 
             if p["splitted"]:
                 p2_p = self._get_pontos_mao(p_id, 2)
@@ -202,8 +213,11 @@ class BlackjackView(disnake.ui.View):
             res_txt = self._montar_resultado_jogador(p, p_id, p_p, d_p) if self.terminado else ""
             sb_txt  = self._montar_sb_txt(p)
 
+            # Se for a vez do jogador, deixa o nome dele em DESTAQUE (Negrito extra)
+            nome_display = f"**{p['member'].display_name}**" if em_turno else p['member'].display_name
+
             embed.add_field(
-                name   = f"{status_emoji} {p['member'].display_name}",
+                name   = f"{status_emoji} {nome_display}",
                 value  = f"{mao_str}\nAposta: `{p['aposta'] * (2 if p['splitted'] else 1):.2f} MC`{res_txt}{sb_txt}",
                 inline = True
             )

@@ -25,25 +25,31 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="🛡️ ATUALIZAÇÃO DA SELVA: v7.1 — O ESCUDO GANHOU DENTES 🛡️",
+            title="⚔️ ATUALIZAÇÃO DA SELVA: v7.2 — A GUERRA DOS ITENS ⚔️",
             description=(
-                "O sistema de proteção contra roubos foi reformulado para ser mais justo e estratégico. "
-                "O Escudo deixou de ser um item descartável de uso único e agora oferece **proteção real por tempo determinado**.\n\n"
-                "⚠️ **Aviso:** Escudos já existentes nos inventários continuam funcionando normalmente com as novas regras."
+                "A disputa por moedas acabou de ficar muito mais estratégica. "
+                "O Escudo de 6 horas recebeu um predador natural: O Pé de Cabra foi forjado!"
             ),
-            color=disnake.Color.blue()
+            color=disnake.Color.dark_red()
         )
 
         embed.add_field(
-            name="🛡️ Escudo — Nova Mecânica de Duração",
+            name="🛠️ Pé de Cabra — O Pesadelo dos Ricos",
             inline=False,
             value=(
-                "**Antes:** O Escudo bloqueava apenas **1 roubo** e era consumido na hora.\n"
-                "**Agora:** O Escudo oferece **6 horas de proteção contínua** a partir da ativação.\n\n"
-                "• **Ativação automática:** Ao receber o primeiro ataque de roubo, o Escudo sai do inventário e começa a contar as 6 horas.\n"
-                "• **Ativação manual:** Use `!escudo` para ativar a proteção imediatamente, sem precisar esperar ser atacado.\n"
-                "• **Transparência:** Quando um roubo é bloqueado, o atacante vê exatamente quando sua proteção vai expirar.\n"
-                "• **Consulta:** Use `!escudo` a qualquer momento para ver quanto tempo de proteção ainda resta."
+                "**Antes:** Apenas aumentava a chance de roubo.\n"
+                "**Agora:** Além de aumentar a chance de sucesso para **65%**, o Pé de Cabra **IGNORA A PROTEÇÃO DO ESCUDO!**\n\n"
+                "• **Invasão:** Se o alvo tiver um Escudo ativo (das 6 horas), o Pé de Cabra vai arrombar a porta e realizar o roubo normalmente.\n"
+                "• **Consumo:** O Pé de Cabra quebra após o uso (sendo consumido do seu inventário), quer o roubo dê certo ou não."
+            )
+        )
+
+        embed.add_field(
+            name="🛡️ Como fica o Escudo?",
+            inline=False,
+            value=(
+                "O Escudo ainda é essencial! Mesmo que um ladrão de elite use um Pé de Cabra para te roubar, o seu **Escudo NÃO é destruído**. "
+                "Ele continuará ativo e protegendo você contra todos os outros ladrões comuns pelas horas que restarem da sua duração."
             )
         )
 
@@ -51,34 +57,31 @@ class Patchnotes(commands.Cog):
             name="⚖️ Por que essa mudança?",
             inline=False,
             value=(
-                "Com a taxa de sucesso de roubo em **45%**, o antigo Escudo de uso único era muito fraco para seu custo de **700 MC** — "
-                "havia uma chance enorme de o ladrão simplesmente falhar naturalmente, desperdiçando sua proteção. "
-                "O novo sistema garante que o Escudo valha o investimento, cobrindo múltiplos ataques durante uma janela de tempo estratégica."
+                "O Escudo de 6 horas estava deixando os jogadores mais ricos intocáveis. "
+                "Agora, quem quiser investir **3.000 MC** em um Pé de Cabra tem a ferramenta certa para caçar os grandes alvos, "
+                "criando uma economia de risco e recompensa muito mais dinâmica."
             )
         )
 
         embed.add_field(
-            name="📋 Resumo Rápido",
+            name="📋 Resumo da Guerra",
             inline=False,
             value=(
-                "🛒 **Custo:** 700 MC (sem alteração)\n"
-                "⏱️ **Duração:** 6 horas por uso\n"
-                "🔒 **Proteção:** Todos os roubos durante o período são bloqueados\n"
-                "⚡ **Ativação:** Automática no primeiro ataque **ou** manual com `!escudo`\n"
-                "🔍 **Consulta:** `!escudo` mostra o tempo restante de proteção"
+                "🥷 **Ladrão Normal vs Escudo:** O Ladrão é bloqueado, leva multa e perde o turno.\n"
+                "🛠️ **Pé de Cabra vs Escudo:** O Escudo é ignorado! O Ladrão tem 65% de chance de levar o dinheiro.\n"
+                "🛡️ **Sobrevivência do Escudo:** O Escudo da vítima continua ativo contra futuros ataques sem Pé de Cabra."
             )
         )
 
-        embed.set_footer(text="Koba: Proteção é poder. Use com sabedoria. 🌴")
+        embed.set_footer(text="Koba: Proteção é boa, mas nenhuma porta é inquebrável. 🌴")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **ATUALIZAÇÃO DO SISTEMA DE PROTEÇÃO!** @everyone 🚨\n",
+            content="🚨 **ATUALIZAÇÃO DE BALANCEAMENTO!** @everyone 🚨\n",
             embed=embed
         )
-
 
 def setup(bot):
     bot.add_cog(Patchnotes(bot))
