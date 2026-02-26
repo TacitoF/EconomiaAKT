@@ -58,7 +58,7 @@ class Patchnotes(commands.Cog):
             inline=False,
             value=(
                 "O Escudo de 6 horas estava deixando os jogadores mais ricos intocáveis. "
-                "Agora, quem quiser investir **3.000 MC** em um Pé de Cabra tem a ferramenta certa para caçar os grandes alvos, "
+                "Agora, quem quiser investir **1.200 MC** em um Pé de Cabra tem a ferramenta certa para caçar os grandes alvos, "
                 "criando uma economia de risco e recompensa muito mais dinâmica."
             )
         )

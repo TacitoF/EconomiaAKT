@@ -47,7 +47,7 @@ class Shop(commands.Cog):
             name="🛡️ Equipamentos",
             value=(
                 "🛡️ **Escudo** — `700 MC` | Bloqueia 1 roubo.\n"
-                "🕵️ **Pé de Cabra** — `1.100 MC` | Aumenta chance de roubo para 65%.\n"
+                "🕵️ **Pé de Cabra** — `1.200 MC` | Aumenta chance de roubo para 65%.\n"
                 "📄 **Seguro** — `950 MC` | Recupera 60% do valor se for roubado."
             ), inline=False
         )
@@ -88,8 +88,8 @@ class Shop(commands.Cog):
                 "rei símio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
                 "rei simio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
                 "escudo":            {"nome": "Escudo",            "preco": 700.0,    "tipo": "item"},
-                "pé de cabra":       {"nome": "Pé de Cabra",       "preco": 1100.0,   "tipo": "item"},
-                "pe de cabra":       {"nome": "Pé de Cabra",       "preco": 1100.0,   "tipo": "item"},
+                "pé de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
+                "pe de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
                 "seguro":            {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
                 "casca de banana":   {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
                 "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 2000.0,   "tipo": "item"},
