@@ -42,10 +42,19 @@ class Patchnotes(commands.Cog):
         )
 
         embed.add_field(
+            name="👤 REFORMULADO: Identidade Visual (!perfil)",
+            inline=False,
+            value=(
+                "O comando `!perfil` foi totalmente redesenhado! Agora com um layout mais limpo, "
+                "exibição dinâmica de conquistas e uma barra de progresso visual para o próximo cargo na selva."
+            )
+        )
+
+        embed.add_field(
             name="🎰 REFORMULADO: Roleta Interativa (!roleta)",
             inline=False,
             value=(
-                "A Roleta agora funciona totalmente via **botões e janelas (Modals)**. "
+                "A Roleta agora funciona totalmente via **botões e janelas**. "
                 "O comando `!apostar` foi removido para tornar o chat mais limpo e a jogabilidade mais rápida."
             )
         )
@@ -81,7 +90,6 @@ class Patchnotes(commands.Cog):
             value=(
                 "• **Estabilidade:** Correção de bug crítico de reembolso duplo em jogos multiplayer.\n"
                 "• **Performance:** Ajuste fino nos tempos de animação e suspenses de todos os minigames solo.\n"
-                "• **Menus:** Comandos `!ajuda` e `!jogos` totalmente atualizados com os novos sistemas."
             )
         )
 

@@ -80,11 +80,13 @@ class Profiles(commands.Cog):
             cargo = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
             agora = time.time()
 
-            ultimo_work  = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
-            ultimo_roubo = db.parse_float(user['data'][6] if len(user['data']) > 6 else None)
+            ultimo_work   = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
+            ultimo_roubo  = db.parse_float(user['data'][6] if len(user['data']) > 6 else None)
+            ultimo_invest = db.parse_float(user['data'][7] if len(user['data']) > 7 else None)
 
-            status_work  = "Disponível ✅" if agora - ultimo_work  >= 3600 else f"<t:{int(ultimo_work  + 3600)}:R>"
-            status_roubo = "Disponível ✅" if agora - ultimo_roubo >= 7200 else f"<t:{int(ultimo_roubo + 7200)}:R>"
+            status_work   = "Disponível ✅" if agora - ultimo_work   >= 3600  else f"<t:{int(ultimo_work   + 3600)}:R>"
+            status_roubo  = "Disponível ✅" if agora - ultimo_roubo  >= 7200  else f"<t:{int(ultimo_roubo  + 7200)}:R>"
+            status_invest = "Disponível ✅" if agora - ultimo_invest >= 86400 else f"<t:{int(ultimo_invest + 86400)}:R>"
 
             inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != 'nenhum']
@@ -158,12 +160,13 @@ class Profiles(commands.Cog):
 
             embed = disnake.Embed(title=f"🐒 Perfil de {membro.display_name}", color=disnake.Color.gold())
             embed.set_thumbnail(url=membro.display_avatar.url)
-            embed.add_field(name="💰 Saldo",     value=f"`{saldo:.2f} MC`", inline=True)
-            embed.add_field(name="💼 Cargo",     value=f"`{cargo}`",        inline=True)
-            embed.add_field(name="🔨 Trabalho",  value=status_work,         inline=True)
-            embed.add_field(name="🔫 Roubo",     value=status_roubo,        inline=True)
-            embed.add_field(name="🎒 Inventário",value=inv_formatado,        inline=False)
-            embed.add_field(name="🏆 Conquistas",value=" | ".join(emblemas) if emblemas else "Nenhuma", inline=False)
+            embed.add_field(name="💰 Saldo",       value=f"`{saldo:.2f} MC`", inline=True)
+            embed.add_field(name="💼 Cargo",       value=f"`{cargo}`",        inline=True)
+            embed.add_field(name="🔨 Trabalho",    value=status_work,         inline=True)
+            embed.add_field(name="🔫 Roubo",       value=status_roubo,        inline=True)
+            embed.add_field(name="🏛️ Investimento Fixo", value=status_invest,       inline=True)
+            embed.add_field(name="🎒 Inventário",  value=inv_formatado,       inline=False)
+            embed.add_field(name="🏆 Conquistas",  value=" | ".join(emblemas) if emblemas else "Nenhuma", inline=False)
             if rec > 0:
                 embed.add_field(name="🚨 PROCURADO", value=f"`{rec:.2f} MC` pela sua cabeça!", inline=False)
             await ctx.send(embed=embed)
