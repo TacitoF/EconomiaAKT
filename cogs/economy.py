@@ -4,6 +4,8 @@ import database as db
 import time
 import random
 
+ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
+
 class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -12,7 +14,10 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'impostos'): bot.impostos = {}
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
-        # Escudos ativos: {user_id: timestamp_expiracao}
+        # Escudos ativos: {user_id: cargas_restantes}
+        # O escudo é ativado automaticamente na primeira tentativa de roubo recebida.
+        # Cada bloqueio consome 1 carga. Ao chegar em 0 o escudo quebra e é removido do dict.
+        # O Pé de Cabra ignora o escudo mas também NÃO consome carga.
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
 
     async def cog_before_invoke(self, ctx):
@@ -131,7 +136,7 @@ class Economy(commands.Cog):
             if saldo_alvo < 80:
                 return await ctx.send(f"😬 {vitima.mention} está tão pobre que não vale a pena o risco.")
 
-            agora    = time.time()
+            agora     = time.time()
             vitima_id = str(vitima.id)
 
             ultimo_roubo = db.parse_float(ladrao_data['data'][6] if len(ladrao_data['data']) > 6 else None)
@@ -146,68 +151,76 @@ class Economy(commands.Cog):
             inv_ladrao = [i.strip() for i in str(ladrao_data['data'][5] if len(ladrao_data['data']) > 5 else "").split(',') if i.strip()]
             inv_alvo   = [i.strip() for i in str(alvo_data['data'][5]   if len(alvo_data['data'])   > 5 else "").split(',') if i.strip()]
 
-            # ── USO DO PÉ DE CABRA ───────────────────────────────────────────
+            # ── PÉ DE CABRA ──────────────────────────────────────────────────
             usou_pe_de_cabra = False
-            chance_sucesso = 45  # Chance base sem itens
-            
+            chance_sucesso   = 45
+
             if "Pé de Cabra" in inv_ladrao:
-                chance_sucesso = 65  # Aumenta para 65%
+                chance_sucesso   = 65
                 usou_pe_de_cabra = True
-                inv_ladrao.remove("Pé de Cabra")  # Consome o item do ladrão
+                inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
-            # ── ESCUDO COM DURAÇÃO DE TEMPO ──────────────────────────────────
-            escudo_ativo = False
-            escudo_expiracao = self.bot.escudos_ativos.get(vitima_id, 0)
+            # ── ESCUDO (sistema de cargas) ────────────────────────────────────
+            # Se o alvo não tem escudo ativo mas tem um no inventário, ativa agora.
+            cargas_atuais = self.bot.escudos_ativos.get(vitima_id, 0)
 
-            # Verifica se o alvo já está com o escudo ativado na memória
-            if escudo_expiracao > agora:
-                escudo_ativo = True
-            # Se não está ativo, mas ele tem no inventário, ativa agora ao receber o ataque!
-            elif "Escudo" in inv_alvo:
-                escudo_expiracao = agora + (6 * 3600)  # Ativa por 6 horas
-                self.bot.escudos_ativos[vitima_id] = escudo_expiracao
-                inv_alvo.remove("Escudo")  # Remove do inventário pois agora está em uso
+            if cargas_atuais == 0 and "Escudo" in inv_alvo:
+                cargas_atuais = ESCUDO_CARGAS                 # ativa com 3 cargas
+                self.bot.escudos_ativos[vitima_id] = cargas_atuais
+                inv_alvo.remove("Escudo")
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
-                escudo_ativo = True
 
-            msg_escudo_inutilizado = ""
+            escudo_ativo = cargas_atuais > 0
+
+            msg_escudo = ""
             if escudo_ativo:
                 if usou_pe_de_cabra:
-                    # Se usou pé de cabra, apenas avisa e IGNORA o escudo (segue o código para roubar)
-                    # O Escudo do alvo NÃO é destruído, ele continua na lista 'escudos_ativos' protegendo contra outros
-                    msg_escudo_inutilizado = f"\n🛠️ O seu **Pé de Cabra** arrombou a porta e ignorou o **Escudo** de {vitima.mention}! *(O escudo dele continua ativo contra ladrões comuns)*"
+                    # Pé de Cabra perfura o escudo sem consumir carga — roubo prossegue normalmente
+                    msg_escudo = (
+                        f"\n🛠️ O seu **Pé de Cabra** arrombou a porta e ignorou o **Escudo** de {vitima.mention}! "
+                        f"*(Cargas restantes do escudo: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️)*"
+                    )
                 else:
-                    # Ladrão normal sem pé de cabra: esbarra no escudo e é bloqueado
+                    # Bloqueia o ataque e consome 1 carga
+                    cargas_atuais -= 1
                     db.update_value(ladrao_data['row'], 7, agora)
 
-                    # --- CONQUISTA: CASCA GROSSA ---
+                    if cargas_atuais > 0:
+                        self.bot.escudos_ativos[vitima_id] = cargas_atuais
+                        msg_bloqueio = (
+                            f"🛡️ {vitima.mention} está protegido por um **Escudo** e bloqueou seu ataque!\n"
+                            f"⚡ O escudo absorveu o golpe. Cargas restantes: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️"
+                        )
+                    else:
+                        # Última carga consumida — escudo quebra
+                        del self.bot.escudos_ativos[vitima_id]
+                        msg_bloqueio = (
+                            f"🛡️ {vitima.mention} estava protegido por um **Escudo** e bloqueou seu ataque!\n"
+                            f"💥 Mas era a última carga — o escudo **QUEBROU** com o impacto! {vitima.mention} ficou desprotegido."
+                        )
+
+                    # Conquista: tentou roubar alguém com escudo
                     conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
                     lista_c = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
                     if "casca_grossa" not in lista_c:
                         lista_c.append("casca_grossa")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_c))
-                    # --------------------------------
 
-                    return await ctx.send(
-                        f"🛡️ {vitima.mention} está protegido por um **Escudo** e bloqueou seu ataque!\n"
-                        f"🕐 A proteção expira <t:{int(escudo_expiracao)}:R>."
-                    )
+                    return await ctx.send(msg_bloqueio)
             # ─────────────────────────────────────────────────────────────────
 
-            # Rola os dados do roubo: 45% (normal) ou 65% (se usou pé de cabra)
             if random.randint(1, 100) <= chance_sucesso:
-                # ── NOVA LÓGICA DE BALANCEAMENTO DE POBREZA ──
+                # ── Cálculo do valor roubado ──────────────────────────────────
                 if saldo_alvo < 500:
-                    pct = random.uniform(0.01, 0.05)  # Roubo com pena: 1% a 5%
+                    pct      = random.uniform(0.01, 0.05)
                     is_pobre = True
                 else:
-                    pct = random.uniform(0.05, 0.10)  # Roubo normal: 5% a 10%
+                    pct      = random.uniform(0.05, 0.10)
                     is_pobre = False
 
                 valor_roubado = min(round(saldo_alvo * pct, 2), 12000.0)
 
-                # FIX BUG 3: se o valor calculado for irrisório, cancela sem aplicar cooldown
                 if valor_roubado < 5:
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco.")
 
@@ -226,11 +239,10 @@ class Economy(commands.Cog):
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao + valor_roubado + bounty_ganho, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
 
-                # Bounty automático: 12% do roubado, máximo 2.000 MC
                 bounty_adicionado = min(round(valor_roubado * 0.12, 2), 2000.0)
                 self.bot.recompensas[ladrao_id] = round(self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado, 2)
 
-                # --- SISTEMA DE CONQUISTA: MESTRE DAS SOMBRAS ---
+                # --- CONQUISTA: MESTRE DAS SOMBRAS ---
                 tracker = self.bot.tracker_emblemas['roubos_sucesso']
                 if ladrao_id not in tracker: tracker[ladrao_id] = []
                 tracker[ladrao_id] = [t for t in tracker[ladrao_id] if agora - t < 86400]
@@ -245,38 +257,37 @@ class Economy(commands.Cog):
                         lista_conquistas.append("mestre_sombras")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_conquistas))
                         conquista_msg = "\n🏆 Você desbloqueou a conquista **Mestre das Sombras**!"
-                # ------------------------------------------------
+                # ------------------------------------
 
-                # ── MENSAGEM DINÂMICA ──
                 if is_pobre:
                     mensagem = f"🥷 **SUCESSO (Mas com pena)...** {vitima.mention} está quase na miséria, então você levou só as moedinhas: **{valor_roubado:.2f} MC**."
                 else:
                     mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} MC** de {vitima.mention}!"
 
-                if usou_pe_de_cabra: 
+                if usou_pe_de_cabra:
                     mensagem += " *(Usou Pé de Cabra 🕵️)*"
-                if bounty_ganho > 0: 
+                if bounty_ganho > 0:
                     mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} MC**!"
-                
-                mensagem += msg_escudo_inutilizado
+
+                mensagem += msg_escudo
                 mensagem += seguro_msg
                 mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} MC** colocada na sua cabeça!*"
                 mensagem += conquista_msg
                 await ctx.send(mensagem)
+
             else:
-                # Multa: 5–10% do saldo do ladrão, mínimo 30 MC, máximo 5.000 MC
                 pct_multa = random.uniform(0.05, 0.10)
                 multa = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
                 db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
-                
+
                 mensagem_falha = f"👮 **PRESO!** O roubo falhou e você pagou **{multa:.2f} MC** de multa para {vitima.mention}."
                 if usou_pe_de_cabra:
                     mensagem_falha += " *(Usou Pé de Cabra mas deu azar 🕵️)*"
-                mensagem_falha += msg_escudo_inutilizado
-                
+                mensagem_falha += msg_escudo
+
                 await ctx.send(mensagem_falha)
 
         except commands.CommandError:
@@ -319,7 +330,6 @@ class Economy(commands.Cog):
             if valor == 0.01:
                 conquistas_pag = str(pag['data'][9]) if len(pag['data']) > 9 else ""
                 lista_conquistas = [c.strip() for c in conquistas_pag.split(',') if c.strip()]
-
                 if "pix_irritante" not in lista_conquistas:
                     lista_conquistas.append("pix_irritante")
                     db.update_value(pag['row'], 10, ", ".join(lista_conquistas))

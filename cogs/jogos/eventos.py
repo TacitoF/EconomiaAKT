@@ -271,25 +271,84 @@ class Eventos(commands.Cog):
             mencao = canal.mention if canal else "#🎰・akbet"
             return await ctx.send(f"⚠️ {ctx.author.mention}, use este comando no canal {mencao}!")
 
-        embed = disnake.Embed(title="🎰 AK-BET JOGOS", description="Transforme seus Macacoins em fortuna!", color=disnake.Color.purple())
-        embed.add_field(name="🎮 Comandos Disponíveis", inline=False, value=(
-            "🚀 **!crash <valor>** - Foguetinho! Suba no cipó e clique em **Sacar**.\n"
-            "🃏 **!carta @user <valor>** - Duelo de Cartas (aceite via botão).\n"
-            "♠️ **!21 <valor>** - Blackjack contra o dealer (lobby com botões).\n"
-            "🎰 **!cassino <valor>** - Caça-níquel clássico.\n"
-            "🥥 **!coco <valor>** - Roleta do Coco Explosivo (entre via botão).\n"
-            "🐒 **!corrida <animal> <valor>** - Aposte no Macaquinho, Gorila ou Orangutango.\n"
-            "🦁 **!bicho <animal> <valor>** - Aposte em: Leao, Cobra, Jacare, Arara, Elefante.\n"
-            "💣 **!minas <1-5> <valor>** - Sobreviva ao campo minado.\n"
-            "⚔️ **!briga @user <valor>** - PvP (aceite via botão)!\n"
-            "🎫 **!loteria** - Bilhete por 500 MC para concorrer ao pote.\n"
-            "💰 **!pote** - Veja o pote atual da loteria.\n"
-            "🎰 **!roleta** - Mesa de Roleta Multiplayer! (30s)\n"
-            "🪙 **!apostar <valor> <opção>** - Entre na rodada da Roleta.\n"
-            "  ↳ *Cores/Par/Ímpar pagam **2x** | Números exatos pagam **36x**!*\n"
-            "⚽ **!futebol** - Ver os próximos jogos e apostar pelo menu.\n"
-            "  ↳ Use `!pule` para ver seus bilhetes de apostas esportivas."
-        ))
+        embed = disnake.Embed(
+            title       = "🎰 AK-BET — CASSINO DA SELVA",
+            description = "Escolha seu veneno e transforme seus **Macacoins** em fortuna!\nTodos os jogos usam **botões interativos**. 🐒",
+            color       = disnake.Color.from_rgb(255, 180, 0),  # dourado
+        )
+
+        embed.add_field(
+            name  = "🃏 Jogos Solo",
+            value = (
+                "🚀 **!crash `<valor>`**\n"
+                "╰ Suba no cipó e saque antes de arrebentar!\n"
+                "♠️ **!21 `<valor>`**\n"
+                "╰ Blackjack completo contra o dealer.\n"
+                "🎰 **!cassino `<valor>`**\n"
+                "╰ Caça-níquel — 3 iguais = JACKPOT `10x`!\n"
+                "💣 **!minas `<1-5 bombas>` `<valor>`**\n"
+                "╰ Campo minado — mais bombas, mais risco, mais lucro.\n"
+                "🌿 **!cipó `<valor>`** *(alias: crash)*"
+            ),
+            inline = False,
+        )
+
+        embed.add_field(
+            name  = "🦁 Apostas de Sorte",
+            value = (
+                "🎲 **!bicho `<valor>`**\n"
+                "╰ Escolha um animal via botão e torça! Paga **4x**.\n"
+                "🐒 **!corrida `<animal>` `<valor>`**\n"
+                "╰ Macaquinho, Gorila ou Orangutango — paga **2x**.\n"
+                "🦁 *Animais do bicho:* Leão · Cobra · Jacaré · Arara · Elefante"
+            ),
+            inline = False,
+        )
+
+        embed.add_field(
+            name  = "⚔️ PvP — Jogador vs Jogador",
+            value = (
+                "🃏 **!carta `@user` `<valor>`**\n"
+                "╰ Duelo de cartas — maior carta leva tudo.\n"
+                "🥊 **!briga `@user` `<valor>`**\n"
+                "╰ Luta de macacos — sorte decide o nocaute."
+            ),
+            inline = False,
+        )
+
+        embed.add_field(
+            name  = "👥 Multiplayer",
+            value = (
+                "🥥 **!coco `<valor>`**\n"
+                "╰ Roleta do Coco Explosivo — sobreviva à explosão!\n"
+                "🎰 **!roleta** → depois **!apostar `<valor>` `<opção>`**\n"
+                "╰ Mesa aberta por 30s. Cores/Par/Ímpar = **2x** · Número exato = **36x**!"
+            ),
+            inline = False,
+        )
+
+        embed.add_field(
+            name  = "⚽ Apostas Esportivas",
+            value = (
+                "**!futebol** — veja os próximos jogos e aposte pelo menu.\n"
+                "**!pule** — seus bilhetes esportivos pendentes.\n"
+                "╰ Odd fixa **2x** · Pagamento automático após o jogo."
+            ),
+            inline = False,
+        )
+
+        embed.add_field(
+            name  = "🎫 Loteria",
+            value = (
+                "**!loteria** — compre um bilhete por **500 MC**.\n"
+                "**!pote** — veja o prêmio acumulado.\n"
+                "╰ Sorteio manual pelo Admin com `!sortear_loteria`."
+            ),
+            inline = False,
+        )
+
+        embed.set_footer(text="💡 Dica: use !saldo para ver seus MC antes de apostar.")
+        await ctx.send(embed=embed)
         embed.set_footer(text="Todos os jogos com interação por botões! 🐒")
         await ctx.send(embed=embed)
 

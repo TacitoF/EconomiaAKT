@@ -9,7 +9,7 @@ class Patchnotes(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização no canal oficial."""
+        """Publica as notas de atualização v7.3 no canal oficial."""
         try:
             await ctx.message.delete()
         except:
@@ -25,71 +25,51 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="⚔️ ATUALIZAÇÃO DA SELVA: v7.2 — A GUERRA DOS ITENS ⚔️",
+            title="🎖️ ATUALIZAÇÃO DA SELVA: v7.3 — RESISTÊNCIA TOTAL 🎖️",
             description=(
-                "A disputa por moedas acabou de ficar muito mais estratégica. "
-                "O Escudo de 6 horas recebeu um predador natural: O Pé de Cabra foi forjado!"
+                "A v7.3 chegou focada em durabilidade e visual! "
+                "Reformulamos a defesa dos seus Conguitos e a estética de um dos clássicos da selva."
             ),
-            color=disnake.Color.dark_red()
+            color=disnake.Color.green()
         )
 
         embed.add_field(
-            name="🛠️ Pé de Cabra — O Pesadelo dos Ricos",
+            name="🛡️ Escudo 2.0: Agora por Cargas",
             inline=False,
             value=(
-                "**Antes:** Apenas aumentava a chance de roubo.\n"
-                "**Agora:** Além de aumentar a chance de sucesso para **65%**, o Pé de Cabra **IGNORA A PROTEÇÃO DO ESCUDO!**\n\n"
-                "• **Invasão:** Se o alvo tiver um Escudo ativo (das 6 horas), o Pé de Cabra vai arrombar a porta e realizar o roubo normalmente.\n"
-                "• **Consumo:** O Pé de Cabra quebra após o uso (sendo consumido do seu inventário), quer o roubo dê certo ou não."
+                "**Antes:** Proteção por 6 horas (podia expirar sem você ser atacado).\n"
+                "**Agora:** O Escudo protege você contra **3 tentativas de roubo**!\n\n"
+                "• **Sem Tempo Limite:** O escudo não some mais com o passar das horas. Ele fica ativo até que 3 ladrões tentem te roubar.\n"
+                "• **Consumo por Uso:** Cada vez que um ladrão (sem pé de cabra) for bloqueado por você, o escudo perde 1 carga.\n"
+                "• **Estratégia:** Agora você tem a certeza de que seu investimento de 700 MC vai bloquear exatamente 3 ataques."
             )
         )
 
         embed.add_field(
-            name="🛡️ Como fica o Escudo?",
+            name="🦅 Jogo do Bicho: Cara Nova",
             inline=False,
             value=(
-                "O Escudo ainda é essencial! Mesmo que um ladrão de elite use um Pé de Cabra para te roubar, o seu **Escudo NÃO é destruído**. "
-                "Ele continuará ativo e protegendo você contra todos os outros ladrões comuns pelas horas que restarem da sua duração."
+                "• **Nova Interface:** O comando `!bicho` recebeu uma renovação visual completa.\n"
+                "• **Mais Clareza:** Agora ficou muito mais fácil identificar seus palpites, os bichos sorteados e os seus ganhos."
             )
         )
 
         embed.add_field(
-            name="⚖️ Por que essa mudança?",
+            name="🛠️ Lembrete: Pé de Cabra",
             inline=False,
             value=(
-                "O Escudo de 6 horas estava deixando os jogadores mais ricos intocáveis. "
-                "Agora, quem quiser investir **1.200 MC** em um Pé de Cabra tem a ferramenta certa para caçar os grandes alvos, "
-                "criando uma economia de risco e recompensa muito mais dinâmica."
+                "• O Pé de Cabra continua sendo a única ferramenta capaz de ignorar o Escudo, "
+                "mas atenção: ele agora consome **1 carga** do escudo do alvo ao passar pela defesa!"
             )
         )
 
-        embed.add_field(
-            name="📋 Resumo da Guerra",
-            inline=False,
-            value=(
-                "🥷 **Ladrão Normal vs Escudo:** O Ladrão é bloqueado, leva multa e perde o turno.\n"
-                "🛠️ **Pé de Cabra vs Escudo:** O Escudo é ignorado! O Ladrão tem 65% de chance de levar o dinheiro.\n"
-                "🛡️ **Sobrevivência do Escudo:** O Escudo da vítima continua ativo contra futuros ataques sem Pé de Cabra."
-            )
-        )
-
-        # ─── NOVIDADE: CORREÇÃO NOS ESPORTES ───
-        embed.add_field(
-            name="⚽ Correção nos Esportes (!palpite)",
-            inline=False,
-            value=(
-                "Sabe aquele erro chato de **'Esta interação falhou'** ao tentar apostar em times com nomes gigantescos (tipo *Sporting Clube de Portugal*)? "
-                "**Foi resolvido!** Agora o sistema adapta o texto automaticamente e você pode fazer seus palpites em qualquer partida sem dores de cabeça."
-            )
-        )
-
-        embed.set_footer(text="Koba: Proteção é boa, mas nenhuma porta é inquebrável. 🌴")
+        embed.set_footer(text="Koba: Resistência é a chave da sobrevivência. 🌴")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **ATUALIZAÇÃO DE BALANCEAMENTO & CORREÇÕES!** @everyone 🚨\n",
+            content="🚨 **NOVA VERSÃO DISPONÍVEL! v7.3** @everyone 🚨\n",
             embed=embed
         )
 

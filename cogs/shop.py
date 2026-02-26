@@ -46,8 +46,8 @@ class Shop(commands.Cog):
         embed.add_field(
             name="🛡️ Equipamentos",
             value=(
-                "🛡️ **Escudo** — `700 MC` | Bloqueia 1 roubo.\n"
-                "🕵️ **Pé de Cabra** — `1.200 MC` | Aumenta chance de roubo para 65%.\n"
+                "🛡️ **Escudo** — `700 MC` | Bloqueio contra 3 tentativas de roubos.\n"
+                "🕵️ **Pé de Cabra** — `1.200 MC` | Aumenta chance de roubo para 65% e ignora o .\n"
                 "📄 **Seguro** — `950 MC` | Recupera 60% do valor se for roubado."
             ), inline=False
         )
