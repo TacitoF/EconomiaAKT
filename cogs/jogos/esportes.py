@@ -35,7 +35,6 @@ def hora_br(utc_str):
     dt = datetime.fromisoformat(utc_str.replace('Z', ''))
     return (dt - timedelta(hours=3)).strftime('%d/%m às %H:%M')
 
-
 # ──────────────────────────────────────────────
 #  MODAL — pede o valor após escolher palpite
 # ──────────────────────────────────────────────
@@ -51,9 +50,14 @@ class ModalValorAposta(disnake.ui.Modal):
         EMOJI  = {"casa": "🏠", "empate": "🤝", "fora": "✈️"}
         LABELS = {"casa": time_casa, "empate": "Empate", "fora": time_fora}
 
+        # O Discord limita o título e as labels dos modais a 45 caracteres no máximo!
+        # Usamos [:45] para garantir que nomes de times muito longos não quebrem a interface.
+        label_str = f"{EMOJI.get(palpite,'🎯')} Palpite: {LABELS.get(palpite, palpite)}"[:45]
+        title_str = f"💰 {time_casa} x {time_fora}"[:45]
+
         components = [
             disnake.ui.TextInput(
-                label=f"{EMOJI.get(palpite,'🎯')} Apostando em: {LABELS.get(palpite, palpite)}",
+                label=label_str,
                 placeholder="Digite o valor em MC (ex: 100)",
                 custom_id="valor_aposta",
                 style=disnake.TextInputStyle.short,
@@ -61,7 +65,7 @@ class ModalValorAposta(disnake.ui.Modal):
                 max_length=12,
             )
         ]
-        super().__init__(title=f"💰 {time_casa} vs {time_fora}", components=components)
+        super().__init__(title=title_str, components=components)
 
     async def callback(self, inter: disnake.ModalInteraction):
         await inter.response.defer(ephemeral=True)
