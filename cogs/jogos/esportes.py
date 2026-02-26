@@ -407,7 +407,7 @@ class Esportes(commands.Cog):
     #  Loop — checa resultados a cada 60 min
     #  FIX BUG 11: retry automático em caso de falha na API, com logging detalhado
     # ──────────────────────────────────────────
-    @tasks.loop(minutes=60, reconnect=True)
+    @tasks.loop(minutes=15, reconnect=True)
     async def checar_resultados(self):
         print(f"🔄 [{datetime.utcnow().strftime('%H:%M:%S')}] checar_resultados: iniciando verificação...")
 
