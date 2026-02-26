@@ -274,7 +274,7 @@ class Eventos(commands.Cog):
         embed = disnake.Embed(
             title       = "🎰 AK-BET — CASSINO DA SELVA",
             description = "Escolha seu veneno e transforme seus **Macacoins** em fortuna!\nTodos os jogos usam **botões interativos**. 🐒",
-            color       = disnake.Color.from_rgb(255, 180, 0),  # dourado
+            color       = disnake.Color.from_rgb(255, 180, 0)  # dourado
         )
 
         embed.add_field(
@@ -288,7 +288,8 @@ class Eventos(commands.Cog):
                 "╰ Caça-níquel — 3 iguais = JACKPOT `10x`!\n"
                 "💣 **!minas `<1-5 bombas>` `<valor>`**\n"
                 "╰ Campo minado — mais bombas, mais risco, mais lucro.\n"
-                "🌿 **!cipó `<valor>`** *(alias: crash)*"
+                "🌴 **!coqueiro `<valor>` `[1-5 cocos]`**\n"
+                "╰ Plinko da selva — jogue os cocos e mire no jackpot das bordas!\n"
             ),
             inline = False,
         )
@@ -347,9 +348,7 @@ class Eventos(commands.Cog):
             inline = False,
         )
 
-        embed.set_footer(text="💡 Dica: use !saldo para ver seus MC antes de apostar.")
-        await ctx.send(embed=embed)
-        embed.set_footer(text="Todos os jogos com interação por botões! 🐒")
+        embed.set_footer(text="💡 Dica: use !saldo para ver seus MC antes de apostar. | Interação via botões! 🐒")
         await ctx.send(embed=embed)
 
 def setup(bot):

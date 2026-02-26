@@ -9,7 +9,7 @@ class Patchnotes(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização v7.3 no canal oficial."""
+        """Publica as notas de atualização do Coqueiro no canal oficial."""
         try:
             await ctx.message.delete()
         except:
@@ -25,51 +25,52 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="🎖️ ATUALIZAÇÃO DA SELVA: v7.3 — RESISTÊNCIA TOTAL 🎖️",
+            title="🌴 ATUALIZAÇÃO DA SELVA: O COQUEIRO CHEGOU! 🌴",
             description=(
-                "A v7.3 chegou focada em durabilidade e visual! "
-                "Reformulamos a defesa dos seus Conguitos e a estética de um dos clássicos da selva."
+                "A selva acaba de ganhar um novo jogo! Vá até o canal de apostas e experimente o **Coqueiro** (Plinko)."
             ),
-            color=disnake.Color.green()
+            color=disnake.Color.dark_green()
         )
 
         embed.add_field(
-            name="🛡️ Escudo 2.0: Agora por Cargas",
+            name="🥥 Como Jogar",
             inline=False,
             value=(
-                "**Antes:** Proteção por 6 horas (podia expirar sem você ser atacado).\n"
-                "**Agora:** O Escudo protege você contra **3 tentativas de roubo**!\n\n"
-                "• **Sem Tempo Limite:** O escudo não some mais com o passar das horas. Ele fica ativo até que 3 ladrões tentem te roubar.\n"
-                "• **Consumo por Uso:** Cada vez que um ladrão (sem pé de cabra) for bloqueado por você, o escudo perde 1 carga.\n"
-                "• **Estratégia:** Agora você tem a certeza de que seu investimento de 700 MC vai bloquear exatamente 3 ataques."
+                "Use o comando `!coqueiro <valor> [quantidade de cocos]`.\n"
+                "Você pode jogar de **1 a 5 cocos** de uma vez. "
+                "Eles cairão pela palmeira rebatendo nos galhos até chegarem na base."
             )
         )
 
         embed.add_field(
-            name="🦅 Jogo do Bicho: Cara Nova",
+            name="💰 Multiplicadores",
             inline=False,
             value=(
-                "• **Nova Interface:** O comando `!bicho` recebeu uma renovação visual completa.\n"
-                "• **Mais Clareza:** Agora ficou muito mais fácil identificar seus palpites, os bichos sorteados e os seus ganhos."
+                "O objetivo é que o seu coco caia nas **bordas** para pegar os Jackpots!\n"
+                "• **Bordas:** Lucros altos (Até 15x)\n"
+                "• **Centro:** Paga menos que a aposta (0.2x a 0.5x)\n\n"
+                "*(Dica: Jogar vários cocos ao mesmo tempo pode equilibrar as perdas do centro com os ganhos das bordas)*"
             )
         )
 
         embed.add_field(
-            name="🛠️ Lembrete: Pé de Cabra",
+            name="⚠️ AVISO IMPORTANTE: FASE DE TESTES (BETA)",
             inline=False,
             value=(
-                "• O Pé de Cabra continua sendo a única ferramenta capaz de ignorar o Escudo, "
-                "mas atenção: ele agora consome **1 carga** do escudo do alvo ao passar pela defesa!"
+                "O jogo foi recém-lançado e está em período de **testes de balanceamento**. "
+                "Isso significa que os multiplicadores podem mudar nos próximos dias. "
+                "**Quaisquer valores ganhos indevidamente (ou perdidos) devido a bugs graves ou falhas de economia poderão ser revertidos sem aviso prévio.** "
+                "Jogue com responsabilidade!"
             )
         )
 
-        embed.set_footer(text="Koba: Resistência é a chave da sobrevivência. 🌴")
+        embed.set_footer(text="Koba: Que a sorte dos ancestrais guie os seus cocos! 🐒")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **NOVA VERSÃO DISPONÍVEL! v7.3** @everyone 🚨\n",
+            content="🚨 **NOVO JOGO DISPONÍVEL! (BETA)** @everyone 🚨\n",
             embed=embed
         )
 

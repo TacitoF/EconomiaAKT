@@ -34,7 +34,7 @@ class General(commands.Cog):
         ))
         embed.add_field(name="😈 ROUBOS, CAÇADAS E SABOTAGEM", inline=False, value=(
             "🥷 `!roubar @user` — Tente roubar alguém (cooldown 2h)\n"
-            "🛡️ `!escudo` — Ativa seu Escudo ou consulta o tempo restante\n"
+            "🛡️ `!escudo` — Ativa seu Escudo ou consulta as cargas\n"
             "🚨 `!recompensa @user <valor>` — Coloque cabeça a prêmio\n"
             "📜 `!recompensas` — Lista de procurados\n"
             "🍌 `!casca @user` — Usa Casca de Banana\n"
@@ -50,7 +50,7 @@ class General(commands.Cog):
         embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
             "🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
             "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!loteria` | 💰 `!pote` | 🃏 `!carta`\n"
-            "💣 `!minas` | ♠️ `!21`\n"
+            "💣 `!minas` | ♠️ `!21` | 🌴 `!coqueiro`\n"
             "*Use `!jogos` no canal de apostas para ver detalhes*"
         ))
         embed.add_field(name="⚽ APOSTAS ESPORTIVAS (Canal #🎰・akbet)", inline=False, value=(
