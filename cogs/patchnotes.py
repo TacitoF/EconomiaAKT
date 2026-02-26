@@ -73,13 +73,23 @@ class Patchnotes(commands.Cog):
             )
         )
 
+        # ─── NOVIDADE: CORREÇÃO NOS ESPORTES ───
+        embed.add_field(
+            name="⚽ Correção nos Esportes (!palpite)",
+            inline=False,
+            value=(
+                "Sabe aquele erro chato de **'Esta interação falhou'** ao tentar apostar em times com nomes gigantescos (tipo *Sporting Clube de Portugal*)? "
+                "**Foi resolvido!** Agora o sistema adapta o texto automaticamente e você pode fazer seus palpites em qualquer partida sem dores de cabeça."
+            )
+        )
+
         embed.set_footer(text="Koba: Proteção é boa, mas nenhuma porta é inquebrável. 🌴")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="🚨 **ATUALIZAÇÃO DE BALANCEAMENTO!** @everyone 🚨\n",
+            content="🚨 **ATUALIZAÇÃO DE BALANCEAMENTO & CORREÇÕES!** @everyone 🚨\n",
             embed=embed
         )
 
