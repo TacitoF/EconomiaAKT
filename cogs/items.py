@@ -4,8 +4,7 @@ import database as db
 import time
 import asyncio
 
-ESCUDO_CARGAS   = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
-IMPOSTO_CARGAS  = 5  # Número de trabalhos taxados pelo Imposto do Gorila
+ESCUDO_CARGAS = 5  # Número de roubos que o Escudo bloqueia antes de quebrar
 
 class Items(commands.Cog):
     def __init__(self, bot):
@@ -20,104 +19,87 @@ class Items(commands.Cog):
         if ctx.channel.name != '🐒・conguitos':
             canal = disnake.utils.get(ctx.guild.channels, name='🐒・conguitos')
             mencao = canal.mention if canal else "#🐒・conguitos"
-            await ctx.send(f"⚠️ {ctx.author.mention}, use itens no canal {mencao}!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, usa itens no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["banana"])
     async def casca(self, ctx, vitima: disnake.Member = None):
         if vitima is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!casca @usuario`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!casca @usuario`")
         if vitima.id == ctx.author.id:
-            return await ctx.send(f"🐒 {ctx.author.mention}, não pode jogar uma casca no próprio pé!")
+            return await ctx.send(f"🐒 {ctx.author.mention}, não podes atirar uma casca ao próprio pé!")
 
         try:
             user = db.get_user_data(str(ctx.author.id))
-            if not user: return await ctx.send("❌ Você não tem conta!")
+            if not user: return await ctx.send("❌ Não tens conta!")
 
             inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
             if "Casca de Banana" not in inv_list:
-                return await ctx.send("❌ Você não tem uma **Casca de Banana** no inventário!")
+                return await ctx.send("❌ Não tens uma **Casca de Banana** no inventário!")
 
             inv_list.remove("Casca de Banana")
             db.update_value(user['row'], 6, ", ".join(inv_list))
             self.bot.cascas.add(str(vitima.id))
-            await ctx.send(f"🍌 {ctx.author.mention} jogou uma Casca de Banana no pé de {vitima.mention}! O próximo passo dele será uma tragédia...")
+            await ctx.send(f"🍌 {ctx.author.mention} atirou uma Casca de Banana aos pés de {vitima.mention}! O próximo passo dele será uma tragédia...")
 
         except commands.CommandError:
             raise
         except Exception as e:
             print(f"❌ Erro no !casca de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
     @commands.command(aliases=["imposto"])
     async def taxar(self, ctx, vitima: disnake.Member = None):
         if vitima is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!taxar @usuario`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!taxar @usuario`")
         if vitima.id == ctx.author.id:
-            return await ctx.send("❌ Você não pode taxar a si mesmo!")
+            return await ctx.send("❌ Não podes taxar a ti mesmo!")
         if vitima.bot:
             return await ctx.send("🤖 Bots não pagam impostos!")
 
         try:
             user = db.get_user_data(str(ctx.author.id))
-            if not user: return await ctx.send("❌ Você não tem conta!")
+            if not user: return await ctx.send("❌ Não tens conta!")
 
             inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
             if "Imposto do Gorila" not in inv_list:
-                return await ctx.send("❌ Você não tem o item **Imposto do Gorila** no inventário!")
+                return await ctx.send("❌ Não tens o item **Imposto do Gorila** no inventário!")
 
             vitima_id = str(vitima.id)
             if vitima_id in self.bot.impostos and self.bot.impostos[vitima_id].get('cargas', 0) > 0:
-<<<<<<< HEAD
-                cargas_rest = self.bot.impostos[vitima_id]['cargas']
-                return await ctx.send(f"❌ {vitima.mention} já está sob imposto! Ainda restam **{cargas_rest} cobrança(s)**.")
-=======
                 cargas_restantes = self.bot.impostos[vitima_id]['cargas']
                 return await ctx.send(f"❌ {vitima.mention} já está sob imposto! Restam **{cargas_restantes} trabalhos** taxados para ele.")
->>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
 
             inv_list.remove("Imposto do Gorila")
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
-<<<<<<< HEAD
-            self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': IMPOSTO_CARGAS}
-            # Persiste no Sheets para sobreviver a restarts
-            vitima_db = db.get_user_data(vitima_id)
-            if vitima_db:
-                db.set_imposto(vitima_db['row'], str(ctx.author.id), IMPOSTO_CARGAS)
-            await ctx.send(
-                f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila de {vitima.mention}!\n"
-                f"💸 Nos próximos **{IMPOSTO_CARGAS} trabalhos** de {vitima.mention}, **25% do salário** vai direto para você."
-            )
-=======
             # Imposto agora dura 5 trabalhos ao invés de 24 horas
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
-            await ctx.send(f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila de {vitima.mention}. Durante os próximos **5 trabalhos** dele, 25% do suor irá para você!")
->>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
+            await ctx.send(f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila a {vitima.mention}. Durante os próximos **5 trabalhos** dele, 25% do suor irá para ti!")
 
         except commands.CommandError:
             raise
         except Exception as e:
             print(f"❌ Erro no !taxar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
     @commands.command(aliases=["nick", "renomear"])
     async def apelidar(self, ctx, vitima: disnake.Member = None, *, novo_nick: str = None):
         if vitima is None or novo_nick is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!apelidar @usuario <novo nick>`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!apelidar @usuario <novo nick>`")
         if len(novo_nick) > 32:
             return await ctx.send("❌ Nick muito longo (máx: 32 caracteres).")
 
         try:
             user = db.get_user_data(str(ctx.author.id))
-            if not user: return await ctx.send("❌ Você não tem conta!")
+            if not user: return await ctx.send("❌ Não tens conta!")
 
             inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
             if "Troca de Nick" not in inv_list:
-                return await ctx.send("❌ Você não tem o item **Troca de Nick** no inventário!")
+                return await ctx.send("❌ Não tens o item **Troca de Nick** no inventário!")
 
             nick_antigo = vitima.display_name
             try:
@@ -129,7 +111,7 @@ class Items(commands.Cog):
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
             tempo_fim = int(time.time() + 1800)
-            await ctx.send(f"🪄 {ctx.author.mention} transformou o nome de `{nick_antigo}` em **{novo_nick}**! Efeito passa <t:{tempo_fim}:R>.")
+            await ctx.send(f"🪄 {ctx.author.mention} transformou o nome de `{nick_antigo}` em **{novo_nick}**! O efeito passa <t:{tempo_fim}:R>.")
 
             async def reverter_nick():
                 await asyncio.sleep(1800)
@@ -142,28 +124,20 @@ class Items(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !apelidar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
     @commands.command(aliases=["ativar_escudo", "status_escudo"])
     async def escudo(self, ctx, alvo: disnake.Member = None):
-        """
-        Sem argumentos: consulta o status do seu próprio escudo.
-        Com !escudo @usuario: verifica o escudo de outro jogador.
-        O escudo é ativado automaticamente ao receber o primeiro roubo.
-        Tem 3 cargas — cada roubo bloqueado consome 1 carga.
-        O Pé de Cabra perfura o escudo, mas consome 1 carga no processo.
-        """
         if alvo is None:
             alvo = ctx.author
 
         alvo_id = str(alvo.id)
-
         cargas = self.bot.escudos_ativos.get(alvo_id, 0)
 
         if cargas > 0:
             if alvo.id == ctx.author.id:
                 return await ctx.send(
-                    f"🛡️ {ctx.author.mention}, seu Escudo está **ativo** com **{cargas}/{ESCUDO_CARGAS} cargas** restantes.\n"
+                    f"🛡️ {ctx.author.mention}, o teu Escudo está **ativo** com **{cargas}/{ESCUDO_CARGAS} cargas** restantes.\n"
                     f"Cada tentativa de roubo sofrida consome 1 carga."
                 )
             else:
@@ -184,15 +158,15 @@ class Items(commands.Cog):
                 inv_list.remove("Escudo")
                 db.update_value(user['row'], 6, ", ".join(inv_list))
                 return await ctx.send(
-                    f"🛡️ {ctx.author.mention} ativou seu **Escudo**! "
-                    f"Você está protegido contra **{ESCUDO_CARGAS} tentativas de roubo**.\n"
+                    f"🛡️ {ctx.author.mention} ativou o seu **Escudo**! "
+                    f"Estás protegido contra **{ESCUDO_CARGAS} tentativas de roubo**.\n"
                     f"💡 *O Pé de Cabra perfura o escudo, mas também consome 1 carga do alvo.*"
                 )
 
             if alvo.id == ctx.author.id:
                 return await ctx.send(
-                    f"🛡️ {ctx.author.mention}, você não tem nenhum Escudo ativo nem no inventário.\n"
-                    f"Compre um na `!loja` por **700 MC**!"
+                    f"🛡️ {ctx.author.mention}, não tens nenhum Escudo ativo nem no inventário.\n"
+                    f"Compra um na `!loja` por **700 MC**!"
                 )
             else:
                 return await ctx.send(
@@ -203,7 +177,7 @@ class Items(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !escudo de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
 def setup(bot):
     bot.add_cog(Items(bot))
