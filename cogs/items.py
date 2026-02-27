@@ -76,6 +76,10 @@ class Items(commands.Cog):
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': IMPOSTO_CARGAS}
+            # Persiste no Sheets para sobreviver a restarts
+            vitima_db = db.get_user_data(vitima_id)
+            if vitima_db:
+                db.set_imposto(vitima_db['row'], str(ctx.author.id), IMPOSTO_CARGAS)
             await ctx.send(
                 f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila de {vitima.mention}!\n"
                 f"💸 Nos próximos **{IMPOSTO_CARGAS} trabalhos** de {vitima.mention}, **25% do salário** vai direto para você."

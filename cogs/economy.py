@@ -16,6 +16,28 @@ class Economy(commands.Cog):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
         # Escudos ativos: {user_id: cargas_restantes}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
+        # Carrega impostos persistidos do Sheets (recupera estado após restart)
+        if not bot.impostos:
+            self._carregar_impostos()
+
+    def _carregar_impostos(self):
+        """Lê todos os usuários e restaura impostos ativos salvos na coluna 11."""
+        try:
+            rows = db.sheet.get_all_values()
+            for row in rows[1:]:  # pula cabeçalho
+                if len(row) < 11 or not row[10].strip():
+                    continue
+                user_id_str = str(row[0])
+                cobrador_id, cargas = db.get_imposto({"data": row})
+                if cobrador_id and cargas > 0:
+                    self.bot.impostos[user_id_str] = {
+                        'cobrador_id': cobrador_id,
+                        'cargas':      cargas,
+                    }
+            if self.bot.impostos:
+                print(f"🦍 Impostos restaurados: {len(self.bot.impostos)} ativo(s)")
+        except Exception as e:
+            print(f"⚠️ Erro ao carregar impostos do banco: {e}")
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -67,6 +89,7 @@ class Economy(commands.Cog):
                 cargas_imp   = imposto_data.get('cargas', 0)
                 if cargas_imp <= 0:
                     del self.bot.impostos[user_id]
+                    db.clear_imposto(user['row'])
                     imposto_msg = "\n🕊️ O Imposto do Gorila esgotou suas cargas. Você está livre!"
                 else:
                     taxa  = round(ganho * 0.25, 2)
@@ -74,9 +97,11 @@ class Economy(commands.Cog):
                     cargas_imp -= 1
                     if cargas_imp <= 0:
                         del self.bot.impostos[user_id]
+                        db.clear_imposto(user['row'])
                         resto_msg = "\n🕊️ Era a última carga do Imposto — você está livre!"
                     else:
                         self.bot.impostos[user_id]['cargas'] = cargas_imp
+                        db.set_imposto(user['row'], imposto_data['cobrador_id'], cargas_imp)
                         resto_msg = f" *({cargas_imp} cobrança(s) restante(s) 🦍)*"
                     cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
                     if cobrador_db:

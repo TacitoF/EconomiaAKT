@@ -9,7 +9,7 @@ class Patchnotes(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização v7.4 no canal oficial."""
+        """Publica as notas de atualização v7.5 no canal oficial."""
         try:
             await ctx.message.delete()
         except:
@@ -25,71 +25,62 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="📜 REGISTRO DE ATUALIZAÇÕES: v7.4 — EVOLUÇÃO TÁTICA",
+            title="📜 REGISTRO DE ATUALIZAÇÕES: v7.5 — DECRETO DO GORILA",
             description=(
-                "Implementamos uma série de novos sistemas e otimizações para aprimorar a estabilidade da economia e a experiência de jogo no Koba."
+                "Reformulação do sistema de Imposto do Gorila com persistência total — "
+                "além de melhorias visuais na Loja e no Ranking da Selva."
             ),
             color=disnake.Color.dark_green()
         )
 
         embed.add_field(
-            name="🎲 NOVIDADE: Blefe de Dados (!mentira)",
+            name="🦍 REFORMULADO: Imposto do Gorila",
             inline=False,
             value=(
-                "Um novo jogo multiplayer focado em estratégia e blefe foi adicionado. "
-                "Desafie seus amigos em uma mesa de 2 a 6 jogadores e use sua astúcia para levar o pote total."
+                "O **Imposto do Gorila** foi completamente refeito e agora funciona por **cargas**, igual ao Escudo.\n\n"
+                "**Antes:** drenava 25% do salário da vítima por **24 horas** fixas — independente de ela trabalhar ou não.\n"
+                "**Agora:** drena 25% nos próximos **5 trabalhos** da vítima. "
+                "Se ela não trabalhar, o imposto permanece ativo até ser consumido.\n\n"
+                "Isso torna o item muito mais justo e estratégico: "
+                "vale mais usá-lo contra jogadores que trabalham com frequência."
             )
         )
 
         embed.add_field(
-            name="👤 REFORMULADO: Identidade Visual (!perfil)",
+            name="💾 NOVIDADE: Persistência do Imposto",
             inline=False,
             value=(
-                "O comando `!perfil` foi totalmente redesenhado! Agora com um layout mais limpo, "
-                "exibição dinâmica de conquistas e uma barra de progresso visual para o próximo cargo na selva."
+                "O estado do Imposto do Gorila agora é **salvo diretamente no banco de dados**.\n"
+                "Reinicios do bot não apagam mais o imposto ativo — "
+                "as cargas restantes são restauradas automaticamente na inicialização."
             )
         )
 
         embed.add_field(
-            name="🎰 REFORMULADO: Roleta Interativa (!roleta)",
+            name="🛒 VISUAL: Loja Reformulada (!loja)",
             inline=False,
             value=(
-                "A Roleta agora funciona totalmente via **botões e janelas**. "
-                "O comando `!apostar` foi removido para tornar o chat mais limpo e a jogabilidade mais rápida."
+                "A `!loja` foi redesenhada para ficar mais limpa e menos poluída. "
+                "Os cargos agora aparecem em **duas colunas lado a lado**, "
+                "e cada item ocupa apenas uma linha com as informações essenciais."
             )
         )
 
         embed.add_field(
-            name="🎫 NOVIDADE: Raspadinha da Selva (!raspadinha)",
+            name="🏆 VISUAL: Ranking Reformulado (!rank)",
             inline=False,
             value=(
-                "Substituindo o antigo sistema de loteria, a Raspadinha agora conta com uma mecânica visual de revelação acelerada e suspense aprimorado."
+                "O `!rank` ganhou um novo visual com **pódio em destaque** (🥇🥈🥉 em colunas separadas), "
+                "saldos abreviados (ex: `12.5K MC`, `1.2M MC`) e exibição do cargo de cada jogador. "
+                "Se você estiver fora do Top 10, sua posição aparece no final."
             )
         )
 
         embed.add_field(
-            name="🛡️ AJUSTE: Escudo vs Pé de Cabra",
+            name="🛠️ Correções",
             inline=False,
             value=(
-                "O sistema de defesa foi recalibrado. Agora, o **Pé de Cabra** perfura a proteção mas **consome 1 carga** do escudo do alvo no processo. "
-                "A vítima perde a carga, mas o roubo não é bloqueado."
-            )
-        )
-
-        embed.add_field(
-            name="♻️ Comunicado: Remoção do 'Coqueiro'",
-            inline=False,
-            value=(
-                "Após a fase de testes, decidimos remover o jogo Coqueiro permanentemente devido a falhas de renderização na interface do Discord que comprometiam a experiência."
-            )
-        )
-
-        embed.add_field(
-            name="🛠️ Melhorias Gerais",
-            inline=False,
-            value=(
-                "• **Estabilidade:** Correção de bug crítico de reembolso duplo em jogos multiplayer.\n"
-                "• **Performance:** Ajuste fino nos tempos de animação e suspenses de todos os minigames solo.\n"
+                "• **Blackjack:** o emoji 👉 do próximo jogador agora atualiza imediatamente ao passar a vez, sem precisar de uma ação extra.\n"
             )
         )
 
@@ -99,7 +90,7 @@ class Patchnotes(commands.Cog):
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="📢 **ATUALIZAÇÃO DE SISTEMA DISPONÍVEL (v7.4)** @everyone",
+            content="📢 **ATUALIZAÇÃO DE SISTEMA DISPONÍVEL (v7.5)** @everyone",
             embed=embed
         )
 
