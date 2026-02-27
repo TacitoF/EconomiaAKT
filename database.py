@@ -68,9 +68,10 @@ def create_user(user_id, name):
       8  - timestamp_investimento_fixo
       9  - cripto_usos  (FIX BUG 4: antes vazia, agora persiste usos diários de cripto)
       10 - conquistas
+      11 - imposto_gorila  (formato: "cobrador_id|cargas_restantes", vazio = sem imposto)
     """
     try:
-        sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", ""])
+        sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", ""])
     except Exception as e:
         handle_db_error(e)
 
@@ -109,6 +110,47 @@ def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
     try:
         valor = f"{quantidade}|{timestamp_inicio}"
         sheet.update_cell(row, 9, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  IMPOSTO DO GORILA — persistência (coluna 11 / data[10])
+#  Formato armazenado: "cobrador_id|cargas_restantes"
+#  Ex: "123456789|5"   — vazio = sem imposto ativo
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_imposto(user_data: dict) -> tuple[str | None, int]:
+    """
+    Lê e retorna (cobrador_id, cargas_restantes) da coluna 11.
+    Retorna (None, 0) se não houver imposto ativo.
+    """
+    raw = str(user_data['data'][10]) if len(user_data['data']) > 10 else ""
+    raw = raw.strip()
+    if not raw:
+        return None, 0
+    try:
+        partes      = raw.split("|")
+        cobrador_id = partes[0]
+        cargas      = int(partes[1])
+        if cargas <= 0:
+            return None, 0
+        return cobrador_id, cargas
+    except (IndexError, ValueError):
+        return None, 0
+
+def set_imposto(row: int, cobrador_id: str, cargas: int):
+    """Salva o imposto ativo na coluna 11. cargas=0 limpa o campo."""
+    try:
+        valor = f"{cobrador_id}|{cargas}" if cargas > 0 else ""
+        sheet.update_cell(row, 11, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+def clear_imposto(row: int):
+    """Remove o imposto ativo da coluna 11."""
+    try:
+        sheet.update_cell(row, 11, "")
     except Exception as e:
         handle_db_error(e)
 
