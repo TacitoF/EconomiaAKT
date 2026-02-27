@@ -56,7 +56,7 @@ class Shop(commands.Cog):
             value=(
                 "🍌 **Casca de Banana** — `300 MC` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
                 "🦍 **Imposto do Gorila** — `1.000 MC` | Taxa 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
-                "🪄 **Troca de Nick** — `3.000 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
+                "🪄 **Troca de Nick** — `1.500 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
                 "⚡ **Comandos Diretos (sem item):**\n"
                 "🙊 **Maldição Símia** — `500 MC` | Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
                 "🎭 **Impostor** — `500 MC` | Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
@@ -93,7 +93,7 @@ class Shop(commands.Cog):
                 "seguro":            {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
                 "casca de banana":   {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
                 "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1000.0,   "tipo": "item"},
-                "troca de nick":     {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
+                "troca de nick":     {"nome": "Troca de Nick",     "preco": 1500.0,   "tipo": "item"},
             }
 
             escolha = item.lower()
