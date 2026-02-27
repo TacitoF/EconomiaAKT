@@ -4,7 +4,11 @@ import database as db
 import time
 import random
 
-ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
+ESCUDO_CARGAS = 5  # Número de roubos que o Escudo bloqueia antes de quebrar
+
+def formatar_moeda(valor: float) -> str:
+    """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
+    return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 class Economy(commands.Cog):
     def __init__(self, bot):
@@ -14,29 +18,8 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'impostos'): bot.impostos = {}
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
+        # Escudos ativos: {user_id: cargas_restantes}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
-        # Carrega impostos persistidos do Sheets (recupera estado após restart)
-        if not bot.impostos:
-            self._carregar_impostos()
-
-    def _carregar_impostos(self):
-        """Lê todos os usuários e restaura impostos ativos salvos na coluna 11."""
-        try:
-            rows = db.sheet.get_all_values()
-            for row in rows[1:]:  # pula cabeçalho
-                if len(row) < 11 or not row[10].strip():
-                    continue
-                user_id_str = str(row[0])
-                cobrador_id, cargas = db.get_imposto({"data": row})
-                if cobrador_id and cargas > 0:
-                    self.bot.impostos[user_id_str] = {
-                        'cobrador_id': cobrador_id,
-                        'cargas':      cargas,
-                    }
-            if self.bot.impostos:
-                print(f"🦍 Impostos restaurados: {len(self.bot.impostos)} ativo(s)")
-        except Exception as e:
-            print(f"⚠️ Erro ao carregar impostos do banco: {e}")
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -54,13 +37,13 @@ class Economy(commands.Cog):
                 db.create_user(user_id, ctx.author.name)
                 user = db.get_user_data(user_id)
             if not user:
-                return await ctx.send(f"❌ {ctx.author.mention}, erro ao criar sua conta! Tente novamente.")
+                return await ctx.send(f"❌ {ctx.author.mention}, erro ao criar a tua conta! Tenta novamente.")
 
             agora = time.time()
             ultimo_work = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
 
             if agora - ultimo_work < 3600:
-                return await ctx.send(f"⏳ {ctx.author.mention}, você está exausto! Volte <t:{int(ultimo_work + 3600)}:R>.")
+                return await ctx.send(f"⏳ {ctx.author.mention}, estás exausto! Volta <t:{int(ultimo_work + 3600)}:R>.")
 
             if user_id in self.bot.cascas:
                 self.bot.cascas.remove(user_id)
@@ -82,35 +65,9 @@ class Economy(commands.Cog):
             min_ganho, max_ganho = salarios.get(cargo, (40, 80))
             ganho = round(random.uniform(min_ganho, max_ganho), 2)
 
-            # LÓGICA ATUALIZADA DO IMPOSTO: Cargas em vez de tempo
             imposto_msg = ""
             if user_id in self.bot.impostos:
                 imposto_data = self.bot.impostos[user_id]
-<<<<<<< HEAD
-                cargas_imp   = imposto_data.get('cargas', 0)
-                if cargas_imp <= 0:
-                    del self.bot.impostos[user_id]
-                    db.clear_imposto(user['row'])
-                    imposto_msg = "\n🕊️ O Imposto do Gorila esgotou suas cargas. Você está livre!"
-                else:
-                    taxa  = round(ganho * 0.25, 2)
-                    ganho = round(ganho - taxa, 2)
-                    cargas_imp -= 1
-                    if cargas_imp <= 0:
-                        del self.bot.impostos[user_id]
-                        db.clear_imposto(user['row'])
-                        resto_msg = "\n🕊️ Era a última carga do Imposto — você está livre!"
-                    else:
-                        self.bot.impostos[user_id]['cargas'] = cargas_imp
-                        db.set_imposto(user['row'], imposto_data['cobrador_id'], cargas_imp)
-                        resto_msg = f" *({cargas_imp} cobrança(s) restante(s) 🦍)*"
-                    cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
-                    if cobrador_db:
-                        db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
-                    cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
-                    nome_c    = cobrador_user.mention if cobrador_user else "Um Gorila"
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{taxa:.2f} MC** do seu suor!{resto_msg}"
-=======
                 taxa = round(ganho * 0.25, 2)
                 ganho = round(ganho - taxa, 2)
                 
@@ -126,16 +83,16 @@ class Economy(commands.Cog):
                 
                 if cargas_restantes <= 0:
                     del self.bot.impostos[user_id]
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor!\n🕊️ *Seu Imposto do Gorila acabou. Você está livre!*"
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor!\n🕊️ *O teu Imposto do Gorila acabou. Estás livre!*"
                 else:
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
->>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
 
             saldo_atual = db.parse_float(user['data'][2])
-            db.update_value(user['row'], 3, round(saldo_atual + ganho, 2))
+            novo_saldo = round(saldo_atual + ganho, 2)
+            db.update_value(user['row'], 3, novo_saldo)
             db.update_value(user['row'], 5, agora)
 
-            # --- SISTEMA DE CONQUISTA: PROLETÁRIO PADRÃO ---
+            # --- SISTEMA DE CONQUISTA ---
             tracker = self.bot.tracker_emblemas['trabalhos']
             if user_id not in tracker: tracker[user_id] = []
             tracker[user_id] = [t for t in tracker[user_id] if agora - t < 86400]
@@ -148,21 +105,41 @@ class Economy(commands.Cog):
                 if "proletario" not in lista_conquistas:
                     lista_conquistas.append("proletario")
                     db.update_value(user['row'], 10, ", ".join(lista_conquistas))
-                    conquista_msg = "\n🏆 Você desbloqueou a conquista **Proletário Padrão**!"
-            # ------------------------------------------------
+                    conquista_msg = "\n🏆 Desbloqueaste a conquista **Proletário Padrão**!"
 
-            await ctx.send(f"✅ {ctx.author.mention}, como **{cargo}**, você ganhou **{ganho:.2f} Macacoins**!{imposto_msg}{conquista_msg}")
+            proximo_cd = int(agora + 3600)
+            CARGO_CORES = {
+                "Lêmure": 0x8B7540, "Macaquinho": 0x6B8B40, "Babuíno": 0x2E8B57,
+                "Chimpanzé": 0x1A6E9A, "Orangutango": 0xC0560A,
+                "Gorila": 0x7B2D8B, "Ancestral": 0xA01020, "Rei Símio": 0xFFD700,
+            }
+            embed = disnake.Embed(color=CARGO_CORES.get(cargo, 0x2E8B57))
+            embed.set_author(
+                name     = f"{ctx.author.display_name} foi trabalhar",
+                icon_url = ctx.author.display_avatar.url,
+            )
+            
+            embed.add_field(name="💰 Ganho",         value=f"**+{formatar_moeda(ganho)} MC**", inline=True)
+            embed.add_field(name="🏦 Saldo atual",   value=f"`{formatar_moeda(novo_saldo)} MC`", inline=True)
+            embed.add_field(name="⏰ Próximo turno", value=f"<t:{proximo_cd}:R>", inline=True)
+            
+            if imposto_msg:
+                embed.add_field(name="🦍 Imposto do Gorila", value=imposto_msg.strip().lstrip("\n"), inline=False)
+            if conquista_msg:
+                embed.add_field(name="🏆 Conquista!", value=conquista_msg.strip().lstrip("\n"), inline=False)
+            embed.set_footer(text=f"💼 Cargo: {cargo}  ·  !perfil para ver o teu progresso")
+            await ctx.send(embed=embed)
 
         except commands.CommandError:
             raise
         except Exception as e:
             print(f"❌ Erro no !trabalhar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
     @commands.command(aliases=["assaltar", "furtar", "rob"])
     async def roubar(self, ctx, vitima: disnake.Member = None):
         if vitima is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!roubar @usuario`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!roubar @usuario`")
 
         ladrao_id = str(ctx.author.id)
 
@@ -173,7 +150,7 @@ class Economy(commands.Cog):
                 if "palhaco" not in lista_p:
                     lista_p.append("palhaco")
                     db.update_value(ladrao_data['row'], 10, ", ".join(lista_p))
-            return await ctx.send("🐒 Palhaço! Não pode roubar a si mesmo.")
+            return await ctx.send("🐒 Palhaço! Não podes roubar-te a ti mesmo.")
 
         try:
             ladrao_data = db.get_user_data(ladrao_id)
@@ -192,12 +169,12 @@ class Economy(commands.Cog):
 
             ultimo_roubo = db.parse_float(ladrao_data['data'][6] if len(ladrao_data['data']) > 6 else None)
             if agora - ultimo_roubo < 7200:
-                return await ctx.send(f"👮 Você só poderá roubar novamente <t:{int(ultimo_roubo + 7200)}:R>.")
+                return await ctx.send(f"👮 Só podes roubar novamente <t:{int(ultimo_roubo + 7200)}:R>.")
 
             if ladrao_id in self.bot.cascas:
                 self.bot.cascas.remove(ladrao_id)
                 db.update_value(ladrao_data['row'], 7, agora)
-                return await ctx.send(f"🍌 **QUE FASE!** {ctx.author.mention} escorregou numa casca de banana e fugiu de mãos vazias.")
+                return await ctx.send(f"🍌 **QUE AZAR!** {ctx.author.mention} escorregou numa casca de banana e fugiu de mãos vazias.")
 
             inv_ladrao = [i.strip() for i in str(ladrao_data['data'][5] if len(ladrao_data['data']) > 5 else "").split(',') if i.strip()]
             inv_alvo   = [i.strip() for i in str(alvo_data['data'][5]   if len(alvo_data['data'])   > 5 else "").split(',') if i.strip()]
@@ -212,12 +189,11 @@ class Economy(commands.Cog):
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
-            # ── ESCUDO (sistema de cargas) ────────────────────────────────────
-            # Se o alvo não tem escudo ativo mas tem um no inventário, ativa agora.
+            # ── ESCUDO (5 cargas) ────────────────────────────────────
             cargas_atuais = self.bot.escudos_ativos.get(vitima_id, 0)
 
             if cargas_atuais == 0 and "Escudo" in inv_alvo:
-                cargas_atuais = ESCUDO_CARGAS                 # ativa com 3 cargas
+                cargas_atuais = ESCUDO_CARGAS
                 self.bot.escudos_ativos[vitima_id] = cargas_atuais
                 inv_alvo.remove("Escudo")
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
@@ -226,9 +202,8 @@ class Economy(commands.Cog):
             msg_escudo = ""
 
             if escudo_ativo:
-                # Independentemente de ter pé de cabra ou não, o escudo perde 1 carga
                 cargas_atuais -= 1
-                db.update_value(ladrao_data['row'], 7, agora) # O tempo do roubo reseta
+                db.update_value(ladrao_data['row'], 7, agora)
 
                 if cargas_atuais > 0:
                     self.bot.escudos_ativos[vitima_id] = cargas_atuais
@@ -238,24 +213,26 @@ class Economy(commands.Cog):
                     texto_carga = f"*(O escudo **QUEBROU** com o impacto! {vitima.mention} está desprotegido 💥)*"
 
                 if usou_pe_de_cabra:
-                    # Pé de Cabra perfura a defesa (roubo prossegue), mas a carga foi consumida
-                    msg_escudo = f"\n🛠️ Seu **Pé de Cabra** arrombou a porta e danificou o **Escudo** de {vitima.mention}! {texto_carga}"
+                    msg_escudo = f"\n🛠️ O teu **Pé de Cabra** arrombou a porta e danificou o **Escudo** de {vitima.mention}! {texto_carga}"
                 else:
-                    # Sem pé de cabra, o escudo bloqueia o ataque, avisa e cancela o roubo
-                    msg_bloqueio = f"🛡️ {vitima.mention} se defendeu com um **Escudo** e bloqueou seu ataque!\n{texto_carga}"
+                    msg_bloqueio = f"🛡️ {vitima.mention} defendeu-se com um **Escudo** e bloqueou o teu ataque!\n{texto_carga}"
 
-                    # Conquista: tentou roubar alguém com escudo
                     conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
                     lista_c = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
                     if "casca_grossa" not in lista_c:
                         lista_c.append("casca_grossa")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_c))
 
-                    return await ctx.send(msg_bloqueio)
-            # ─────────────────────────────────────────────────────────────────
+                    emb_b = disnake.Embed(
+                        title       = "🛡️ Ataque bloqueado!",
+                        description = f"{vitima.mention} defendeu-se com um **Escudo** e o teu ataque foi repelido.",
+                        color       = 0x3498DB,
+                    )
+                    emb_b.add_field(name="🛡️ Status do Escudo", value=texto_carga, inline=False)
+                    return await ctx.send(embed=emb_b)
 
+            # ─────────────────────────────────────────────────────────────────
             if random.randint(1, 100) <= chance_sucesso:
-                # ── Cálculo do valor roubado ──────────────────────────────────
                 if saldo_alvo < 500:
                     pct      = random.uniform(0.01, 0.05)
                     is_pobre = True
@@ -276,7 +253,7 @@ class Economy(commands.Cog):
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado + recuperado, 2))
                     inv_alvo.remove("Seguro")
                     db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
-                    seguro_msg = f"\n📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{recuperado:.2f} MC**!"
+                    seguro_msg = f"\n📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{formatar_moeda(recuperado)} MC**!"
                 else:
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado, 2))
 
@@ -286,7 +263,7 @@ class Economy(commands.Cog):
                 bounty_adicionado = min(round(valor_roubado * 0.12, 2), 2000.0)
                 self.bot.recompensas[ladrao_id] = round(self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado, 2)
 
-                # --- CONQUISTA: MESTRE DAS SOMBRAS ---
+                # --- CONQUISTA ---
                 tracker = self.bot.tracker_emblemas['roubos_sucesso']
                 if ladrao_id not in tracker: tracker[ladrao_id] = []
                 tracker[ladrao_id] = [t for t in tracker[ladrao_id] if agora - t < 86400]
@@ -300,24 +277,30 @@ class Economy(commands.Cog):
                     if "mestre_sombras" not in lista_conquistas:
                         lista_conquistas.append("mestre_sombras")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_conquistas))
-                        conquista_msg = "\n🏆 Você desbloqueou a conquista **Mestre das Sombras**!"
-                # ------------------------------------
+                        conquista_msg = "\n🏆 Desbloqueaste a conquista **Mestre das Sombras**!"
 
-                if is_pobre:
-                    mensagem = f"🥷 **SUCESSO (Mas com pena)...** {vitima.mention} está quase na miséria, então você levou só as moedinhas: **{valor_roubado:.2f} MC**."
-                else:
-                    mensagem = f"🥷 **SUCESSO!** Você roubou **{valor_roubado:.2f} MC** de {vitima.mention}!"
-
+                titulo_s = "🥷 SUCESSO (com pena)..." if is_pobre else "🥷 SUCESSO!"
+                desc_s   = (
+                    f"{vitima.mention} estava quase na miséria — só levaste umas moedinhas."
+                    if is_pobre else
+                    f"Saqueaste **{vitima.mention}** e sumiste na escuridão."
+                )
+                emb_s = disnake.Embed(title=titulo_s, description=desc_s, color=0x2ECC71)
+                emb_s.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+                emb_s.add_field(name="💸 Roubado",    value=f"**+{formatar_moeda(valor_roubado)} MC**",  inline=True)
+                emb_s.add_field(name="🎯 Alvo",       value=vitima.mention,                   inline=True)
                 if usou_pe_de_cabra:
-                    mensagem += " *(Usou Pé de Cabra 🕵️)*"
+                    emb_s.add_field(name="🕵️ Ferramenta", value="Usou **Pé de Cabra**",       inline=True)
                 if bounty_ganho > 0:
-                    mensagem += f"\n🎯 **MERCENÁRIO!** Coletou a recompensa de **{bounty_ganho:.2f} MC**!"
-
-                mensagem += msg_escudo
-                mensagem += seguro_msg
-                mensagem += f"\n🚨 *Recompensa automática de **{bounty_adicionado:.2f} MC** colocada na sua cabeça!*"
-                mensagem += conquista_msg
-                await ctx.send(mensagem)
+                    emb_s.add_field(name="🎯 Recompensa", value=f"**+{formatar_moeda(bounty_ganho)} MC**", inline=True)
+                if seguro_msg:
+                    emb_s.add_field(name="📄 Seguro", value=seguro_msg.strip().lstrip("\n"), inline=False)
+                if msg_escudo:
+                    emb_s.add_field(name="🛡️ Escudo", value=msg_escudo.strip().lstrip("\n"), inline=False)
+                if conquista_msg:
+                    emb_s.add_field(name="🏆 Conquista!", value=conquista_msg.strip().lstrip("\n"), inline=False)
+                emb_s.set_footer(text=f"🚨 Recompensa de {formatar_moeda(bounty_adicionado)} MC colocada na tua cabeça automaticamente")
+                await ctx.send(embed=emb_s)
 
             else:
                 pct_multa = random.uniform(0.05, 0.10)
@@ -327,25 +310,32 @@ class Economy(commands.Cog):
                 db.update_value(ladrao_data['row'], 7, agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
 
-                mensagem_falha = f"👮 **PRESO!** O roubo falhou e você pagou **{multa:.2f} MC** de multa para {vitima.mention}."
+                emb_f = disnake.Embed(
+                    title       = "👮 PRESO! O roubo falhou.",
+                    description = f"Foste apanhado e pagaste uma multa de **{formatar_moeda(multa)} MC** a {vitima.mention}.",
+                    color       = 0xE74C3C,
+                )
+                emb_f.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+                emb_f.add_field(name="💸 Multa paga",  value=f"**-{formatar_moeda(multa)} MC**", inline=True)
+                emb_f.add_field(name="👮 Denunciado por", value=vitima.mention,       inline=True)
                 if usou_pe_de_cabra:
-                    mensagem_falha += " *(Usou Pé de Cabra mas deu azar 🕵️)*"
-                mensagem_falha += msg_escudo
-
-                await ctx.send(mensagem_falha)
+                    emb_f.add_field(name="🕵️ Pé de Cabra", value="Usaste mas deu azar", inline=True)
+                if msg_escudo:
+                    emb_f.add_field(name="🛡️ Escudo", value=msg_escudo.strip().lstrip("\n"), inline=False)
+                await ctx.send(embed=emb_f)
 
         except commands.CommandError:
             raise
         except Exception as e:
             print(f"❌ Erro no !roubar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
     @commands.command(aliases=["pix", "transferir", "pay"])
     async def pagar(self, ctx, recebedor: disnake.Member = None, valor: float = None):
         if recebedor is None or valor is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!pagar @usuario <valor>`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!pagar @usuario <valor>`")
         if recebedor.id == ctx.author.id:
-            return await ctx.send(f"🐒 {ctx.author.mention}, não pode fazer Pix para si mesmo!")
+            return await ctx.send(f"🐒 {ctx.author.mention}, não podes fazer Pix para ti mesmo!")
         if valor <= 0:
             return await ctx.send("❌ O valor deve ser maior que zero!")
         valor = round(valor, 2)
@@ -366,7 +356,7 @@ class Economy(commands.Cog):
 
             embed = disnake.Embed(
                 title="💸 PIX REALIZADO!",
-                description=f"**{ctx.author.mention}** enviou **{valor:.2f} MC** para **{recebedor.mention}**.",
+                description=f"**{ctx.author.mention}** enviou **{formatar_moeda(valor)} MC** para **{recebedor.mention}**.",
                 color=disnake.Color.green()
             )
             await ctx.send(embed=embed)
@@ -382,7 +372,7 @@ class Economy(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !pagar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
 def setup(bot):
     bot.add_cog(Economy(bot))

@@ -21,27 +21,22 @@ class Shop(commands.Cog):
         if ctx.channel.name != '🐒・conguitos':
             canal = disnake.utils.get(ctx.guild.channels, name='🐒・conguitos')
             mencao = canal.mention if canal else "#🐒・conguitos"
-            await ctx.send(f"⚠️ {ctx.author.mention}, use a loja no canal {mencao}!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, usa a loja no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["shop", "mercado"])
     async def loja(self, ctx):
         embed = disnake.Embed(
             title="🛒 Loja de Itens e Maldades",
-            description="Compre usando `!comprar <nome do item>`",
+            description="Compra usando `!comprar <nome do item>`",
             color=disnake.Color.blue()
         )
         embed.add_field(
             name="📈 Cargos (Aumenta Salário e Limite de Aposta)",
             value=(
                 "🐒 **Macaquinho** — `1.200 MC` | Sal: 130–230 MC/h | Aposta: 1.500 MC\n"
-<<<<<<< HEAD
-                "🐒 **Babuíno** — `5.500 MC` | Sal: 320–530 MC/h | Aposta: 4.500 MC\n"
-                "🦧 **Chimpanzé** — `14.000 MC` | Sal: 780–1.320 MC/h | Aposta: 12.000 MC\n"
-=======
                 "🐵 **Babuíno** — `5.500 MC` | Sal: 320–530 MC/h | Aposta: 4.500 MC\n"
                 "🌴 **Chimpanzé** — `14.000 MC` | Sal: 780–1.320 MC/h | Aposta: 12.000 MC\n"
->>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
                 "🦧 **Orangutango** — `35.000 MC` | Sal: 1.900–3.200 MC/h | Aposta: 30.000 MC\n"
                 "🦍 **Gorila** — `85.000 MC` | Sal: 4.700–7.800 MC/h | Aposta: 80.000 MC\n"
                 "🗿 **Ancestral** — `210.000 MC` | Sal: 11.500–19.000 MC/h | Aposta: 250.000 MC\n"
@@ -51,40 +46,35 @@ class Shop(commands.Cog):
         embed.add_field(
             name="🛡️ Equipamentos",
             value=(
-                "🛡️ **Escudo** — `700 MC` | Bloqueia **3 tentativas de roubo**. O Pé de Cabra perfura consumindo 1 carga.\n"
+                "🛡️ **Escudo** — `700 MC` | Bloqueia **5 tentativas de roubo**. O Pé de Cabra perfura consumindo 1 carga.\n"
                 "🕵️ **Pé de Cabra** — `1.200 MC` | Aumenta chance de roubo para 65% e perfura o Escudo.\n"
-                "📄 **Seguro** — `950 MC` | Recupera 60% do valor se for roubado."
+                "📄 **Seguro** — `950 MC` | Recupera 60% do valor se fores roubado."
             ), inline=False
         )
         embed.add_field(
             name="😈 Sabotagens e Maldades",
             value=(
                 "🍌 **Casca de Banana** — `300 MC` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
-<<<<<<< HEAD
-                "🦍 **Imposto do Gorila** — `1.000 MC` | Taxa 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
-                "🪄 **Troca de Nick** — `1.500 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
-=======
-                "🦍 **Imposto do Gorila** — `2.000 MC` | Rouba 25% dos próximos 5 trabalhos do alvo. `!taxar @user`\n"
+                "🦍 **Imposto do Gorila** — `2.000 MC` | Rouba 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
                 "🪄 **Troca de Nick** — `3.000 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
->>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
                 "⚡ **Comandos Diretos (sem item):**\n"
-                "🙊 **Maldição Símia** — `500 MC` | Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
+                "🙊 **Maldição Símia** — `500 MC` | O alvo fala como macaco por 1min. `!amaldicoar @user`\n"
                 "🎭 **Impostor** — `500 MC` | Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
             ), inline=False
         )
-        embed.set_footer(text="Use !salarios para ver a progressão completa")
+        embed.set_footer(text="Usa !salarios para ver a progressão completa")
         await ctx.send(embed=embed)
 
     @commands.command()
     async def comprar(self, ctx, *, item: str = None):
         if item is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!comprar <nome do item>`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!comprar <nome do item>`")
 
         try:
             user_id = str(ctx.author.id)
             user = db.get_user_data(user_id)
             if not user:
-                return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
+                return await ctx.send("❌ Usa `!trabalhar` primeiro para te registares!")
 
             loja = {
                 "macaquinho":        {"nome": "Macaquinho",        "preco": 1200.0,   "tipo": "cargo"},
@@ -102,20 +92,20 @@ class Shop(commands.Cog):
                 "pe de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
                 "seguro":            {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
                 "casca de banana":   {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
-                "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1000.0,   "tipo": "item"},
-                "troca de nick":     {"nome": "Troca de Nick",     "preco": 1500.0,   "tipo": "item"},
+                "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 2000.0,   "tipo": "item"},
+                "troca de nick":     {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
             }
 
             escolha = item.lower()
             if escolha not in loja:
-                return await ctx.send("❌ Item inválido! Digite exatamente como está na `!loja`.")
+                return await ctx.send("❌ Item inválido! Digita exatamente como está na `!loja`.")
 
             item_data = loja[escolha]
             saldo = db.parse_float(user['data'][2])
             if saldo < item_data["preco"]:
                 faltam = round(item_data["preco"] - saldo, 2)
                 return await ctx.send(
-                    f"❌ Saldo insuficiente! Você precisa de **{item_data['preco']:.2f} MC** "
+                    f"❌ Saldo insuficiente! Precisas de **{item_data['preco']:.2f} MC** "
                     f"(faltam **{faltam:.2f} MC**)."
                 )
 
@@ -135,7 +125,7 @@ class Shop(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !comprar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
 
 def setup(bot):
     bot.add_cog(Shop(bot))
