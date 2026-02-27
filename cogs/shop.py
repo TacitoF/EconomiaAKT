@@ -55,7 +55,7 @@ class Shop(commands.Cog):
             name="😈 Sabotagens e Maldades",
             value=(
                 "🍌 **Casca de Banana** — `300 MC` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
-                "🦍 **Imposto do Gorila** — `2.000 MC` | Rouba 25% do trabalho do alvo por 24h. `!taxar @user`\n"
+                "🦍 **Imposto do Gorila** — `2.000 MC` | Taxa 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
                 "🪄 **Troca de Nick** — `3.000 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
                 "⚡ **Comandos Diretos (sem item):**\n"
                 "🙊 **Maldição Símia** — `500 MC` | Alvo fala como macaco por 1min. `!amaldicoar @user`\n"

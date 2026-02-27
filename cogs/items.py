@@ -4,7 +4,8 @@ import database as db
 import time
 import asyncio
 
-ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
+ESCUDO_CARGAS   = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
+IMPOSTO_CARGAS  = 5  # Número de trabalhos taxados pelo Imposto do Gorila
 
 class Items(commands.Cog):
     def __init__(self, bot):
@@ -67,15 +68,18 @@ class Items(commands.Cog):
                 return await ctx.send("❌ Você não tem o item **Imposto do Gorila** no inventário!")
 
             vitima_id = str(vitima.id)
-            if vitima_id in self.bot.impostos and self.bot.impostos[vitima_id]['fim'] > time.time():
-                return await ctx.send(f"❌ {vitima.mention} já está sob imposto! Expira <t:{int(self.bot.impostos[vitima_id]['fim'])}:R>.")
+            if vitima_id in self.bot.impostos and self.bot.impostos[vitima_id].get('cargas', 0) > 0:
+                cargas_rest = self.bot.impostos[vitima_id]['cargas']
+                return await ctx.send(f"❌ {vitima.mention} já está sob imposto! Ainda restam **{cargas_rest} cobrança(s)**.")
 
             inv_list.remove("Imposto do Gorila")
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
-            tempo_fim = time.time() + 86400
-            self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'fim': tempo_fim}
-            await ctx.send(f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila de {vitima.mention}. Durante **24h** (até <t:{int(tempo_fim)}:f>), 25% do trabalho dele vai para você!")
+            self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': IMPOSTO_CARGAS}
+            await ctx.send(
+                f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila de {vitima.mention}!\n"
+                f"💸 Nos próximos **{IMPOSTO_CARGAS} trabalhos** de {vitima.mention}, **25% do salário** vai direto para você."
+            )
 
         except commands.CommandError:
             raise

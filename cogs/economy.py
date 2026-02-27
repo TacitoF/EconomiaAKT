@@ -64,18 +64,26 @@ class Economy(commands.Cog):
             imposto_msg = ""
             if user_id in self.bot.impostos:
                 imposto_data = self.bot.impostos[user_id]
-                if agora > imposto_data['fim']:
+                cargas_imp   = imposto_data.get('cargas', 0)
+                if cargas_imp <= 0:
                     del self.bot.impostos[user_id]
-                    imposto_msg = "\n🕊️ Seu Imposto do Gorila expirou. Você está livre!"
+                    imposto_msg = "\n🕊️ O Imposto do Gorila esgotou suas cargas. Você está livre!"
                 else:
-                    taxa = round(ganho * 0.25, 2)
+                    taxa  = round(ganho * 0.25, 2)
                     ganho = round(ganho - taxa, 2)
+                    cargas_imp -= 1
+                    if cargas_imp <= 0:
+                        del self.bot.impostos[user_id]
+                        resto_msg = "\n🕊️ Era a última carga do Imposto — você está livre!"
+                    else:
+                        self.bot.impostos[user_id]['cargas'] = cargas_imp
+                        resto_msg = f" *({cargas_imp} cobrança(s) restante(s) 🦍)*"
                     cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
                     if cobrador_db:
                         db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
                     cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
-                    nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{taxa:.2f} MC** do seu suor! *(Expira <t:{int(imposto_data['fim'])}:R>)*"
+                    nome_c    = cobrador_user.mention if cobrador_user else "Um Gorila"
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{taxa:.2f} MC** do seu suor!{resto_msg}"
 
             saldo_atual = db.parse_float(user['data'][2])
             db.update_value(user['row'], 3, round(saldo_atual + ganho, 2))
