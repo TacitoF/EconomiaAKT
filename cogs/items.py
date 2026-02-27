@@ -11,6 +11,7 @@ class Items(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         if not hasattr(bot, 'cascas'): bot.cascas = set()
+        # Impostos agora usam cargas de trabalho: {user_id_str: {'cobrador_id': id, 'cargas': 5}}
         if not hasattr(bot, 'impostos'): bot.impostos = {}
         # Escudos ativos: {user_id_str: cargas_restantes}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
@@ -69,12 +70,18 @@ class Items(commands.Cog):
 
             vitima_id = str(vitima.id)
             if vitima_id in self.bot.impostos and self.bot.impostos[vitima_id].get('cargas', 0) > 0:
+<<<<<<< HEAD
                 cargas_rest = self.bot.impostos[vitima_id]['cargas']
                 return await ctx.send(f"❌ {vitima.mention} já está sob imposto! Ainda restam **{cargas_rest} cobrança(s)**.")
+=======
+                cargas_restantes = self.bot.impostos[vitima_id]['cargas']
+                return await ctx.send(f"❌ {vitima.mention} já está sob imposto! Restam **{cargas_restantes} trabalhos** taxados para ele.")
+>>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
 
             inv_list.remove("Imposto do Gorila")
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
+<<<<<<< HEAD
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': IMPOSTO_CARGAS}
             # Persiste no Sheets para sobreviver a restarts
             vitima_db = db.get_user_data(vitima_id)
@@ -84,6 +91,11 @@ class Items(commands.Cog):
                 f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila de {vitima.mention}!\n"
                 f"💸 Nos próximos **{IMPOSTO_CARGAS} trabalhos** de {vitima.mention}, **25% do salário** vai direto para você."
             )
+=======
+            # Imposto agora dura 5 trabalhos ao invés de 24 horas
+            self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
+            await ctx.send(f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila de {vitima.mention}. Durante os próximos **5 trabalhos** dele, 25% do suor irá para você!")
+>>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
 
         except commands.CommandError:
             raise
@@ -139,28 +151,26 @@ class Items(commands.Cog):
         Com !escudo @usuario: verifica o escudo de outro jogador.
         O escudo é ativado automaticamente ao receber o primeiro roubo.
         Tem 3 cargas — cada roubo bloqueado consome 1 carga.
-        O Pé de Cabra perfura o escudo sem consumir carga.
+        O Pé de Cabra perfura o escudo, mas consome 1 carga no processo.
         """
         if alvo is None:
             alvo = ctx.author
 
         alvo_id = str(alvo.id)
 
-        # Verifica cargas ativas em memória
         cargas = self.bot.escudos_ativos.get(alvo_id, 0)
 
         if cargas > 0:
             if alvo.id == ctx.author.id:
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention}, seu Escudo está **ativo** com **{cargas}/{ESCUDO_CARGAS} cargas** restantes.\n"
-                    f"Cada tentativa de roubo bloqueada consome 1 carga."
+                    f"Cada tentativa de roubo sofrida consome 1 carga."
                 )
             else:
                 return await ctx.send(
                     f"🛡️ {alvo.mention} está protegido por um Escudo com **{cargas}/{ESCUDO_CARGAS} cargas** restantes."
                 )
 
-        # Sem escudo ativo — verifica inventário
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
@@ -169,7 +179,6 @@ class Items(commands.Cog):
             inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
 
-            # Ativa o escudo do próprio jogador se tiver no inventário
             if alvo.id == ctx.author.id and "Escudo" in inv_list:
                 self.bot.escudos_ativos[alvo_id] = ESCUDO_CARGAS
                 inv_list.remove("Escudo")
@@ -177,10 +186,9 @@ class Items(commands.Cog):
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention} ativou seu **Escudo**! "
                     f"Você está protegido contra **{ESCUDO_CARGAS} tentativas de roubo**.\n"
-                    f"💡 *O Pé de Cabra perfura o escudo, mas também consome 1 carga.*"
+                    f"💡 *O Pé de Cabra perfura o escudo, mas também consome 1 carga do alvo.*"
                 )
 
-            # Sem escudo ativo nem no inventário
             if alvo.id == ctx.author.id:
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention}, você não tem nenhum Escudo ativo nem no inventário.\n"

@@ -35,8 +35,13 @@ class Shop(commands.Cog):
             name="📈 Cargos (Aumenta Salário e Limite de Aposta)",
             value=(
                 "🐒 **Macaquinho** — `1.200 MC` | Sal: 130–230 MC/h | Aposta: 1.500 MC\n"
+<<<<<<< HEAD
                 "🐒 **Babuíno** — `5.500 MC` | Sal: 320–530 MC/h | Aposta: 4.500 MC\n"
                 "🦧 **Chimpanzé** — `14.000 MC` | Sal: 780–1.320 MC/h | Aposta: 12.000 MC\n"
+=======
+                "🐵 **Babuíno** — `5.500 MC` | Sal: 320–530 MC/h | Aposta: 4.500 MC\n"
+                "🌴 **Chimpanzé** — `14.000 MC` | Sal: 780–1.320 MC/h | Aposta: 12.000 MC\n"
+>>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
                 "🦧 **Orangutango** — `35.000 MC` | Sal: 1.900–3.200 MC/h | Aposta: 30.000 MC\n"
                 "🦍 **Gorila** — `85.000 MC` | Sal: 4.700–7.800 MC/h | Aposta: 80.000 MC\n"
                 "🗿 **Ancestral** — `210.000 MC` | Sal: 11.500–19.000 MC/h | Aposta: 250.000 MC\n"
@@ -55,8 +60,13 @@ class Shop(commands.Cog):
             name="😈 Sabotagens e Maldades",
             value=(
                 "🍌 **Casca de Banana** — `300 MC` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
+<<<<<<< HEAD
                 "🦍 **Imposto do Gorila** — `1.000 MC` | Taxa 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
                 "🪄 **Troca de Nick** — `1.500 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
+=======
+                "🦍 **Imposto do Gorila** — `2.000 MC` | Rouba 25% dos próximos 5 trabalhos do alvo. `!taxar @user`\n"
+                "🪄 **Troca de Nick** — `3.000 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
+>>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
                 "⚡ **Comandos Diretos (sem item):**\n"
                 "🙊 **Maldição Símia** — `500 MC` | Alvo fala como macaco por 1min. `!amaldicoar @user`\n"
                 "🎭 **Impostor** — `500 MC` | Envia mensagem falsa como o alvo. `!impostor @user <msg>`"

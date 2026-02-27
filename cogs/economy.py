@@ -14,7 +14,6 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'impostos'): bot.impostos = {}
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
-        # Escudos ativos: {user_id: cargas_restantes}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
         # Carrega impostos persistidos do Sheets (recupera estado após restart)
         if not bot.impostos:
@@ -83,9 +82,11 @@ class Economy(commands.Cog):
             min_ganho, max_ganho = salarios.get(cargo, (40, 80))
             ganho = round(random.uniform(min_ganho, max_ganho), 2)
 
+            # LÓGICA ATUALIZADA DO IMPOSTO: Cargas em vez de tempo
             imposto_msg = ""
             if user_id in self.bot.impostos:
                 imposto_data = self.bot.impostos[user_id]
+<<<<<<< HEAD
                 cargas_imp   = imposto_data.get('cargas', 0)
                 if cargas_imp <= 0:
                     del self.bot.impostos[user_id]
@@ -109,6 +110,26 @@ class Economy(commands.Cog):
                     cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
                     nome_c    = cobrador_user.mention if cobrador_user else "Um Gorila"
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{taxa:.2f} MC** do seu suor!{resto_msg}"
+=======
+                taxa = round(ganho * 0.25, 2)
+                ganho = round(ganho - taxa, 2)
+                
+                cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
+                if cobrador_db:
+                    db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
+                
+                cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
+                nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
+                
+                imposto_data['cargas'] -= 1
+                cargas_restantes = imposto_data['cargas']
+                
+                if cargas_restantes <= 0:
+                    del self.bot.impostos[user_id]
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor!\n🕊️ *Seu Imposto do Gorila acabou. Você está livre!*"
+                else:
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
+>>>>>>> 2589aed (feat: imposto do gorila por cargas (5 trabalhos) e interface modernizada)
 
             saldo_atual = db.parse_float(user['data'][2])
             db.update_value(user['row'], 3, round(saldo_atual + ganho, 2))
