@@ -46,7 +46,7 @@ class Shop(commands.Cog):
         embed.add_field(
             name="🛡️ Equipamentos",
             value=(
-                "🛡️ **Escudo** — `700 MC` | Bloqueia **5 tentativas de roubo**. O Pé de Cabra perfura consumindo 1 carga.\n"
+                "🛡️ **Escudo** — `1000 MC` | Bloqueia **3 tentativas de roubo**. O Pé de Cabra perfura consumindo 1 carga.\n"
                 "🕵️ **Pé de Cabra** — `1.200 MC` | Aumenta chance de roubo para 65% e perfura o Escudo.\n"
                 "📄 **Seguro** — `950 MC` | Recupera 60% do valor se fores roubado."
             ), inline=False
@@ -55,7 +55,7 @@ class Shop(commands.Cog):
             name="😈 Sabotagens e Maldades",
             value=(
                 "🍌 **Casca de Banana** — `300 MC` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
-                "🦍 **Imposto do Gorila** — `2.000 MC` | Rouba 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
+                "🦍 **Imposto do Gorila** — `1.000 MC` | Rouba 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
                 "🪄 **Troca de Nick** — `3.000 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
                 "⚡ **Comandos Diretos (sem item):**\n"
                 "🙊 **Maldição Símia** — `500 MC` | O alvo fala como macaco por 1min. `!amaldicoar @user`\n"
@@ -87,12 +87,12 @@ class Shop(commands.Cog):
                 "ancestral":         {"nome": "Ancestral",         "preco": 210000.0, "tipo": "cargo"},
                 "rei símio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
                 "rei simio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
-                "escudo":            {"nome": "Escudo",            "preco": 700.0,    "tipo": "item"},
+                "escudo":            {"nome": "Escudo",            "preco": 1000.0,    "tipo": "item"},
                 "pé de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
                 "pe de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
                 "seguro":            {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
                 "casca de banana":   {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
-                "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 2000.0,   "tipo": "item"},
+                "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1000.0,   "tipo": "item"},
                 "troca de nick":     {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
             }
 
@@ -117,6 +117,18 @@ class Shop(commands.Cog):
             else:
                 inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
                 inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
+
+                # Escudo: limite de 1 por vez (inventário ou ativo)
+                if item_data["nome"] == "Escudo":
+                    escudo_ativo = hasattr(self.bot, 'escudos_ativos') and                                    self.bot.escudos_ativos.get(user_id, 0) > 0
+                    if "Escudo" in inv_list or escudo_ativo:
+                        db.update_value(user['row'], 3, round(saldo, 2))  # estorna compra
+                        return await ctx.send(
+                            f"❌ {ctx.author.mention}, já tens um **Escudo** "
+                            f"{'ativo' if escudo_ativo else 'no inventário'}! "
+                            f"Só podes ter 1 de cada vez."
+                        )
+
                 inv_list.append(item_data["nome"])
                 db.update_value(user['row'], 6, ", ".join(inv_list))
                 await ctx.send(f"🛍️ {ctx.author.mention} comprou **{item_data['nome']}** e guardou no inventário!")

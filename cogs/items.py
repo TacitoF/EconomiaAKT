@@ -4,7 +4,7 @@ import database as db
 import time
 import asyncio
 
-ESCUDO_CARGAS = 5  # Número de roubos que o Escudo bloqueia antes de quebrar
+ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
 
 class Items(commands.Cog):
     def __init__(self, bot):
@@ -77,6 +77,10 @@ class Items(commands.Cog):
 
             # Imposto agora dura 5 trabalhos ao invés de 24 horas
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
+            # Persiste no Sheets para sobreviver a restarts
+            vitima_db = db.get_user_data(vitima_id)
+            if vitima_db:
+                db.set_imposto(vitima_db['row'], str(ctx.author.id), 5)
             await ctx.send(f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o Imposto do Gorila a {vitima.mention}. Durante os próximos **5 trabalhos** dele, 25% do suor irá para ti!")
 
         except commands.CommandError:
@@ -154,6 +158,11 @@ class Items(commands.Cog):
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
 
             if alvo.id == ctx.author.id and "Escudo" in inv_list:
+                if self.bot.escudos_ativos.get(alvo_id, 0) > 0:
+                    return await ctx.send(
+                        f"🛡️ {ctx.author.mention}, já tens um Escudo **ativo**! "
+                        f"Aguarda ele quebrar antes de ativar outro."
+                    )
                 self.bot.escudos_ativos[alvo_id] = ESCUDO_CARGAS
                 inv_list.remove("Escudo")
                 db.update_value(user['row'], 6, ", ".join(inv_list))
@@ -166,7 +175,7 @@ class Items(commands.Cog):
             if alvo.id == ctx.author.id:
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention}, não tens nenhum Escudo ativo nem no inventário.\n"
-                    f"Compra um na `!loja` por **700 MC**!"
+                    f"Compra um na `!loja` por **500 MC**!"
                 )
             else:
                 return await ctx.send(

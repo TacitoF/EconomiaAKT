@@ -101,7 +101,11 @@ class ModalValorAposta(disnake.ui.Modal):
         ganho_potencial = round(valor * odd_fixa, 2)
 
         db.update_value(user['row'], 3, round(saldo - valor, 2))
-        db.registrar_aposta_esportiva(inter.author.id, self.match_id, self.palpite, valor, odd_fixa)
+        db.registrar_aposta_esportiva(
+            inter.author.id, self.match_id, self.palpite, valor, odd_fixa,
+            time_casa=self.time_casa, time_fora=self.time_fora,
+            liga=self.liga, horario=self.horario,
+        )
 
         EMOJI  = {"casa": "🏠", "empate": "🤝", "fora": "✈️"}
         LABELS = {"casa": self.time_casa, "empate": "Empate", "fora": self.time_fora}
@@ -346,16 +350,27 @@ class Esportes(commands.Cog):
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
 
             EMOJI_P = {"casa": "🏠", "fora": "✈️", "empate": "🤝"}
+            LABEL_P = {"casa": lambda a: a.get("time_casa") or "Casa",
+                       "fora": lambda a: a.get("time_fora") or "Fora",
+                       "empate": lambda a: "Empate"}
 
             for aposta in minhas[:15]:
-                ganho = round(aposta['valor'] * aposta['odd'], 2)
-                p = aposta['palpite'].lower()
+                ganho     = round(aposta['valor'] * aposta['odd'], 2)
+                p         = aposta['palpite'].lower()
+                casa      = aposta.get('time_casa') or '?'
+                fora      = aposta.get('time_fora') or '?'
+                liga      = aposta.get('liga')      or '—'
+                horario   = aposta.get('horario')   or '—'
+                palpite_label = LABEL_P.get(p, lambda a: p.capitalize())(aposta)
+
+                partida_str = f"**{casa}** vs **{fora}**" if casa != '?' else f"ID `{aposta['match_id']}`"
 
                 embed.add_field(
-                    name  = f"🆔 Jogo ID: {aposta['match_id']}",
+                    name  = f"{EMOJI_P.get(p,'🎯')} {partida_str}",
                     value = (
-                        f"{EMOJI_P.get(p,'🎯')} **Palpite:** {p.capitalize()}\n"
-                        f"💸 `{formatar_moeda(aposta['valor'])} MC` → 💰 `{formatar_moeda(ganho)} MC`\n"
+                        f"🏆 {liga}  ·  ⏰ {horario}\n"
+                        f"**Palpite:** {palpite_label}\n"
+                        f"💸 `{formatar_moeda(aposta['valor'])} MC` → 💰 `{formatar_moeda(ganho)} MC`"
                     ),
                     inline = False
                 )

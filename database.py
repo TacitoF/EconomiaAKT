@@ -154,17 +154,35 @@ def clear_imposto(row: int):
     except Exception as e:
         handle_db_error(e)
 
+
 # ──────────────────────────────────────────────────────────────────────────────
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
+#  Colunas da aba Apostas_Esportivas:
+#    1  - user_id
+#    2  - match_id
+#    3  - palpite
+#    4  - valor
+#    5  - odd
+#    6  - status
+#    7  - time_casa
+#    8  - time_fora
+#    9  - liga
+#    10 - horario
 # ──────────────────────────────────────────────────────────────────────────────
 
-def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd):
-    """Salva um novo palpite na aba Apostas_Esportivas."""
+def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
+                               time_casa: str = "", time_fora: str = "", liga: str = "", horario: str = ""):
+    """
+    Salva um novo palpite na aba Apostas_Esportivas.
+    Colunas: user_id | match_id | palpite | valor | odd | status | time_casa | time_fora | liga | horario
+    """
     try:
         valor_str = str(valor).replace('.', ',')
-        odd_str = str(odd).replace('.', ',')
-
-        sheet_apostas.append_row([str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente"])
+        odd_str   = str(odd).replace('.', ',')
+        sheet_apostas.append_row([
+            str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente",
+            time_casa, time_fora, liga, horario,
+        ])
     except Exception as e:
         handle_db_error(e)
 
@@ -179,13 +197,17 @@ def obter_apostas_pendentes():
 
             if len(row) >= 6 and row[5] == "Pendente":
                 apostas.append({
-                    "row": i + 1,
-                    "user_id": row[0],
-                    "match_id": int(row[1]),
-                    "palpite": row[2],
-                    "valor": parse_float(row[3]),
-                    "odd": parse_float(row[4]),
-                    "status": row[5]
+                    "row":       i + 1,
+                    "user_id":   row[0],
+                    "match_id":  int(row[1]),
+                    "palpite":   row[2],
+                    "valor":     parse_float(row[3]),
+                    "odd":       parse_float(row[4]),
+                    "status":    row[5],
+                    "time_casa": row[6]  if len(row) > 6  else "",
+                    "time_fora": row[7]  if len(row) > 7  else "",
+                    "liga":      row[8]  if len(row) > 8  else "",
+                    "horario":   row[9]  if len(row) > 9  else "",
                 })
         return apostas
     except Exception as e:

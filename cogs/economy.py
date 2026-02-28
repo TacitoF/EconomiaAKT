@@ -4,7 +4,7 @@ import database as db
 import time
 import random
 
-ESCUDO_CARGAS = 5  # Número de roubos que o Escudo bloqueia antes de quebrar
+ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
 
 def formatar_moeda(valor: float) -> str:
     """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
@@ -189,7 +189,7 @@ class Economy(commands.Cog):
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
-            # ── ESCUDO (5 cargas) ────────────────────────────────────
+            # ── ESCUDO (3 cargas) ────────────────────────────────────
             cargas_atuais = self.bot.escudos_ativos.get(vitima_id, 0)
 
             if cargas_atuais == 0 and "Escudo" in inv_alvo:
