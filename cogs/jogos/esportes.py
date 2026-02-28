@@ -35,6 +35,9 @@ def hora_br(utc_str):
     dt = datetime.fromisoformat(utc_str.replace('Z', ''))
     return (dt - timedelta(hours=3)).strftime('%d/%m às %H:%M')
 
+def formatar_moeda(valor: float) -> str:
+    return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 
 # ──────────────────────────────────────────────
 #  MODAL — pede o valor após escolher palpite
