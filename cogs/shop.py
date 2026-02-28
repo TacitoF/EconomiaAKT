@@ -94,7 +94,7 @@ class Shop(commands.Cog):
                 "ancestral":         {"nome": "Ancestral",         "preco": 210000.0, "tipo": "cargo"},
                 "rei símio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
                 "rei simio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
-                "escudo":            {"nome": "Escudo",            "preco": 1000.0,   "tipo": "item"},   # ✅ Preço fixo
+                "escudo":            {"nome": "Escudo",            "preco": 1000.0,   "tipo": "item"},
                 "pé de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
                 "pe de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
                 "seguro":            {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
@@ -131,7 +131,6 @@ class Shop(commands.Cog):
                 if item_data["nome"] == "Escudo":
                     agora = time.time()
 
-                    # Verifica se já tem escudo no inventário ou ativo
                     escudo_ativo = hasattr(self.bot, 'escudos_ativos') and \
                                    self.bot.escudos_ativos.get(user_id, 0) > 0
                     if "Escudo" in inv_list or escudo_ativo:
@@ -142,9 +141,8 @@ class Shop(commands.Cog):
                             f"Só podes ter 1 de cada vez."
                         )
 
-                    # Verifica cooldown: 1 escudo por dia (24h)
                     historico = self.bot.escudo_compras.get(user_id, (0, 0.0))
-                    ultima_compra_ts = historico[1]  # timestamp da última compra
+                    ultima_compra_ts = historico[1]
 
                     if agora - ultima_compra_ts < 86400:
                         libera_em = int(ultima_compra_ts + 86400)
@@ -154,7 +152,6 @@ class Shop(commands.Cog):
                             f"Podes comprar outro <t:{libera_em}:R>."
                         )
 
-                    # Registra a compra com timestamp atual
                     self.bot.escudo_compras[user_id] = (1, agora)
 
                 inv_list.append(item_data["nome"])

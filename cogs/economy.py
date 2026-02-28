@@ -85,7 +85,7 @@ class Economy(commands.Cog):
                 if cargas_restantes <= 0:
                     del self.bot.impostos[user_id]
                     db.clear_imposto(user['row'])
-                    libera_em = int(time.time() + 86400)  # ✅ 24h de imunidade
+                    libera_em = int(time.time() + 86400)  # ✅ 24 horas cravadas
                     self.bot.cooldown_imposto[user_id] = libera_em
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor!\n🕊️ *O Imposto acabou. Estás imune a novos impostos por **24h** (<t:{libera_em}:R>).*"
                 else:
