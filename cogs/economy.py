@@ -18,11 +18,8 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'impostos'): bot.impostos = {}
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
-        # Escudos ativos: {user_id: cargas_restantes}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
-        # Histórico de compras de escudo: {user_id: (count, timestamp_primeira_compra)}
         if not hasattr(bot, 'escudo_compras'): bot.escudo_compras = {}
-        # Cooldown imposto: {user_id: timestamp_liberacao} — 48h de imunidade após imposto acabar
         if not hasattr(bot, 'cooldown_imposto'): bot.cooldown_imposto = {}
 
     async def cog_before_invoke(self, ctx):
@@ -74,23 +71,23 @@ class Economy(commands.Cog):
                 imposto_data = self.bot.impostos[user_id]
                 taxa = round(ganho * 0.25, 2)
                 ganho = round(ganho - taxa, 2)
-                
+
                 cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
                 if cobrador_db:
                     db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
-                
+
                 cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
                 nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
-                
+
                 imposto_data['cargas'] -= 1
                 cargas_restantes = imposto_data['cargas']
-                
+
                 if cargas_restantes <= 0:
                     del self.bot.impostos[user_id]
                     db.clear_imposto(user['row'])
-                    libera_em = int(time.time() + 172800)  # 48h
+                    libera_em = int(time.time() + 86400)  # ✅ 24h de imunidade
                     self.bot.cooldown_imposto[user_id] = libera_em
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor!\n🕊️ *O Imposto acabou. Estás imune a novos impostos por **48h** (<t:{libera_em}:R>).*"
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor!\n🕊️ *O Imposto acabou. Estás imune a novos impostos por **24h** (<t:{libera_em}:R>).*"
                 else:
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
 
@@ -125,11 +122,9 @@ class Economy(commands.Cog):
                 name     = f"{ctx.author.display_name} foi trabalhar",
                 icon_url = ctx.author.display_avatar.url,
             )
-            
             embed.add_field(name="💰 Ganho",         value=f"**+{formatar_moeda(ganho)} MC**", inline=True)
             embed.add_field(name="🏦 Saldo atual",   value=f"`{formatar_moeda(novo_saldo)} MC`", inline=True)
             embed.add_field(name="⏰ Próximo turno", value=f"<t:{proximo_cd}:R>", inline=True)
-            
             if imposto_msg:
                 embed.add_field(name="🦍 Imposto do Gorila", value=imposto_msg.strip().lstrip("\n"), inline=False)
             if conquista_msg:
@@ -186,7 +181,6 @@ class Economy(commands.Cog):
             inv_ladrao = [i.strip() for i in str(ladrao_data['data'][5] if len(ladrao_data['data']) > 5 else "").split(',') if i.strip()]
             inv_alvo   = [i.strip() for i in str(alvo_data['data'][5]   if len(alvo_data['data'])   > 5 else "").split(',') if i.strip()]
 
-            # ── PÉ DE CABRA ──────────────────────────────────────────────────
             usou_pe_de_cabra = False
             chance_sucesso   = 45
 
@@ -196,7 +190,6 @@ class Economy(commands.Cog):
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
-            # ── ESCUDO (3 cargas) ────────────────────────────────────
             cargas_atuais = self.bot.escudos_ativos.get(vitima_id, 0)
 
             if cargas_atuais == 0 and "Escudo" in inv_alvo:
@@ -222,8 +215,6 @@ class Economy(commands.Cog):
                 if usou_pe_de_cabra:
                     msg_escudo = f"\n🛠️ O teu **Pé de Cabra** arrombou a porta e danificou o **Escudo** de {vitima.mention}! {texto_carga}"
                 else:
-                    msg_bloqueio = f"🛡️ {vitima.mention} defendeu-se com um **Escudo** e bloqueou o teu ataque!\n{texto_carga}"
-
                     conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
                     lista_c = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
                     if "casca_grossa" not in lista_c:
@@ -238,7 +229,6 @@ class Economy(commands.Cog):
                     emb_b.add_field(name="🛡️ Status do Escudo", value=texto_carga, inline=False)
                     return await ctx.send(embed=emb_b)
 
-            # ─────────────────────────────────────────────────────────────────
             if random.randint(1, 100) <= chance_sucesso:
                 if saldo_alvo < 500:
                     pct      = random.uniform(0.01, 0.05)
@@ -270,7 +260,6 @@ class Economy(commands.Cog):
                 bounty_adicionado = min(round(valor_roubado * 0.12, 2), 2000.0)
                 self.bot.recompensas[ladrao_id] = round(self.bot.recompensas.get(ladrao_id, 0.0) + bounty_adicionado, 2)
 
-                # --- CONQUISTA ---
                 tracker = self.bot.tracker_emblemas['roubos_sucesso']
                 if ladrao_id not in tracker: tracker[ladrao_id] = []
                 tracker[ladrao_id] = [t for t in tracker[ladrao_id] if agora - t < 86400]
@@ -294,10 +283,10 @@ class Economy(commands.Cog):
                 )
                 emb_s = disnake.Embed(title=titulo_s, description=desc_s, color=0x2ECC71)
                 emb_s.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-                emb_s.add_field(name="💸 Roubado",    value=f"**+{formatar_moeda(valor_roubado)} MC**",  inline=True)
-                emb_s.add_field(name="🎯 Alvo",       value=vitima.mention,                   inline=True)
+                emb_s.add_field(name="💸 Roubado",    value=f"**+{formatar_moeda(valor_roubado)} MC**", inline=True)
+                emb_s.add_field(name="🎯 Alvo",       value=vitima.mention,                             inline=True)
                 if usou_pe_de_cabra:
-                    emb_s.add_field(name="🕵️ Ferramenta", value="Usou **Pé de Cabra**",       inline=True)
+                    emb_s.add_field(name="🕵️ Ferramenta", value="Usou **Pé de Cabra**", inline=True)
                 if bounty_ganho > 0:
                     emb_s.add_field(name="🎯 Recompensa", value=f"**+{formatar_moeda(bounty_ganho)} MC**", inline=True)
                 if seguro_msg:
@@ -323,8 +312,8 @@ class Economy(commands.Cog):
                     color       = 0xE74C3C,
                 )
                 emb_f.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-                emb_f.add_field(name="💸 Multa paga",  value=f"**-{formatar_moeda(multa)} MC**", inline=True)
-                emb_f.add_field(name="👮 Denunciado por", value=vitima.mention,       inline=True)
+                emb_f.add_field(name="💸 Multa paga",     value=f"**-{formatar_moeda(multa)} MC**", inline=True)
+                emb_f.add_field(name="👮 Denunciado por", value=vitima.mention,                     inline=True)
                 if usou_pe_de_cabra:
                     emb_f.add_field(name="🕵️ Pé de Cabra", value="Usaste mas deu azar", inline=True)
                 if msg_escudo:

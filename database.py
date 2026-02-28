@@ -215,8 +215,34 @@ def obter_apostas_pendentes():
         return []
 
 def atualizar_status_aposta(row, status):
-    """Atualiza o status (Venceu/Perdeu) de uma aposta específica na planilha."""
+    """Atualiza o status (Venceu/Perdeu/Reembolso) de uma aposta específica."""
     try:
         sheet_apostas.update_cell(row, 6, status)
     except Exception as e:
         handle_db_error(e)
+
+def limpar_apostas_finalizadas() -> int:
+    """
+    Remove da planilha todas as linhas cujo status seja Venceu, Perdeu ou Reembolso.
+    Preserva o cabeçalho (linha 1) e as apostas Pendentes.
+    Retorna o número de linhas apagadas.
+    """
+    try:
+        rows = sheet_apostas.get_all_values()
+        # Coleta os índices (1-based) das linhas a apagar, de baixo pra cima
+        # para não deslocar os índices durante a deleção
+        status_finalizados = {"Venceu", "Perdeu", "Reembolso"}
+        linhas_para_apagar = [
+            i + 1  # índice real na planilha (1-based)
+            for i, row in enumerate(rows)
+            if i > 0 and len(row) >= 6 and row[5] in status_finalizados
+        ]
+
+        # Apaga de baixo pra cima para preservar os índices corretos
+        for row_index in reversed(linhas_para_apagar):
+            sheet_apostas.delete_rows(row_index)
+
+        return len(linhas_para_apagar)
+    except Exception as e:
+        handle_db_error(e)
+        return 0
