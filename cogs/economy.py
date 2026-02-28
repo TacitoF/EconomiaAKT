@@ -20,6 +20,10 @@ class Economy(commands.Cog):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
         # Escudos ativos: {user_id: cargas_restantes}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
+        # Histórico de compras de escudo: {user_id: (count, timestamp_primeira_compra)}
+        if not hasattr(bot, 'escudo_compras'): bot.escudo_compras = {}
+        # Cooldown imposto: {user_id: timestamp_liberacao} — 48h de imunidade após imposto acabar
+        if not hasattr(bot, 'cooldown_imposto'): bot.cooldown_imposto = {}
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
@@ -83,7 +87,10 @@ class Economy(commands.Cog):
                 
                 if cargas_restantes <= 0:
                     del self.bot.impostos[user_id]
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor!\n🕊️ *O teu Imposto do Gorila acabou. Estás livre!*"
+                    db.clear_imposto(user['row'])
+                    libera_em = int(time.time() + 172800)  # 48h
+                    self.bot.cooldown_imposto[user_id] = libera_em
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor!\n🕊️ *O Imposto acabou. Estás imune a novos impostos por **48h** (<t:{libera_em}:R>).*"
                 else:
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
 
