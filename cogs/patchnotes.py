@@ -9,7 +9,7 @@ class Patchnotes(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização no canal oficial."""
+        """Publica as notas de atualização v7.9 no canal oficial."""
         try:
             await ctx.message.delete()
         except:
@@ -25,50 +25,56 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="📜 REGISTRO DE ATUALIZAÇÕES: v7.8 — JUSTIÇA E CAOS PVP",
+            title="📜 REGISTRO DE ATUALIZAÇÕES: v7.9 — LOGÍSTICA DA SELVA",
             description=(
-                "A selva passou por uma limpeza pesada contra trapaças e, para compensar, "
-                "trouxemos a maior atualização de jogos PvP até agora! Preparem seus Macacoins."
+                "A economia da selva acaba de ficar mais imprevisível! Encontre tesouros, "
+                "intercepte contrabandos e use novos itens táticos para dominar o servidor."
             ),
             color=disnake.Color.dark_green()
         )
 
         embed.add_field(
-            name="⚖️ CORREÇÃO E PUNIÇÕES: Apostas Esportivas",
+            name="📦 NOVIDADE: Lootboxes (Caixas de Suprimentos)",
             inline=False,
             value=(
-                "Identificamos e corrigimos uma falha crítica na agência de apostas (`!futebol`) que "
-                "permitia aos jogadores fazerem palpites em jogos que já tinham acabado.\n\n"
-                "🚨 **Aviso aos espertinhos:** Todos os usuários que abusaram desse bug para lucrar tiveram "
-                "suas **apostas canceladas** e sofreram um **rollback (rebaixamento) nos cargos**. "
-                "A regra é clara: joguem limpo, ou a selva cobra o preço."
+                "Agora você pode obter caixas misteriosas que contêm itens raros, consumíveis ou grandes quantias de dinheiro!\n\n"
+                "• **Como obter:** Comprando na `!loja` ou com **5% de chance** ao usar o comando `!trabalhar`.\n"
+                "• **Caixote de Madeira:** Comum e barato, ótimo para itens básicos.\n"
+                "• **Baú do Caçador:** Raro, focado em equipamentos de ataque e defesa.\n"
+                "• **Relíquia Ancestral:** Lendária e valiosa, contém os maiores tesouros da selva.\n"
+                "• **Comando:** Use `!abrir <nome da caixa>` para revelar seu prêmio!"
             )
         )
 
         embed.add_field(
-            name="⚔️ NOVIDADE: O Arsenal PvP foi Expandido!",
+            name="✈️ EVENTO GLOBAL: Air Drops de Contrabando",
             inline=False,
             value=(
-                "Chegou a hora de arrancar o dinheiro dos seus amigos! Adicionamos **4 novos jogos** "
-                "totalmente interativos para você desafiar qualquer um no servidor:\n\n"
-                "✂️ **Duelo de Jokenpô** (`!duelo @user <valor>`)\n"
-                "Gorila amassa Caçador, Caçador atira na Casca, Casca derruba o Gorila. Um clássico de escolhas secretas!\n\n"
-                "🌿 **Salto do Cipó Podre** (`!cipo @user <valor>`)\n"
-                "Uma roleta russa nas alturas! De 6 cipós na tela, 1 está podre. Revezem os saltos até alguém cair no penhasco.\n\n"
-                "🗺️ **Caça ao Tesouro** (`!explorar @user <valor>`)\n"
-                "Um mini campo minado 5x5! Revezem clicando nos botões para achar Bananas (+1 ponto e joga de novo). Só evitem as Cobras!\n\n"
-                "🔫 **Duelo de Reflexos** (`!bang @user <valor>`)\n"
-                "Teste o seu tempo de reação! O primeiro que clicar em ATIRAR ganha o dinheiro. Mas se clicar antes da hora... sua arma trava e você perde!"
+                "Aviões de carga passarão aleatoriamente pelos canais da selva! Quando um Air Drop cair, "
+                "o primeiro macaco a clicar no botão **SAQUEAR** leva a caixa direto para sua mochila.\n\n"
+                "💡 *Fique atento aos chats de economia, o tempo de reação é o que separa um Rei de um Lêmure!*"
             )
         )
 
-        embed.set_footer(text="Koba: Evoluindo a sobrevivência na selva. 🌴")
+        embed.add_field(
+            name="🧪 NOVOS ITENS TÁTICOS",
+            inline=False,
+            value=(
+                "Adicionamos itens consumíveis que podem ser encontrados nas caixas:\n\n"
+                "• ⚡ **Energético Símio:** Zera instantaneamente o tempo de espera do seu `!trabalhar`.\n"
+                "• 💨 **Bomba de Fumaça:** Zera o seu tempo de espera para realizar um novo `!roubar`.\n"
+                "• 🧨 **Carga de C4:** Use `!c4 @user` para **explodir e destruir** o escudo de um alvo na hora!\n"
+                "• 💎 **Tesouros:** Diamantes e Estátuas de Ouro que podem ser vendidos por fortunas usando `!vender`."
+            )
+        )
+
+        embed.set_footer(text="Koba: A sorte favorece os audazes. 🌴")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="📢 **ATUALIZAÇÃO DE SISTEMA DISPONÍVEL (v7.8)** @everyone",
+            content="📢 **NOVA CARGA DETECTADA (v7.9)** @everyone",
             embed=embed
         )
 

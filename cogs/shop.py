@@ -35,41 +35,46 @@ class Shop(commands.Cog):
     async def loja(self, ctx):
         embed = disnake.Embed(
             title="🛒 Loja de Itens e Maldades",
-            description="Compra usando `!comprar <nome do item>`",
+            description="Compre usando `!comprar <nome do item>`",
             color=disnake.Color.blue()
         )
         embed.add_field(
-            name="📈 Cargos (Aumenta Salário e Limite de Aposta)",
+            name="📈 Cargos (Aumenta Salário e Limite)",
             value=(
-                "🐒 **Macaquinho** — `1.200 MC` | Sal: 130–230 MC/h | Aposta: 1.500 MC\n"
-                "🐵 **Babuíno** — `5.500 MC` | Sal: 320–530 MC/h | Aposta: 4.500 MC\n"
-                "🌴 **Chimpanzé** — `14.000 MC` | Sal: 780–1.320 MC/h | Aposta: 12.000 MC\n"
-                "🦧 **Orangutango** — `35.000 MC` | Sal: 1.900–3.200 MC/h | Aposta: 30.000 MC\n"
-                "🦍 **Gorila** — `85.000 MC` | Sal: 4.700–7.800 MC/h | Aposta: 80.000 MC\n"
-                "🗿 **Ancestral** — `210.000 MC` | Sal: 11.500–19.000 MC/h | Aposta: 250.000 MC\n"
-                "👑 **Rei Símio** — `600.000 MC` | Sal: 27.000–45.000 MC/h | Aposta: 1.500.000 MC"
+                "🐒 **Macaquinho** — `1.200 MC` | 🐵 **Babuíno** — `5.500 MC`\n"
+                "🌴 **Chimpanzé** — `14.000 MC` | 🦧 **Orangutango** — `35.000 MC`\n"
+                "🦍 **Gorila** — `85.000 MC` | 🗿 **Ancestral** — `210.000 MC`\n"
+                "👑 **Rei Símio** — `600.000 MC`"
             ), inline=False
         )
         embed.add_field(
             name="🛡️ Equipamentos",
             value=(
-                "🛡️ **Escudo** — `1.000 MC` | Bloqueia **3 tentativas de roubo**. Limite: **1 por dia**.\n"
+                "🛡️ **Escudo** — `1.000 MC` | Bloqueia **3 roubos**. Limite: **1 por dia**.\n"
                 "🕵️ **Pé de Cabra** — `1.200 MC` | Aumenta chance de roubo para 65% e perfura o Escudo.\n"
-                "📄 **Seguro** — `950 MC` | Recupera 60% do valor se fores roubado."
+                "📄 **Seguro** — `950 MC` | Recupera 60% do valor se for roubado."
+            ), inline=False
+        )
+        embed.add_field(
+            name="📦 Lootboxes (Caixas Surpresa)",
+            value=(
+                "🪵 **Caixote de Madeira** — `800 MC` | Itens comuns e prêmios leves. `!abrir Caixote`\n"
+                "🪙 **Baú do Caçador** — `3.500 MC` | Equipamentos táticos e prêmios médios. `!abrir Baú`\n"
+                "🏺 **Relíquia Ancestral** — `15.000 MC` | Tesouros puros e riquezas extremas. `!abrir Relíquia`"
             ), inline=False
         )
         embed.add_field(
             name="😈 Sabotagens e Maldades",
             value=(
-                "🍌 **Casca de Banana** — `300 MC` | Próximo trabalho/roubo do alvo falha. `!casca @user`\n"
-                "🦍 **Imposto do Gorila** — `1.500 MC` | Rouba 25% dos próximos **5 trabalhos** do alvo. `!taxar @user`\n"
-                "🪄 **Troca de Nick** — `3.000 MC` | Altera o nick do alvo por 30min. `!apelidar @user <nick>`\n\n"
-                "⚡ **Comandos Diretos (sem item):**\n"
-                "🙊 **Maldição Símia** — `500 MC` | O alvo fala como macaco por 1min. `!amaldicoar @user`\n"
-                "🎭 **Impostor** — `500 MC` | Envia mensagem falsa como o alvo. `!impostor @user <msg>`"
+                "🍌 **Casca de Banana** — `300 MC` | `!casca @user`\n"
+                "🦍 **Imposto do Gorila** — `1.500 MC` | `!taxar @user`\n"
+                "🪄 **Troca de Nick** — `3.000 MC` | `!apelidar @user <nick>`\n\n"
+                "⚡ **Apenas Comandos (sem item):**\n"
+                "🙊 **Maldição Símia** — `500 MC` | `!amaldicoar @user`\n"
+                "🎭 **Impostor** — `500 MC` | `!impostor @user <msg>`"
             ), inline=False
         )
-        embed.set_footer(text="Usa !salarios para ver a progressão completa")
+        embed.set_footer(text="A selva está cheia de surpresas. Gaste com sabedoria!")
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -81,7 +86,7 @@ class Shop(commands.Cog):
             user_id = str(ctx.author.id)
             user = db.get_user_data(user_id)
             if not user:
-                return await ctx.send("❌ Usa `!trabalhar` primeiro para te registares!")
+                return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
             loja = {
                 "macaquinho":        {"nome": "Macaquinho",        "preco": 1200.0,   "tipo": "cargo"},
@@ -101,6 +106,17 @@ class Shop(commands.Cog):
                 "casca de banana":   {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
                 "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1500.0,   "tipo": "item"},
                 "troca de nick":     {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
+                # CAIXAS
+                "caixote de madeira":{"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
+                "caixote":           {"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
+                "baú do caçador":    {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
+                "bau do cacador":    {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
+                "baú":               {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
+                "bau":               {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
+                "relíquia ancestral":{"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
+                "reliquia ancestral":{"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
+                "relíquia":          {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
+                "reliquia":          {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
             }
 
             escolha = item.lower()
@@ -113,7 +129,7 @@ class Shop(commands.Cog):
             if saldo < item_data["preco"]:
                 faltam = round(item_data["preco"] - saldo, 2)
                 return await ctx.send(
-                    f"❌ Saldo insuficiente! Precisas de **{formatar_moeda(item_data['preco'])} MC** "
+                    f"❌ Saldo insuficiente! Você precisa de **{formatar_moeda(item_data['preco'])} MC** "
                     f"(faltam **{formatar_moeda(faltam)} MC**)."
                 )
 
@@ -127,10 +143,8 @@ class Shop(commands.Cog):
                 inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
                 inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
 
-                # ── ESCUDO: preço fixo 1.000 MC, máx 1 compra por dia ────────
                 if item_data["nome"] == "Escudo":
                     agora = time.time()
-
                     escudo_ativo = hasattr(self.bot, 'escudos_ativos') and \
                                    self.bot.escudos_ativos.get(user_id, 0) > 0
                     if "Escudo" in inv_list or escudo_ativo:
