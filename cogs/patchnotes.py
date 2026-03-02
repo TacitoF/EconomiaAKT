@@ -9,7 +9,7 @@ class Patchnotes(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização v7.6 no canal oficial."""
+        """Publica as notas de atualização no canal oficial."""
         try:
             await ctx.message.delete()
         except:
@@ -25,43 +25,40 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="📜 REGISTRO DE ATUALIZAÇÕES: v7.6 — ECONOMIA DINÂMICA",
+            title="📜 REGISTRO DE ATUALIZAÇÕES: v7.8 — JUSTIÇA E CAOS PVP",
             description=(
-                "Implementamos novos sistemas de inflação defensiva e imunidade tributária "
-                "para equilibrar o mercado e evitar abusos na selva."
+                "A selva passou por uma limpeza pesada contra trapaças e, para compensar, "
+                "trouxemos a maior atualização de jogos PvP até agora! Preparem seus Macacoins."
             ),
             color=disnake.Color.dark_green()
         )
 
         embed.add_field(
-            name="🛡️ REFORMULADO: Escudo Inflacionário",
+            name="⚖️ CORREÇÃO E PUNIÇÕES: Apostas Esportivas",
             inline=False,
             value=(
-                "O custo do **Escudo** agora é dinâmico e focado em evitar o acúmulo infinito de defesas!\n\n"
-                "• **Preço base:** `1.000 MC`\n"
-                "• **Inflação:** A cada compra realizada, o valor **sobe 50%** exclusivamente para você durante a semana (1.000 → 1.500 → 2.250 → 3.375...).\n"
-                "• **Reset:** O seu contador de inflação reseta automaticamente para o preço base após **7 dias**.\n"
-                "• O comando `!escudo` e a compra sempre informarão o seu preço personalizado atual."
+                "Identificamos e corrigimos uma falha crítica na agência de apostas (`!futebol`) que "
+                "permitia aos jogadores fazerem palpites em jogos que já tinham acabado.\n\n"
+                "🚨 **Aviso aos espertinhos:** Todos os usuários que abusaram desse bug para lucrar tiveram "
+                "suas **apostas canceladas** e sofreram um **rollback (rebaixamento) nos cargos**. "
+                "A regra é clara: joguem limpo, ou a selva cobra o preço."
             )
         )
 
         embed.add_field(
-            name="🦍 BALANCEAMENTO: Imunidade Tributária",
+            name="⚔️ NOVIDADE: O Arsenal PvP foi Expandido!",
             inline=False,
             value=(
-                "Para evitar perseguições constantes com o **Imposto do Gorila**, adicionamos uma janela de respiro.\n\n"
-                "• **Imunidade:** Assim que as 5 cargas de imposto sobre você terminarem, você ganha **48 horas de proteção** contra novas taxas.\n"
-                "• Ao se livrar do imposto, o bot informará exatamente quando a sua imunidade expira.\n"
-                "• O comando `!taxar` passa a bloquear tentativas contra jogadores imunes."
-            )
-        )
-
-        embed.add_field(
-            name="🛠️ Melhorias Gerais de Interface",
-            inline=False,
-            value=(
-                "• A `!loja` agora exibe corretamente a informação de inflação semanal do Escudo.\n"
-                "• O rastreio de pagamentos de apostas esportivas pendentes recebeu atualizações de estabilidade."
+                "Chegou a hora de arrancar o dinheiro dos seus amigos! Adicionamos **4 novos jogos** "
+                "totalmente interativos para você desafiar qualquer um no servidor:\n\n"
+                "✂️ **Duelo de Jokenpô** (`!duelo @user <valor>`)\n"
+                "Gorila amassa Caçador, Caçador atira na Casca, Casca derruba o Gorila. Um clássico de escolhas secretas!\n\n"
+                "🌿 **Salto do Cipó Podre** (`!cipo @user <valor>`)\n"
+                "Uma roleta russa nas alturas! De 6 cipós na tela, 1 está podre. Revezem os saltos até alguém cair no penhasco.\n\n"
+                "🗺️ **Caça ao Tesouro** (`!explorar @user <valor>`)\n"
+                "Um mini campo minado 5x5! Revezem clicando nos botões para achar Bananas (+1 ponto e joga de novo). Só evitem as Cobras!\n\n"
+                "🔫 **Duelo de Reflexos** (`!bang @user <valor>`)\n"
+                "Teste o seu tempo de reação! O primeiro que clicar em ATIRAR ganha o dinheiro. Mas se clicar antes da hora... sua arma trava e você perde!"
             )
         )
 
@@ -71,7 +68,7 @@ class Patchnotes(commands.Cog):
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         await canal_patchnotes.send(
-            content="📢 **ATUALIZAÇÃO DE SISTEMA DISPONÍVEL (v7.6)** @everyone",
+            content="📢 **ATUALIZAÇÃO DE SISTEMA DISPONÍVEL (v7.8)** @everyone",
             embed=embed
         )
 

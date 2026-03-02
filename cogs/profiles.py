@@ -264,9 +264,9 @@ class Profiles(commands.Cog):
             top           = sorted_all[:10]
 
             CARGO_EMOJI = {
-                "Lêmure": "🐭", "Macaquinho": "🐒", "Babuíno": "🦍",
-                "Chimpanzé": "🐵", "Orangutango": "🦧", "Gorila": "🦾",
-                "Ancestral": "🌿", "Rei Símio": "👑",
+                "Lêmure": "🐭", "Macaquinho": "🐒", "Babuíno": "🐵",
+                "Chimpanzé": "🌴", "Orangutango": "🦧", "Gorila": "🦍 ",
+                "Ancestral": "🗿", "Rei Símio": "👑",
             }
 
             def _fmt(s):

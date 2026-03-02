@@ -200,8 +200,8 @@ class Eventos(commands.Cog):
         embed.add_field(
             name  = "🃏 Jogos Solo",
             value = (
-                "🚀 **!crash `<valor>`** *(alias: `!cipo`)*\n"
-                "╰ Suba no cipó e saque antes de arrebentar!\n"
+                "🚀 **!crash `<valor>`**\n"
+                "╰ Suba no gráfico e saque antes de arrebentar!\n"
                 "♠️ **!21 `<valor>`**\n"
                 "╰ Blackjack completo contra o dealer.\n"
                 "🎰 **!cassino `<valor>`**\n"
@@ -222,7 +222,7 @@ class Eventos(commands.Cog):
                 "🐒 **!corrida `<animal>` `<valor>`**\n"
                 "╰ Macaquinho, Gorila ou Orangutango — paga **2x**.\n"
                 "🦁 *Animais do bicho:* Leão · Cobra · Jacaré · Arara · Elefante\n"
-                "🎫 **!raspadinha `<valor>`** — jogue instantaneamente (mín. 50 MC, máx 500 MC).\n"
+                "🎫 **!raspadinha `<valor>`** — jogue instantaneamente.\n"
                 "Prêmios: 1.5x · 2x · 3x · 5x · **Jackpot 10x**"
             ),
             inline = False,
@@ -231,6 +231,14 @@ class Eventos(commands.Cog):
         embed.add_field(
             name  = "⚔️ PvP — Jogador vs Jogador",
             value = (
+                "✂️ **!duelo `@user` `<valor>`**\n"
+                "╰ Jokenpô da selva (Gorila, Caçador, Casca).\n"
+                "🌿 **!cipo `@user` `<valor>`**\n"
+                "╰ Cipó Podre (Roleta Russa) — um cai, outro ganha.\n"
+                "🗺️ **!explorar `@user` `<valor>`**\n"
+                "╰ Caça ao tesouro — mini campo minado 5x5.\n"
+                "🔫 **!bang `@user` `<valor>`**\n"
+                "╰ Gatilho Rápido — quem clicar primeiro vence.\n"
                 "🃏 **!carta `@user` `<valor>`**\n"
                 "╰ Duelo de cartas — maior carta leva tudo.\n"
                 "🥊 **!briga `@user` `<valor>`**\n"

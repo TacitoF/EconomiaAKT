@@ -15,7 +15,7 @@ class General(commands.Cog):
     @commands.command(name="ajuda", aliases=["comandos", "info", "help"])
     async def ajuda_comando(self, ctx):
         embed = disnake.Embed(
-            title="📖 Guia do  Koba",
+            title="📖 Guia do Koba",
             description=(
                 f"Olá {ctx.author.mention}, este é o seu manual de sobrevivência na selva!\n\n"
                 "🪙 **Como começar:** Digite !trabalhar para abrir uma conta!"
@@ -48,9 +48,9 @@ class General(commands.Cog):
             "📈 `!investir cripto <valor>` — -25% a +20% em 30 segundos"
         ))
         embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
-            "🚀 `!crash` *(alias: `!cipo`)* | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
-            "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!raspadinha <valor>` | 🃏 `!carta`\n"
-            "💣 `!minas` | ♠️ `!21` | 🎲 `!mentira`\n"
+            "🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
+            "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!raspadinha` | 🃏 `!carta` | 💣 `!minas`\n"
+            "♠️ `!21` | 🎲 `!mentira` | ✂️ `!duelo` | 🌿 `!cipo` | 🗺️ `!explorar` | 🔫 `!bang`\n"
             "*Use `!jogos` no canal de apostas para ver detalhes*"
         ))
         embed.add_field(name="⚽ APOSTAS ESPORTIVAS (Canal #🎰・akbet)", inline=False, value=(

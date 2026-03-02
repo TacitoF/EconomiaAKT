@@ -54,7 +54,7 @@ class CrashGame(commands.Cog):
             await ctx.send(f"🐒 Ei {ctx.author.mention}, voa para o canal {mencao}.")
             raise commands.CommandError("Canal incorreto.")
 
-    @commands.command(aliases=["cipo", "foguetinho"])
+    @commands.command(aliases=["foguetinho"])
     async def crash(self, ctx, aposta: float = None):
         if aposta is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!crash <valor>`")
