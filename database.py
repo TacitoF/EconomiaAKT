@@ -4,7 +4,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 from disnake.ext import commands
 from dotenv import load_dotenv
 
-# Carrega as variáveis de ambiente (para garantir leitura local do .env)
 load_dotenv()
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -66,9 +65,9 @@ def create_user(user_id, name):
       6  - inventario
       7  - timestamp_roubo
       8  - timestamp_investimento_fixo
-      9  - cripto_usos  (FIX BUG 4: antes vazia, agora persiste usos diários de cripto)
+      9  - cripto_usos
       10 - conquistas
-      11 - imposto_gorila  (formato: "cobrador_id|cargas_restantes", vazio = sem imposto)
+      11 - imposto_gorila  (formato: "cobrador_id|cargas_restantes")
     """
     try:
         sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", ""])
@@ -86,15 +85,10 @@ def wipe_database():
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  CRIPTO — persistência de usos diários (coluna 9 / data[8])
-#  Formato armazenado: "quantidade|timestamp_primeiro_uso"
-#  Ex: "3|1718000000.0"
+#  Formato: "quantidade|timestamp_primeiro_uso"
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_cripto_usos(user_data: dict) -> tuple[int, float]:
-    """
-    Lê e retorna (quantidade_usos, timestamp_primeiro_uso) da coluna 9.
-    Retorna (0, 0.0) se estiver vazio ou corrompido.
-    """
     raw = str(user_data['data'][8]) if len(user_data['data']) > 8 else ""
     raw = raw.strip()
     if not raw:
@@ -106,7 +100,6 @@ def get_cripto_usos(user_data: dict) -> tuple[int, float]:
         return 0, 0.0
 
 def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
-    """Salva (quantidade_usos|timestamp_primeiro_uso) na coluna 9."""
     try:
         valor = f"{quantidade}|{timestamp_inicio}"
         sheet.update_cell(row, 9, valor)
@@ -116,15 +109,10 @@ def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  IMPOSTO DO GORILA — persistência (coluna 11 / data[10])
-#  Formato armazenado: "cobrador_id|cargas_restantes"
-#  Ex: "123456789|5"   — vazio = sem imposto ativo
+#  Formato: "cobrador_id|cargas_restantes"
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_imposto(user_data: dict) -> tuple[str | None, int]:
-    """
-    Lê e retorna (cobrador_id, cargas_restantes) da coluna 11.
-    Retorna (None, 0) se não houver imposto ativo.
-    """
     raw = str(user_data['data'][10]) if len(user_data['data']) > 10 else ""
     raw = raw.strip()
     if not raw:
@@ -140,7 +128,6 @@ def get_imposto(user_data: dict) -> tuple[str | None, int]:
         return None, 0
 
 def set_imposto(row: int, cobrador_id: str, cargas: int):
-    """Salva o imposto ativo na coluna 11. cargas=0 limpa o campo."""
     try:
         valor = f"{cobrador_id}|{cargas}" if cargas > 0 else ""
         sheet.update_cell(row, 11, valor)
@@ -148,7 +135,6 @@ def set_imposto(row: int, cobrador_id: str, cargas: int):
         handle_db_error(e)
 
 def clear_imposto(row: int):
-    """Remove o imposto ativo da coluna 11."""
     try:
         sheet.update_cell(row, 11, "")
     except Exception as e:
@@ -158,24 +144,12 @@ def clear_imposto(row: int):
 # ──────────────────────────────────────────────────────────────────────────────
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
 #  Colunas da aba Apostas_Esportivas:
-#    1  - user_id
-#    2  - match_id
-#    3  - palpite
-#    4  - valor
-#    5  - odd
-#    6  - status
-#    7  - time_casa
-#    8  - time_fora
-#    9  - liga
-#    10 - horario
+#    1-user_id  2-match_id  3-palpite  4-valor  5-odd  6-status
+#    7-time_casa  8-time_fora  9-liga  10-horario
 # ──────────────────────────────────────────────────────────────────────────────
 
 def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
                                time_casa: str = "", time_fora: str = "", liga: str = "", horario: str = ""):
-    """
-    Salva um novo palpite na aba Apostas_Esportivas.
-    Colunas: user_id | match_id | palpite | valor | odd | status | time_casa | time_fora | liga | horario
-    """
     try:
         valor_str = str(valor).replace('.', ',')
         odd_str   = str(odd).replace('.', ',')
@@ -215,7 +189,6 @@ def obter_apostas_pendentes():
         return []
 
 def atualizar_status_aposta(row, status):
-    """Atualiza o status (Venceu/Perdeu/Reembolso) de uma aposta específica."""
     try:
         sheet_apostas.update_cell(row, 6, status)
     except Exception as e:
@@ -223,26 +196,36 @@ def atualizar_status_aposta(row, status):
 
 def limpar_apostas_finalizadas() -> int:
     """
-    Remove da planilha todas as linhas cujo status seja Venceu, Perdeu ou Reembolso.
-    Preserva o cabeçalho (linha 1) e as apostas Pendentes.
-    Retorna o número de linhas apagadas.
+    Remove da planilha todas as linhas com status Venceu, Perdeu ou Reembolso.
+    Estratégia de 2 requests apenas:
+      1. get_all_values() — lê tudo
+      2. clear() + update() — apaga e sobrescreve só com as linhas a manter
+    Evita o erro 429 causado por delete_rows individual em loop.
     """
     try:
         rows = sheet_apostas.get_all_values()
-        # Coleta os índices (1-based) das linhas a apagar, de baixo pra cima
-        # para não deslocar os índices durante a deleção
+
+        if not rows:
+            return 0
+
         status_finalizados = {"Venceu", "Perdeu", "Reembolso"}
-        linhas_para_apagar = [
-            i + 1  # índice real na planilha (1-based)
-            for i, row in enumerate(rows)
-            if i > 0 and len(row) >= 6 and row[5] in status_finalizados
-        ]
 
-        # Apaga de baixo pra cima para preservar os índices corretos
-        for row_index in reversed(linhas_para_apagar):
-            sheet_apostas.delete_rows(row_index)
+        cabecalho  = rows[0]
+        corpo      = rows[1:]
+        manter     = [row for row in corpo if not (len(row) >= 6 and row[5] in status_finalizados)]
+        removidas  = len(corpo) - len(manter)
 
-        return len(linhas_para_apagar)
+        if removidas == 0:
+            return 0
+
+        # Limpa a aba inteira e reescreve cabeçalho + linhas pendentes de uma vez
+        sheet_apostas.clear()
+        if manter:
+            sheet_apostas.update([cabecalho] + manter, value_input_option="RAW")
+        else:
+            sheet_apostas.update([cabecalho], value_input_option="RAW")
+
+        return removidas
     except Exception as e:
         handle_db_error(e)
         return 0
