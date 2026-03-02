@@ -38,13 +38,13 @@ class Economy(commands.Cog):
                 db.create_user(user_id, ctx.author.name)
                 user = db.get_user_data(user_id)
             if not user:
-                return await ctx.send(f"❌ {ctx.author.mention}, erro ao criar a tua conta! Tenta novamente.")
+                return await ctx.send(f"❌ {ctx.author.mention}, erro ao criar a sua conta! Tente novamente.")
 
             agora = time.time()
             ultimo_work = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
 
             if agora - ultimo_work < 3600:
-                return await ctx.send(f"⏳ {ctx.author.mention}, estás exausto! Volta <t:{int(ultimo_work + 3600)}:R>.")
+                return await ctx.send(f"⏳ {ctx.author.mention}, você está exausto! Volte <t:{int(ultimo_work + 3600)}:R>.")
 
             if user_id in self.bot.cascas:
                 self.bot.cascas.remove(user_id)
@@ -87,9 +87,9 @@ class Economy(commands.Cog):
                     db.clear_imposto(user['row'])
                     libera_em = int(time.time() + 86400)  # ✅ 24 horas cravadas
                     self.bot.cooldown_imposto[user_id] = libera_em
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor!\n🕊️ *O Imposto acabou. Estás imune a novos impostos por **24h** (<t:{libera_em}:R>).*"
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor!\n🕊️ *O Imposto acabou. Você está imune a novos impostos por **24h** (<t:{libera_em}:R>).*"
                 else:
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do teu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
+                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
 
             saldo_atual = db.parse_float(user['data'][2])
             novo_saldo = round(saldo_atual + ganho, 2)
@@ -109,7 +109,7 @@ class Economy(commands.Cog):
                 if "proletario" not in lista_conquistas:
                     lista_conquistas.append("proletario")
                     db.update_value(user['row'], 10, ", ".join(lista_conquistas))
-                    conquista_msg = "\n🏆 Desbloqueaste a conquista **Proletário Padrão**!"
+                    conquista_msg = "\n🏆 Você desbloqueou a conquista **Proletário Padrão**!"
 
             proximo_cd = int(agora + 3600)
             CARGO_CORES = {
@@ -129,14 +129,14 @@ class Economy(commands.Cog):
                 embed.add_field(name="🦍 Imposto do Gorila", value=imposto_msg.strip().lstrip("\n"), inline=False)
             if conquista_msg:
                 embed.add_field(name="🏆 Conquista!", value=conquista_msg.strip().lstrip("\n"), inline=False)
-            embed.set_footer(text=f"💼 Cargo: {cargo}  ·  !perfil para ver o teu progresso")
+            embed.set_footer(text=f"💼 Cargo: {cargo}  ·  !perfil para ver o seu progresso")
             await ctx.send(embed=embed)
 
         except commands.CommandError:
             raise
         except Exception as e:
             print(f"❌ Erro no !trabalhar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["assaltar", "furtar", "rob"])
     async def roubar(self, ctx, vitima: disnake.Member = None):
@@ -152,7 +152,7 @@ class Economy(commands.Cog):
                 if "palhaco" not in lista_p:
                     lista_p.append("palhaco")
                     db.update_value(ladrao_data['row'], 10, ", ".join(lista_p))
-            return await ctx.send("🐒 Palhaço! Não podes roubar-te a ti mesmo.")
+            return await ctx.send("🐒 Palhaço! Não pode roubar a si mesmo.")
 
         try:
             ladrao_data = db.get_user_data(ladrao_id)
@@ -171,7 +171,7 @@ class Economy(commands.Cog):
 
             ultimo_roubo = db.parse_float(ladrao_data['data'][6] if len(ladrao_data['data']) > 6 else None)
             if agora - ultimo_roubo < 7200:
-                return await ctx.send(f"👮 Só podes roubar novamente <t:{int(ultimo_roubo + 7200)}:R>.")
+                return await ctx.send(f"👮 Só pode roubar novamente <t:{int(ultimo_roubo + 7200)}:R>.")
 
             if ladrao_id in self.bot.cascas:
                 self.bot.cascas.remove(ladrao_id)
@@ -223,7 +223,7 @@ class Economy(commands.Cog):
 
                     emb_b = disnake.Embed(
                         title       = "🛡️ Ataque bloqueado!",
-                        description = f"{vitima.mention} defendeu-se com um **Escudo** e o teu ataque foi repelido.",
+                        description = f"{vitima.mention} se defendeu com um **Escudo** e o seu ataque foi repelido.",
                         color       = 0x3498DB,
                     )
                     emb_b.add_field(name="🛡️ Status do Escudo", value=texto_carga, inline=False)
@@ -273,7 +273,7 @@ class Economy(commands.Cog):
                     if "mestre_sombras" not in lista_conquistas:
                         lista_conquistas.append("mestre_sombras")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_conquistas))
-                        conquista_msg = "\n🏆 Desbloqueaste a conquista **Mestre das Sombras**!"
+                        conquista_msg = "\n🏆 Você desbloqueou a conquista **Mestre das Sombras**!"
 
                 titulo_s = "🥷 SUCESSO (com pena)..." if is_pobre else "🥷 SUCESSO!"
                 desc_s   = (
@@ -324,14 +324,14 @@ class Economy(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !roubar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["pix", "transferir", "pay"])
     async def pagar(self, ctx, recebedor: disnake.Member = None, valor: float = None):
         if recebedor is None or valor is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!pagar @usuario <valor>`")
         if recebedor.id == ctx.author.id:
-            return await ctx.send(f"🐒 {ctx.author.mention}, não podes fazer Pix para ti mesmo!")
+            return await ctx.send(f"🐒 {ctx.author.mention}, não pode fazer Pix para si mesmo!")
         if valor <= 0:
             return await ctx.send("❌ O valor deve ser maior que zero!")
         valor = round(valor, 2)
@@ -368,7 +368,7 @@ class Economy(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !pagar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(Economy(bot))

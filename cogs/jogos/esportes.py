@@ -40,13 +40,15 @@ def formatar_moeda(valor: float) -> str:
 
 
 class ModalValorAposta(disnake.ui.Modal):
-    def __init__(self, match_id, palpite, time_casa, time_fora, liga, horario):
-        self.match_id  = match_id
-        self.palpite   = palpite
-        self.time_casa = time_casa
-        self.time_fora = time_fora
-        self.liga      = liga
-        self.horario   = horario
+    def __init__(self, match_id, palpite, time_casa, time_fora, liga, horario, api_url=None, api_headers=None):
+        self.match_id    = match_id
+        self.palpite     = palpite
+        self.time_casa   = time_casa
+        self.time_fora   = time_fora
+        self.liga        = liga
+        self.horario     = horario
+        self.api_url     = api_url or "https://api.football-data.org/v4"
+        self.api_headers = api_headers or {}
         EMOJI  = {"casa": "🏠", "empate": "🤝", "fora": "✈️"}
         LABELS = {"casa": time_casa, "empate": "Empate", "fora": time_fora}
         components = [
@@ -70,6 +72,42 @@ class ModalValorAposta(disnake.ui.Modal):
             return await inter.edit_original_response(content="❌ Valor inválido!")
         if valor <= 0:
             return await inter.edit_original_response(content="❌ O valor deve ser maior que zero!")
+
+        # ── Verificar status do jogo antes de aceitar a aposta ──────────────
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.api_url}/matches/{self.match_id}",
+                    headers=self.api_headers,
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
+                    if resp.status == 200:
+                        match_data = await resp.json()
+                        match_status = match_data.get("status", "")
+                        if match_status not in ("SCHEDULED", "TIMED"):
+                            status_msg = {
+                                "IN_PLAY":  "🔴 Este jogo já está **em andamento**!",
+                                "PAUSED":   "⏸️ Este jogo está **pausado** (intervalo).",
+                                "FINISHED": "🏁 Este jogo já foi **finalizado**!",
+                                "AWARDED":  "🏁 Este jogo já foi **encerrado**!",
+                                "POSTPONED":"⚠️ Este jogo foi **adiado**.",
+                                "CANCELLED":"⚠️ Este jogo foi **cancelado**.",
+                                "SUSPENDED":"⚠️ Este jogo foi **suspenso**.",
+                            }.get(match_status, f"⚠️ Status do jogo: `{match_status}`")
+                            return await inter.edit_original_response(
+                                content=f"{status_msg}\nNão é possível apostar nesta partida."
+                            )
+        except asyncio.TimeoutError:
+            return await inter.edit_original_response(
+                content="⚠️ Não foi possível verificar o status do jogo. Tente novamente."
+            )
+        except Exception as e:
+            print(f"⚠️ Erro ao verificar status do jogo {self.match_id}: {e}")
+            return await inter.edit_original_response(
+                content="⚠️ Erro ao verificar o jogo. Tente novamente em instantes."
+            )
+        # ────────────────────────────────────────────────────────────────────
+
         user = db.get_user_data(str(inter.author.id))
         if not user:
             return await inter.edit_original_response(content="❌ Conta não encontrada!")
@@ -78,7 +116,7 @@ class ModalValorAposta(disnake.ui.Modal):
         limite = get_limite(cargo)
         if saldo < valor:
             return await inter.edit_original_response(
-                content=f"❌ Saldo insuficiente! Tens **{formatar_moeda(saldo)} MC** e tentaste apostar **{formatar_moeda(valor)} MC**."
+                content=f"❌ Saldo insuficiente! Você tem **{formatar_moeda(saldo)} MC** e tentou apostar **{formatar_moeda(valor)} MC**."
             )
         if valor > limite:
             return await inter.edit_original_response(
@@ -108,19 +146,22 @@ class ModalValorAposta(disnake.ui.Modal):
 
 
 class ViewPalpiteJogo(disnake.ui.View):
-    def __init__(self, match_id, time_casa, time_fora, liga, horario):
+    def __init__(self, match_id, time_casa, time_fora, liga, horario, api_url=None, api_headers=None):
         super().__init__(timeout=120)
-        self.match_id  = match_id
-        self.time_casa = time_casa
-        self.time_fora = time_fora
-        self.liga      = liga
-        self.horario   = horario
+        self.match_id    = match_id
+        self.time_casa   = time_casa
+        self.time_fora   = time_fora
+        self.liga        = liga
+        self.horario     = horario
+        self.api_url     = api_url
+        self.api_headers = api_headers or {}
 
     async def _abrir_modal(self, inter, palpite):
         await inter.response.send_modal(ModalValorAposta(
             match_id=self.match_id, palpite=palpite,
             time_casa=self.time_casa, time_fora=self.time_fora,
             liga=self.liga, horario=self.horario,
+            api_url=self.api_url, api_headers=self.api_headers,
         ))
 
     @disnake.ui.button(label="🏠 Casa",   style=disnake.ButtonStyle.primary)
@@ -139,8 +180,10 @@ class ViewPalpiteJogo(disnake.ui.View):
 
 
 class SelectJogo(disnake.ui.StringSelect):
-    def __init__(self, jogos):
-        self.jogos_map = {str(j["id"]): j for j in jogos}
+    def __init__(self, jogos, api_url=None, api_headers=None):
+        self.jogos_map   = {str(j["id"]): j for j in jogos}
+        self.api_url     = api_url
+        self.api_headers = api_headers or {}
         options = []
         for j in jogos:
             liga_code = j.get("competition", {}).get("code", "")
@@ -170,13 +213,13 @@ class SelectJogo(disnake.ui.StringSelect):
         embed.add_field(name="✈️ Fora",     value=time_fora, inline=True)
         embed.add_field(name="💰 Odd fixa", value="**2.0x** para qualquer resultado", inline=False)
         embed.set_footer(text=f"ID: {mid}")
-        await inter.response.send_message(embed=embed, view=ViewPalpiteJogo(int(mid), time_casa, time_fora, liga_nome, horario), ephemeral=True)
+        await inter.response.send_message(embed=embed, view=ViewPalpiteJogo(int(mid), time_casa, time_fora, liga_nome, horario, api_url=self.api_url, api_headers=self.api_headers), ephemeral=True)
 
 
 class ViewSelectJogos(disnake.ui.View):
-    def __init__(self, jogos):
+    def __init__(self, jogos, api_url=None, api_headers=None):
         super().__init__(timeout=None)
-        self.add_item(SelectJogo(jogos))
+        self.add_item(SelectJogo(jogos, api_url=api_url, api_headers=api_headers))
 
 
 class Esportes(commands.Cog):
@@ -200,7 +243,7 @@ class Esportes(commands.Cog):
     async def futebol(self, ctx):
         agora = datetime.now()
         if self.cache_embed and self.cache_jogos and self.cache_time and (agora - self.cache_time) < timedelta(minutes=30):
-            return await ctx.send(embed=self.cache_embed, view=ViewSelectJogos(self.cache_jogos))
+            return await ctx.send(embed=self.cache_embed, view=ViewSelectJogos(self.cache_jogos, api_url=self.api_url, api_headers=self.headers))
         await ctx.send("🔎 Consultando o calendário... Aguarde!", delete_after=5)
         try:
             async with aiohttp.ClientSession() as session:
@@ -238,7 +281,7 @@ class Esportes(commands.Cog):
                     self.cache_embed = embed
                     self.cache_jogos = jogos
                     self.cache_time  = agora
-                    await ctx.send(embed=embed, view=ViewSelectJogos(jogos))
+                    await ctx.send(embed=embed, view=ViewSelectJogos(jogos, api_url=self.api_url, api_headers=self.headers))
         except commands.CommandError:
             raise
         except Exception as e:

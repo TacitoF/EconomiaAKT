@@ -28,7 +28,7 @@ class Shop(commands.Cog):
         if ctx.channel.name != '🐒・conguitos':
             canal = disnake.utils.get(ctx.guild.channels, name='🐒・conguitos')
             mencao = canal.mention if canal else "#🐒・conguitos"
-            await ctx.send(f"⚠️ {ctx.author.mention}, usa a loja no canal {mencao}!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, use a loja no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["shop", "mercado"])
@@ -105,7 +105,7 @@ class Shop(commands.Cog):
 
             escolha = item.lower()
             if escolha not in loja:
-                return await ctx.send("❌ Item inválido! Digita exatamente como está na `!loja`.")
+                return await ctx.send("❌ Item inválido! Digite exatamente como está na `!loja`.")
 
             item_data = loja[escolha]
             saldo = db.parse_float(user['data'][2])
@@ -136,9 +136,9 @@ class Shop(commands.Cog):
                     if "Escudo" in inv_list or escudo_ativo:
                         db.update_value(user['row'], 3, round(saldo, 2))  # estorna
                         return await ctx.send(
-                            f"❌ {ctx.author.mention}, já tens um **Escudo** "
+                            f"❌ {ctx.author.mention}, você já tem um **Escudo** "
                             f"{'ativo' if escudo_ativo else 'no inventário'}! "
-                            f"Só podes ter 1 de cada vez."
+                            f"Só pode ter 1 de cada vez."
                         )
 
                     historico = self.bot.escudo_compras.get(user_id, (0, 0.0))
@@ -148,8 +148,8 @@ class Shop(commands.Cog):
                         libera_em = int(ultima_compra_ts + 86400)
                         db.update_value(user['row'], 3, round(saldo, 2))  # estorna
                         return await ctx.send(
-                            f"⏳ {ctx.author.mention}, já compraste um **Escudo** hoje! "
-                            f"Podes comprar outro <t:{libera_em}:R>."
+                            f"⏳ {ctx.author.mention}, você já comprou um **Escudo** hoje! "
+                            f"Pode comprar outro <t:{libera_em}:R>."
                         )
 
                     self.bot.escudo_compras[user_id] = (1, agora)
@@ -162,7 +162,7 @@ class Shop(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !comprar de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(Shop(bot))

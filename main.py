@@ -43,8 +43,8 @@ async def global_check(ctx):
 
     if bot.is_locked:
         await ctx.send(
-            f"🛠️ {ctx.author.mention}, o sistema encontra-se em manutenção programada. "
-            f"Por favor, aguarde a normalização dos serviços para utilizar este comando."
+            f"🛠️ {ctx.author.mention}, o sistema está em manutenção programada. "
+            f"Por favor, aguarde a normalização dos serviços para usar este comando."
         )
         raise commands.CheckFailure("Bot em manutenção.")
 

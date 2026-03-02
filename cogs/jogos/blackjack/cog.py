@@ -24,7 +24,7 @@ class BlackjackCog(commands.Cog):
         if ctx.channel.name != '🎰・akbet':
             canal  = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
-            await ctx.send(f"🐒 Ei {ctx.author.mention}, vai para o canal {mencao}.")
+            await ctx.send(f"🐒 Ei {ctx.author.mention}, vá para o canal {mencao}.")
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["bj", "21"])
