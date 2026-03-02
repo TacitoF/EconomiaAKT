@@ -32,8 +32,10 @@ load_dotenv()
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_command=None)
 bot.is_locked = True
 
-# ANTI-SPAM GLOBAL
-ANTI_SPAM_COOLDOWN = 3
+# ──────────────────────────────────────────────
+#  ANTI-SPAM GLOBAL (TRAVA TOTAL POR USUÁRIO)
+# ──────────────────────────────────────────────
+ANTI_SPAM_COOLDOWN = 2.5 # 2.5 segundos de espera entre QUALQUER comando
 _spam_tracker: dict = {}
 
 @bot.check
@@ -48,7 +50,8 @@ async def global_check(ctx):
         )
         raise commands.CheckFailure("Bot em manutenção.")
 
-    chave = f"{ctx.author.id}:{ctx.command.name if ctx.command else 'unknown'}"
+    # A chave agora é APENAS o ID do autor. Impede o uso de comandos em massa.
+    chave = str(ctx.author.id)
     agora = time.time()
     ultimo = _spam_tracker.get(chave, 0)
     restante = ANTI_SPAM_COOLDOWN - (agora - ultimo)
@@ -56,9 +59,9 @@ async def global_check(ctx):
     if restante > 0:
         try:
             aviso = await ctx.send(
-                f"⏱️ {ctx.author.mention}, devagar! Aguarde **{restante:.1f}s** antes de repetir este comando."
+                f"⏱️ {ctx.author.mention}, o bot precisa respirar! Aguarde **{restante:.1f}s** antes de usar outro comando."
             )
-            await aviso.delete(delay=4)
+            await aviso.delete(delay=3)
         except Exception:
             pass
         raise commands.CheckFailure("Anti-spam ativado.")
@@ -150,14 +153,23 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx, error):
+    # Ignora falhas de check (como o anti-spam) e comandos inexistentes
     if isinstance(error, (commands.CheckFailure, commands.CommandNotFound)):
         return
+        
+    # SILENCIA OS ERROS DE COOLDOWN NO CONSOLE E AVISA O USUÁRIO
+    if isinstance(error, commands.CommandOnCooldown):
+        try:
+            aviso = await ctx.send(f"⏳ Comando em recarga! Tente novamente em **{error.retry_after:.1f}s**.")
+            await aviso.delete(delay=4)
+        except:
+            pass
+        return
+
     print(f"❌ Erro não tratado: {error}")
 
 # ──────────────────────────────────────────────
 #  CARREGAMENTO DE COGS
-#  Suporta tanto arquivos soltos (ex: economy.py) quanto
-#  pacotes com __init__.py (ex: blackjack/__init__.py).
 # ──────────────────────────────────────────────
 def load_cogs():
     if not os.path.exists('./cogs'):
@@ -167,10 +179,6 @@ def load_cogs():
         if '__pycache__' in pasta_atual:
             continue
 
-        # ── Pacotes: pasta com __init__.py ───────────────────────────────
-        # Se a pasta tem __init__.py, carrega ela como módulo único e
-        # ignora seus arquivos internos (subdirs já são visitados pelo walk,
-        # mas nenhum deles deve ser carregado individualmente).
         if '__init__.py' in arquivos:
             modulo = (
                 pasta_atual
@@ -181,11 +189,9 @@ def load_cogs():
                 print(f"📦 {modulo} (pacote)")
             except Exception as e:
                 print(f"❌ Erro ao carregar pacote {modulo}: {e}")
-            # Impede o os.walk de descer nos subdiretórios deste pacote
             subdirs.clear()
             continue
 
-        # ── Arquivos soltos: .py normais ──────────────────────────────────
         for filename in arquivos:
             if not filename.endswith('.py') or filename == '__init__.py':
                 continue
