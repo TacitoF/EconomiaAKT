@@ -34,47 +34,78 @@ class Shop(commands.Cog):
     @commands.command(aliases=["shop", "mercado"])
     async def loja(self, ctx):
         embed = disnake.Embed(
-            title="🛒 Loja de Itens e Maldades",
-            description="Compre usando `!comprar <nome do item>`",
-            color=disnake.Color.blue()
+            title="🛒 MERCADO NEGRO DA SELVA",
+            description=(
+                "Bem-vindo à loja! Para adquirir algo, use o comando:\n"
+                "`!comprar <nome do item>` (Ex: `!comprar Pé de Cabra`)"
+            ),
+            color=disnake.Color.dark_theme()
         )
+
         embed.add_field(
-            name="📈 Cargos (Aumenta Salário e Limite)",
+            name="📈 PROGRESSÃO (Cargos)",
             value=(
-                "🐒 **Macaquinho** — `1.200 MC` | 🐵 **Babuíno** — `5.500 MC`\n"
-                "🌴 **Chimpanzé** — `14.000 MC` | 🦧 **Orangutango** — `35.000 MC`\n"
-                "🦍 **Gorila** — `85.000 MC` | 🗿 **Ancestral** — `210.000 MC`\n"
-                "👑 **Rei Símio** — `600.000 MC`"
+                "Suba de cargo para aumentar seu salário e limite de apostas!\n\n"
+                "🐒 **Macaquinho** ─ `1.200 MC`\n"
+                "🐵 **Babuíno** ─ `5.500 MC`\n"
+                "🌴 **Chimpanzé** ─ `14.000 MC`\n"
+                "🦧 **Orangutango** ─ `35.000 MC`\n"
+                "🦍 **Gorila** ─ `85.000 MC`\n"
+                "🗿 **Ancestral** ─ `210.000 MC`\n"
+                "👑 **Rei Símio** ─ `600.000 MC`"
+            ), inline=True
+        )
+
+        embed.add_field(name="\u200B", value="\u200B", inline=True) # Espaçador invisível para arrumar o layout
+
+        embed.add_field(
+            name="🛡️ EQUIPAMENTOS E DEFESA",
+            value=(
+                "🛡️ **Escudo** ─ `1.000 MC`\n"
+                "└ *Bloqueia 3 tentativas de roubo (Limite: 1 compra/dia).*\n\n"
+                "🕵️ **Pé de Cabra** ─ `1.200 MC`\n"
+                "└ *Eleva a chance de roubo a 65% e fura Escudos.*\n\n"
+                "📄 **Seguro** ─ `950 MC`\n"
+                "└ *Garante reembolso de 60% se você for roubado.*"
             ), inline=False
         )
+
         embed.add_field(
-            name="🛡️ Equipamentos",
+            name="📦 LOOTBOXES (Contrabando)",
             value=(
-                "🛡️ **Escudo** — `1.000 MC` | Bloqueia **3 roubos**. Limite: **1 por dia**.\n"
-                "🕵️ **Pé de Cabra** — `1.200 MC` | Aumenta chance de roubo para 65% e perfura o Escudo.\n"
-                "📄 **Seguro** — `950 MC` | Recupera 60% do valor se for roubado."
+                "🪵 **Caixote de Madeira** ─ `800 MC`\n"
+                "└ *Contém itens de utilidade leve. (Use `!abrir caixote`)*\n\n"
+                "🪙 **Baú do Caçador** ─ `3.500 MC`\n"
+                "└ *Itens táticos e prêmios maiores. (Use `!abrir baú`)*\n\n"
+                "🏺 **Relíquia Ancestral** ─ `15.000 MC`\n"
+                "└ *Pura riqueza e tesouros de alto valor. (Use `!abrir relíquia`)*"
             ), inline=False
         )
+
         embed.add_field(
-            name="📦 Lootboxes (Caixas Surpresa)",
+            name="😈 SABOTAGEM (Consumíveis)",
             value=(
-                "🪵 **Caixote de Madeira** — `800 MC` | Itens comuns e prêmios leves. `!abrir Caixote`\n"
-                "🪙 **Baú do Caçador** — `3.500 MC` | Equipamentos táticos e prêmios médios. `!abrir Baú`\n"
-                "🏺 **Relíquia Ancestral** — `15.000 MC` | Tesouros puros e riquezas extremas. `!abrir Relíquia`"
+                "🍌 **Casca de Banana** ─ `300 MC`\n"
+                "└ *Atrasa a vítima no trabalho. (Use `!casca @user`)*\n\n"
+                "🦍 **Imposto do Gorila** ─ `1.500 MC`\n"
+                "└ *Rouba 25% do próximo trabalho do alvo. (Use `!taxar @user`)*\n\n"
+                "🪄 **Troca de Nick** ─ `3.000 MC`\n"
+                "└ *Altera o apelido do alvo no server. (Use `!apelidar @user <nick>`)*"
             ), inline=False
         )
+
         embed.add_field(
-            name="😈 Sabotagens e Maldades",
+            name="⚡ SERVIÇOS DIRETOS",
             value=(
-                "🍌 **Casca de Banana** — `300 MC` | `!casca @user`\n"
-                "🦍 **Imposto do Gorila** — `1.500 MC` | `!taxar @user`\n"
-                "🪄 **Troca de Nick** — `3.000 MC` | `!apelidar @user <nick>`\n\n"
-                "⚡ **Apenas Comandos (sem item):**\n"
-                "🙊 **Maldição Símia** — `500 MC` | `!amaldicoar @user`\n"
-                "🎭 **Impostor** — `500 MC` | `!impostor @user <msg>`"
+                "*Esses serviços não vão para o inventário, são cobrados e usados na hora!*\n\n"
+                "🙊 **Maldição Símia** ─ `500 MC`\n"
+                "└ *Uso direto:* `!amaldicoar @user`\n\n"
+                "🎭 **Impostor** ─ `500 MC`\n"
+                "└ *Uso direto:* `!impostor @user <mensagem>`"
             ), inline=False
         )
-        embed.set_footer(text="A selva está cheia de surpresas. Gaste com sabedoria!")
+
+        embed.set_footer(text="🐒 Os itens consumíveis também podem ser encontrados nas lootboxes!")
         await ctx.send(embed=embed)
 
     @commands.command()

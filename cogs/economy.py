@@ -29,7 +29,7 @@ class Economy(commands.Cog):
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["work"])
-    @commands.cooldown(1, 5, commands.BucketType.user) # Evita spam
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def trabalhar(self, ctx):
         user_id = str(ctx.author.id)
         try:
@@ -96,23 +96,30 @@ class Economy(commands.Cog):
             db.update_value(user['row'], 3, novo_saldo)
             db.update_value(user['row'], 5, agora)
 
+            # --- SISTEMA DE DROPS DE CAIXAS ---
             drop_msg = ""
             chance_drop = random.random()
             caixa_ganha = None
+            emoji_caixa = ""
 
             if chance_drop <= 0.001:
                 caixa_ganha = "Relíquia Ancestral"
+                emoji_caixa = "🏺"
             elif chance_drop <= 0.010:
                 caixa_ganha = "Baú do Caçador"
+                emoji_caixa = "🪙"
             elif chance_drop <= 0.050:
                 caixa_ganha = "Caixote de Madeira"
+                emoji_caixa = "🪵"
 
             if caixa_ganha:
                 inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
                 inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
                 inv_list.append(caixa_ganha)
                 db.update_value(user['row'], 6, ", ".join(inv_list))
-                drop_msg = f"\n📦 **SORTE GRANDE!** Você escavou e encontrou um(a) **{caixa_ganha}**!\n*(Use `!abrir {caixa_ganha.split()[0]}` para ver o que tem dentro)*"
+                
+                drop_msg = f"\n{emoji_caixa} **SORTE GRANDE!** Você escavou e encontrou um(a) **{caixa_ganha}**!\n*(Use `!abrir {caixa_ganha.split()[0]}` para ver o que tem dentro)*"
+            # ----------------------------------
 
             tracker = self.bot.tracker_emblemas['trabalhos']
             if user_id not in tracker: tracker[user_id] = []
