@@ -50,7 +50,7 @@ class General(commands.Cog):
         embed.add_field(name="🎲 JOGOS (Canal #🎰・akbet)", inline=False, value=(
             "🚀 `!crash` | 🎰 `!cassino` | 🎰 `!roleta` | 🥥 `!coco` | 🏁 `!corrida`\n"
             "🦁 `!bicho` | 🥊 `!briga` | 🎫 `!raspadinha` | 🃏 `!carta` | 💣 `!minas`\n"
-            "♠️ `!21` | 🎲 `!mentira` | ✂️ `!duelo` | 🌿 `!cipo` | 🗺️ `!explorar` | 🔫 `!bang`\n"
+            "♠️ `!21` | 🎲 `!mentira` | ✂️ `!duelo` | 🌿 `!cipo` | 🗺️ `!explorar` | 🔫 `!bang` | 🏆 `!torneio`\n"
             "*Use `!jogos` no canal de apostas para ver detalhes*"
         ))
         embed.add_field(name="⚽ APOSTAS ESPORTIVAS (Canal #🎰・akbet)", inline=False, value=(

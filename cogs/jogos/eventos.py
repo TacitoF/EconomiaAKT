@@ -207,9 +207,7 @@ class Eventos(commands.Cog):
                 "🎰 **!cassino `<valor>`**\n"
                 "╰ Caça-níquel — 3 iguais = JACKPOT `10x`!\n"
                 "💣 **!minas `<1-5 bombas>` `<valor>`**\n"
-                "╰ Campo minado — mais bombas, mais risco, mais lucro.\n"
-                "🌴 **!coqueiro `<valor>` `[1-5 cocos]`** *(alias: `!plinko`)*\n"
-                "╰ Jogue cocos pela palmeira! Bordas = **até 10x**, centro = 0.3x."
+                "╰ Campo minado — mais bombas, mais risco, mais lucro."
             ),
             inline = False,
         )
@@ -250,6 +248,8 @@ class Eventos(commands.Cog):
         embed.add_field(
             name  = "👥 Multiplayer",
             value = (
+                "🏆 **!torneio `<valor>`**\n"
+                "╰ Torneio mata-mata extremo de Jokenpô (até 8 jogadores)!\n"
                 "🥥 **!coco `<valor>`**\n"
                 "╰ Roleta do Coco Explosivo — sobreviva à explosão!\n"
                 "🎰 **!roleta** → depois **!apostar `<valor>` `<opção>`**\n"
