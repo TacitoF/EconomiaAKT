@@ -18,7 +18,7 @@ def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 400)
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão brasileiro/português de moeda."""
+    """Formata um float para o padrão brasileiro de moeda."""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -267,7 +267,7 @@ class Tesouro(commands.Cog):
         if oponente is None or aposta is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!explorar @usuario <valor>`")
         if oponente.id == ctx.author.id:
-            return await ctx.send(f"🤡 {ctx.author.mention}, não pode cavar a terra sozinho!")
+            return await ctx.send(f"🤡 {ctx.author.mention}, você não pode cavar a terra sozinho!")
         if oponente.bot:
             return await ctx.send(f"🤖 {ctx.author.mention}, bots usam radares, seria injusto.")
         if aposta < 10:

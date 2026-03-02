@@ -208,11 +208,11 @@ class JokenpoInviteView(disnake.ui.View):
             embed_game = disnake.Embed(
                 title="⚔️ DUELO NA SELVA: GORILA, CAÇADOR OU CASCA?",
                 description=(
-                    f"{self.p1.mention} vs {self.p2.mention}\\n\\n"
-                    "**REGRAS:**\\n"
-                    "🦍 **Gorila** amassa o 🤠 **Caçador**.\\n"
-                    "🤠 **Caçador** atira na 🍌 **Casca**.\\n"
-                    "🍌 **Casca** derruba o 🦍 **Gorila**.\\n\\n"
+                    f"{self.p1.mention} vs {self.p2.mention}\n\n"
+                    "**REGRAS:**\n"
+                    "🦍 **Gorila** amassa o 🤠 **Caçador**.\n"
+                    "🤠 **Caçador** atira na 🍌 **Casca**.\n"
+                    "🍌 **Casca** derruba o 🦍 **Gorila**.\n\n"
                     "*Façam suas escolhas nos botões abaixo! O outro jogador não verá sua escolha.*"
                 ),
                 color=disnake.Color.orange()
@@ -300,7 +300,7 @@ class Jokenpo(commands.Cog):
                 ),
                 color=disnake.Color.blue()
             )
-            embed.set_thumbnail(url="https://i.imgur.com/02a5A3g.png") # Link genérico de espadas (pode trocar depois se quiser)
+            embed.set_thumbnail(url="https://i.imgur.com/02a5A3g.png")
 
             view = JokenpoInviteView(ctx, ctx.author, oponente, aposta)
             msg = await ctx.send(content=oponente.mention, embed=embed, view=view)

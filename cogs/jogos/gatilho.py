@@ -19,7 +19,7 @@ def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 400)
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão de moeda. Ex: 1234.56 -> 1.234,56"""
+    """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -39,7 +39,7 @@ class GatilhoGameView(disnake.ui.View):
     async def btn_shoot(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         # Verifica se é um dos duelistas
         if inter.author.id not in [self.p1.id, self.p2.id]:
-            return await inter.response.send_message("🐒 Tu não estás neste duelo! Afasta-te da linha de fogo.", ephemeral=True)
+            return await inter.response.send_message("🐒 Você não está neste duelo! Afaste-se da linha de fogo.", ephemeral=True)
 
         if self.finalizado:
             return await inter.response.send_message("O duelo já acabou!", ephemeral=True)
@@ -93,7 +93,7 @@ class GatilhoGameView(disnake.ui.View):
             
             titulo = "❌ FALSA PARTIDA!"
             desc = (
-                f"**{perdedor.mention}** foi impaciente, tentou atirar cedo demais e a arma encravou!\n\n"
+                f"**{perdedor.mention}** foi impaciente, tentou atirar cedo demais e a arma travou!\n\n"
                 f"🏆 **{vencedor.mention}** ganha por desclassificação e leva os **{formatar_moeda(premio)} MC**!"
             )
             cor = disnake.Color.orange()
@@ -103,8 +103,8 @@ class GatilhoGameView(disnake.ui.View):
             
             titulo = "🔫 GATILHO MAIS RÁPIDO DA SELVA!"
             desc = (
-                f"**{vencedor.mention}** sacou da arma numa fração de segundo e eliminou {perdedor.mention}!\n\n"
-                f"🏆 Prémio total arrecadado: **{formatar_moeda(premio)} MC**!"
+                f"**{vencedor.mention}** sacou a arma em uma fração de segundo e eliminou {perdedor.mention}!\n\n"
+                f"🏆 Prêmio total acumulado: **{formatar_moeda(premio)} MC**!"
             )
             cor = disnake.Color.green()
 
@@ -136,7 +136,7 @@ class GatilhoGameView(disnake.ui.View):
             
             embed = self.msg_game.embeds[0]
             embed.title = "⏱️ DUELO ADORMECIDO"
-            embed.description = "Os dois adormeceram com a mão na arma. O duelo foi cancelado e o dinheiro devolvido."
+            embed.description = "Os dois dormiram com a mão na arma. O duelo foi cancelado e o dinheiro devolvido."
             embed.color = disnake.Color.dark_grey()
             await self.msg_game.edit(embed=embed, view=self)
         except Exception as e:
@@ -157,14 +157,14 @@ class GatilhoInviteView(disnake.ui.View):
     @disnake.ui.button(label="Aceitar Duelo", style=disnake.ButtonStyle.success, emoji="🔫")
     async def btn_aceitar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         if inter.author.id != self.p2.id:
-            return await inter.response.send_message("Não foste tu o desafiado!", ephemeral=True)
+            return await inter.response.send_message("Não foi você o desafiado!", ephemeral=True)
 
         try:
             u1_db = db.get_user_data(str(self.p1.id))
             u2_db = db.get_user_data(str(self.p2.id))
 
             if not u2_db:
-                return await inter.response.send_message("Não tens conta na selva!", ephemeral=True)
+                return await inter.response.send_message("Você não tem conta na selva!", ephemeral=True)
 
             s1 = db.parse_float(u1_db['data'][2])
             s2 = db.parse_float(u2_db['data'][2])
@@ -172,7 +172,7 @@ class GatilhoInviteView(disnake.ui.View):
             if s1 < self.aposta:
                 return await inter.response.send_message(f"O saldo de {self.p1.display_name} já não é suficiente!", ephemeral=True)
             if s2 < self.aposta:
-                return await inter.response.send_message(f"Não tens os {formatar_moeda(self.aposta)} MC necessários!", ephemeral=True)
+                return await inter.response.send_message(f"Você não tem os {formatar_moeda(self.aposta)} MC necessários!", ephemeral=True)
 
             # Desconta o dinheiro
             db.update_value(u1_db['row'], 3, round(s1 - self.aposta, 2))
@@ -181,7 +181,7 @@ class GatilhoInviteView(disnake.ui.View):
             self.aceito = True
             for item in self.children:
                 item.disabled = True
-            await inter.response.edit_message(content=f"🔥 Duelo aceite! O pote é de **{formatar_moeda(self.aposta * 2)} MC**.", view=self)
+            await inter.response.edit_message(content=f"🔥 Duelo aceito! O pote é de **{formatar_moeda(self.aposta * 2)} MC**.", view=self)
             self.stop()
 
             # Inicia o jogo
@@ -190,7 +190,7 @@ class GatilhoInviteView(disnake.ui.View):
                 description=(
                     f"{self.p1.mention} vs {self.p2.mention}\n\n"
                     f"Fiquem atentos ao botão abaixo.\n"
-                    f"**ATENÇÃO:** Se clicarem *antes* da ordem, a vossa arma encrava e perdem!\n\n"
+                    f"**ATENÇÃO:** Se vocês clicarem *antes* da ordem, a arma de vocês trava e vocês perdem!\n\n"
                     f"Aguardem o sinal..."
                 ),
                 color=disnake.Color.dark_grey()
@@ -210,7 +210,7 @@ class GatilhoInviteView(disnake.ui.View):
     @disnake.ui.button(label="Recusar", style=disnake.ButtonStyle.danger)
     async def btn_recusar(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         if inter.author.id != self.p2.id and inter.author.id != self.p1.id:
-            return await inter.response.send_message("Isso não é da tua conta!", ephemeral=True)
+            return await inter.response.send_message("Isso não é da sua conta!", ephemeral=True)
             
         for item in self.children:
             item.disabled = True
@@ -235,7 +235,7 @@ class GatilhoRapido(commands.Cog):
         if ctx.channel.name not in ['🎰・akbet', '🐒・conguitos']:
             canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
-            await ctx.send(f"⚠️ {ctx.author.mention}, usa os duelos no canal {mencao}!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, use os duelos no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["gatilho", "duelar_tiro", "reflexo"])
@@ -244,9 +244,9 @@ class GatilhoRapido(commands.Cog):
         if oponente is None or aposta is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!bang @usuario <valor>`")
         if oponente.id == ctx.author.id:
-            return await ctx.send(f"🤡 {ctx.author.mention}, não podes atirar em ti mesmo!")
+            return await ctx.send(f"🤡 {ctx.author.mention}, você não pode atirar em si mesmo!")
         if oponente.bot:
-            return await ctx.send(f"🤖 {ctx.author.mention}, os bots têm 0ms de ping, ias perder de certeza.")
+            return await ctx.send(f"🤖 {ctx.author.mention}, os bots têm 0ms de ping, você ia perder com certeza.")
         if aposta < 10:
             return await ctx.send("❌ O valor mínimo para o duelo de reflexos é **10 MC**.")
 
@@ -255,16 +255,16 @@ class GatilhoRapido(commands.Cog):
         try:
             u1_db = db.get_user_data(str(ctx.author.id))
             if not u1_db:
-                return await ctx.send(f"❌ {ctx.author.mention}, não tens conta!")
+                return await ctx.send(f"❌ {ctx.author.mention}, você não tem conta!")
                 
             s1 = db.parse_float(u1_db['data'][2])
             c1 = u1_db['data'][3] if len(u1_db['data']) > 3 else "Lêmure"
             limite = get_limite(c1)
 
             if aposta > limite:
-                return await ctx.send(f"🚫 O teu limite de aposta para o cargo **{c1}** é de **{formatar_moeda(limite)} MC**!")
+                return await ctx.send(f"🚫 O seu limite de aposta para o cargo **{c1}** é de **{formatar_moeda(limite)} MC**!")
             if s1 < aposta:
-                return await ctx.send(f"❌ Saldo insuficiente! Tens apenas **{formatar_moeda(s1)} MC**.")
+                return await ctx.send(f"❌ Saldo insuficiente! Você tem apenas **{formatar_moeda(s1)} MC**.")
 
             u2_db = db.get_user_data(str(oponente.id))
             if not u2_db:
@@ -278,7 +278,7 @@ class GatilhoRapido(commands.Cog):
                 description=(
                     f"**{ctx.author.mention}** sacou da luva e desafiou **{oponente.mention}** para um Gatilho Rápido!\n\n"
                     f"💰 **Aposta:** `{formatar_moeda(aposta)} MC` (Pote: `{formatar_moeda(aposta * 2)} MC`)\n"
-                    f"Aceitas testar o teu tempo de reação?"
+                    f"Você aceita testar o seu tempo de reação?"
                 ),
                 color=disnake.Color.dark_red()
             )
@@ -291,7 +291,7 @@ class GatilhoRapido(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !bang de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(GatilhoRapido(bot))

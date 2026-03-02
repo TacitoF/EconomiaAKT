@@ -18,7 +18,7 @@ def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 400)
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão brasileiro/português de moeda. Ex: 1234.56 -> 1.234,56"""
+    """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -52,7 +52,7 @@ class CipoGameView(disnake.ui.View):
     def make_callback(self, index: int, button: disnake.ui.Button):
         async def callback(inter: disnake.MessageInteraction):
             if inter.author.id != self.current_player.id:
-                return await inter.response.send_message("🐒 Calma aí, ainda não é a tua vez de saltar!", ephemeral=True)
+                return await inter.response.send_message("🐒 Calma aí, ainda não é a sua vez de pular!", ephemeral=True)
 
             if index == self.rotten_idx:
                 # 💥 CIPÓ PODRE! O jogador cai e perde.
@@ -76,7 +76,7 @@ class CipoGameView(disnake.ui.View):
                 self.current_player = self.p2 if self.current_player == self.p1 else self.p1
                 
                 embed = self.msg_game.embeds[0]
-                embed.description = f"Ufa! O cipó aguentou o peso.\n\nAgora é a vez de **{self.current_player.mention}** saltar!"
+                embed.description = f"Ufa! O cipó aguentou o peso.\n\nAgora é a vez de **{self.current_player.mention}** pular!"
                 await inter.response.edit_message(embed=embed, view=self)
 
         return callback
@@ -122,7 +122,7 @@ class CipoGameView(disnake.ui.View):
             
             embed = self.msg_game.embeds[0]
             embed.title = "⏱️ DUELO CANCELADO"
-            embed.description = f"**{self.current_player.display_name}** demorou muito tempo a saltar! O jogo foi anulado e as apostas devolvidas."
+            embed.description = f"**{self.current_player.display_name}** demorou muito tempo para pular! O jogo foi anulado e as apostas devolvidas."
             embed.color = disnake.Color.dark_grey()
             await self.msg_game.edit(embed=embed, view=self)
         except Exception as e:
@@ -143,14 +143,14 @@ class CipoInviteView(disnake.ui.View):
     @disnake.ui.button(label="Aceitar Duelo", style=disnake.ButtonStyle.success, emoji="🌿")
     async def btn_aceitar(self, button, inter: disnake.MessageInteraction):
         if inter.author.id != self.p2.id:
-            return await inter.response.send_message("Não foste tu o desafiado!", ephemeral=True)
+            return await inter.response.send_message("Não foi você o desafiado!", ephemeral=True)
 
         try:
             u1_db = db.get_user_data(str(self.p1.id))
             u2_db = db.get_user_data(str(self.p2.id))
 
             if not u2_db:
-                return await inter.response.send_message("Não tens uma conta na selva! Usa `!trabalhar`.", ephemeral=True)
+                return await inter.response.send_message("Você não tem uma conta na selva! Use `!trabalhar`.", ephemeral=True)
 
             s1 = db.parse_float(u1_db['data'][2])
             s2 = db.parse_float(u2_db['data'][2])
@@ -159,7 +159,7 @@ class CipoInviteView(disnake.ui.View):
             if s1 < self.aposta:
                 return await inter.response.send_message(f"O saldo de {self.p1.display_name} já não é suficiente!", ephemeral=True)
             if s2 < self.aposta:
-                return await inter.response.send_message(f"Não tens os {formatar_moeda(self.aposta)} MC necessários para cobrir a aposta!", ephemeral=True)
+                return await inter.response.send_message(f"Você não tem os {formatar_moeda(self.aposta)} MC necessários para cobrir a aposta!", ephemeral=True)
 
             # Debita a aposta de AMBOS
             db.update_value(u1_db['row'], 3, round(s1 - self.aposta, 2))
@@ -168,7 +168,7 @@ class CipoInviteView(disnake.ui.View):
             self.aceito = True
             for item in self.children:
                 item.disabled = True
-            await inter.response.edit_message(content=f"🔥 Duelo aceite! O pote tem **{formatar_moeda(self.aposta * 2)} MC**.", view=self)
+            await inter.response.edit_message(content=f"🔥 Duelo aceito! O pote tem **{formatar_moeda(self.aposta * 2)} MC**.", view=self)
             self.stop()
 
             # Inicia o jogo
@@ -177,8 +177,8 @@ class CipoInviteView(disnake.ui.View):
                 description=(
                     f"Bem-vindos ao penhasco!\n\n"
                     f"Existem 6 cipós pendurados, mas **1 deles está podre**.\n"
-                    f"Quem saltar no cipó errado, cai. Quem sobreviver, leva tudo.\n\n"
-                    f"É a vez de **{self.p1.mention if random.choice([True, False]) else self.p2.mention}** saltar primeiro!"
+                    f"Quem pular no cipó errado, cai. Quem sobreviver, leva tudo.\n\n"
+                    f"É a vez de **{self.p1.mention if random.choice([True, False]) else self.p2.mention}** pular primeiro!"
                 ),
                 color=disnake.Color.green()
             )
@@ -199,11 +199,11 @@ class CipoInviteView(disnake.ui.View):
     @disnake.ui.button(label="Recusar", style=disnake.ButtonStyle.danger)
     async def btn_recusar(self, button, inter: disnake.MessageInteraction):
         if inter.author.id != self.p2.id and inter.author.id != self.p1.id:
-            return await inter.response.send_message("Isso não é da tua conta!", ephemeral=True)
+            return await inter.response.send_message("Isso não é da sua conta!", ephemeral=True)
             
         for item in self.children:
             item.disabled = True
-        await inter.response.edit_message(content=f"🏳️ O desafio do cipó foi rejeitado por {inter.author.mention}.", view=self)
+        await inter.response.edit_message(content=f"🏳️ O desafio do cipó foi recusado por {inter.author.mention}.", view=self)
         self.stop()
 
     async def on_timeout(self):
@@ -211,7 +211,7 @@ class CipoInviteView(disnake.ui.View):
             for item in self.children:
                 item.disabled = True
             try:
-                await self.msg_invite.edit(content="⏱️ O tempo para aceitar o salto expirou.", view=self)
+                await self.msg_invite.edit(content="⏱️ O tempo para aceitar o pulo expirou.", view=self)
             except:
                 pass
 
@@ -224,7 +224,7 @@ class CipoPodre(commands.Cog):
         if ctx.channel.name not in ['🎰・akbet', '🐒・conguitos']:
             canal = disnake.utils.get(ctx.guild.channels, name='🎰・akbet')
             mencao = canal.mention if canal else "#🎰・akbet"
-            await ctx.send(f"⚠️ {ctx.author.mention}, usa os duelos no canal {mencao}!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, use os duelos no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["cipo", "cipó"])
@@ -233,7 +233,7 @@ class CipoPodre(commands.Cog):
         if oponente is None or aposta is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!cipo @usuario <valor>`")
         if oponente.id == ctx.author.id:
-            return await ctx.send(f"🤡 {ctx.author.mention}, não podes saltar sozinho contra ti mesmo!")
+            return await ctx.send(f"🤡 {ctx.author.mention}, você não pode pular sozinho contra si mesmo!")
         if oponente.bot:
             return await ctx.send(f"🤖 {ctx.author.mention}, os bots flutuam, não caem em penhascos.")
         if aposta < 10:
@@ -244,16 +244,16 @@ class CipoPodre(commands.Cog):
         try:
             u1_db = db.get_user_data(str(ctx.author.id))
             if not u1_db:
-                return await ctx.send(f"❌ {ctx.author.mention}, não tens conta!")
+                return await ctx.send(f"❌ {ctx.author.mention}, você não tem conta!")
                 
             s1 = db.parse_float(u1_db['data'][2])
             c1 = u1_db['data'][3] if len(u1_db['data']) > 3 else "Lêmure"
             limite = get_limite(c1)
 
             if aposta > limite:
-                return await ctx.send(f"🚫 O teu limite de aposta para o cargo **{c1}** é de **{formatar_moeda(limite)} MC**!")
+                return await ctx.send(f"🚫 O seu limite de aposta para o cargo **{c1}** é de **{formatar_moeda(limite)} MC**!")
             if s1 < aposta:
-                return await ctx.send(f"❌ Saldo insuficiente! Tens apenas **{formatar_moeda(s1)} MC**.")
+                return await ctx.send(f"❌ Saldo insuficiente! Você tem apenas **{formatar_moeda(s1)} MC**.")
 
             u2_db = db.get_user_data(str(oponente.id))
             if not u2_db:
@@ -280,7 +280,7 @@ class CipoPodre(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !cipo de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tenta novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
 def setup(bot):
     bot.add_cog(CipoPodre(bot))
