@@ -30,7 +30,26 @@ class BlackjackCog(commands.Cog):
     @commands.command(aliases=["bj", "21"])
     async def blackjack(self, ctx, aposta: float = None):
         if aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!blackjack <valor>` ou `!21 <valor>`")
+            embed = disnake.Embed(
+                title="♠️ BLACKJACK (21) — Como funciona",
+                description=(
+                    "O objetivo é chegar o mais perto de **21 pontos** sem ultrapassar, "
+                    "batendo o dealer.\n\n"
+                    "**Cartas:** J, Q, K valem **10**. Ás vale **11** (ou 1 para não estourar).\n\n"
+                    "**Ações disponíveis:**\n"
+                    "🟢 **Pedir (Hit)** — compra mais uma carta\n"
+                    "⬜ **Parar (Stand)** — congela sua mão\n"
+                    "🔵 **Dobrar (Double)** — dobra a aposta e compra exatamente 1 carta\n"
+                    "🔴 **Dividir (Split)** — disponível se suas 2 cartas forem iguais\n"
+                    "🛡️ **Seguro (Insurance)** — disponível se o dealer mostrar um Ás\n\n"
+                    "**Dealer:** sempre compra cartas até ter 17+ pontos.\n"
+                    "**Blackjack Natural (21 com 2 cartas)** → vitória automática.\n\n"
+                    "Suporta até **6 jogadores** na mesma mesa com apostas laterais (**21+3** e **Perfect Pairs**)!\n\n"
+                    "**Uso:** `!blackjack <valor>` ou `!21 <valor>`"
+                ),
+                color=disnake.Color.dark_purple()
+            )
+            return await ctx.send(embed=embed)
         if aposta <= 0:
             return await ctx.send("❌ Aposta inválida!")
         aposta = round(aposta, 2)

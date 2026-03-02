@@ -265,7 +265,21 @@ class Tesouro(commands.Cog):
     async def explorar(self, ctx, oponente: disnake.Member = None, aposta: float = None):
         """Desafia um jogador para a Caça ao Tesouro (Mini Campo Minado PvP)."""
         if oponente is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!explorar @usuario <valor>`")
+            embed = disnake.Embed(
+                title="🗺️ CAÇA AO TESOURO — Como funciona",
+                description=(
+                    "Dois jogadores cavam alternadamente um campo **5×5** (25 casas) escondendo:\n"
+                    "🍌 **10 Bananas** — valem +1 ponto e você joga de novo!\n"
+                    "🐍 **3 Cobras** — -1 ponto e passa a vez\n"
+                    "🟫 **12 Vazios** — nada acontece, passa a vez\n\n"
+                    "Quando todas as 10 bananas forem encontradas, quem tiver mais pontos **leva o pote**!\n"
+                    "Em caso de empate, a aposta é devolvida para ambos.\n\n"
+                    "**Uso:** `!explorar @usuario <valor>`\n"
+                    "*Mínimo: 10 MC*"
+                ),
+                color=disnake.Color.gold()
+            )
+            return await ctx.send(embed=embed)
         if oponente.id == ctx.author.id:
             return await ctx.send(f"🤡 {ctx.author.mention}, você não pode cavar a terra sozinho!")
         if oponente.bot:

@@ -75,7 +75,20 @@ class Eventos(commands.Cog):
     @commands.command(aliases=["roleta_coco", "coco_explosivo"])
     async def coco(self, ctx, aposta: float = None):
         if aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!coco <valor>`")
+            embed = disnake.Embed(
+                title="🥥 ROLETA DO COCO EXPLOSIVO — Como funciona",
+                description=(
+                    "Um grupo de jogadores entra na roda. A cada rodada, o coco passa de mão em mão "
+                    "até **explodir** na cara de um sortudo — que é eliminado!\n\n"
+                    "O último sobrevivente leva o pote inteiro.\n"
+                    "Quanto mais jogadores entram, maior o prêmio.\n\n"
+                    "**Entrada:** 30 segundos para outros jogadores clicarem em **🥥 Entrar**.\n"
+                    "Mínimo de **2 jogadores** para começar.\n\n"
+                    "**Uso:** `!coco <valor>`"
+                ),
+                color=disnake.Color.dark_red()
+            )
+            return await ctx.send(embed=embed)
         if self.coco_active:
             return await ctx.send(f"⚠️ {ctx.author.mention}, já existe uma roda aberta!")
         if aposta <= 0:

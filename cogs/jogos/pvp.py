@@ -73,7 +73,18 @@ class PvP(commands.Cog):
     @commands.command(aliases=["cartas", "duelo_carta", "draw"])
     async def carta(self, ctx, oponente: disnake.Member = None, aposta: float = None):
         if oponente is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!carta @usuario <valor>`")
+            embed = disnake.Embed(
+                title="🃏 DUELO DE CARTAS — Como funciona",
+                description=(
+                    "Cada jogador saca uma carta aleatória de um baralho completo.\n"
+                    "A carta de **maior valor** vence e leva o pote!\n\n"
+                    "**Ordem de valor:** 2 < 3 < ... < 10 < J < Q < K < A\n"
+                    "⚠️ **Empate:** Ambos perdem a aposta para o Cassino.\n\n"
+                    "**Uso:** `!carta @usuario <valor>`"
+                ),
+                color=disnake.Color.dark_theme()
+            )
+            return await ctx.send(embed=embed)
         if oponente.id == ctx.author.id:
             return await ctx.send(f"🃏 {ctx.author.mention}, você não pode jogar contra o espelho!")
         if aposta <= 0:
@@ -151,7 +162,18 @@ class PvP(commands.Cog):
     @commands.command(aliases=["briga", "brigar", "luta", "lutar", "x1"])
     async def briga_macaco(self, ctx, vitima: disnake.Member = None, aposta: float = None):
         if vitima is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!briga @usuario <valor>`")
+            embed = disnake.Embed(
+                title="🥊 BRIGA DE MACACOS — Como funciona",
+                description=(
+                    "Uma briga clássica de selva! Dois macacos entram, um sai com o dinheiro.\n"
+                    "O vencedor é decidido **pura e simplesmente pela sorte** — 50/50.\n"
+                    "Sem estratégia, sem blefe. Só adrenalina.\n\n"
+                    "**Prêmio:** O vencedor leva **2x** o valor apostado.\n\n"
+                    "**Uso:** `!briga @usuario <valor>`"
+                ),
+                color=disnake.Color.red()
+            )
+            return await ctx.send(embed=embed)
         if vitima.id == ctx.author.id:
             return await ctx.send(f"🐒 {ctx.author.mention}, não brigue consigo mesmo!")
         if aposta <= 0:

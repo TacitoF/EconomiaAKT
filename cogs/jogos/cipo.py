@@ -231,7 +231,20 @@ class CipoPodre(commands.Cog):
     async def cipopodre(self, ctx, oponente: disnake.Member = None, aposta: float = None):
         """Desafia um jogador para a Roleta do Cipó Podre."""
         if oponente is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!cipo @usuario <valor>`")
+            embed = disnake.Embed(
+                title="🌿 CIPÓ PODRE — Como funciona",
+                description=(
+                    "Dois jogadores se revezam escolhendo um dos **6 cipós** pendurados no penhasco.\n"
+                    "Um deles está podre. Quem agarrar o cipó errado **cai** e perde!\n"
+                    "O sobrevivente leva o pote inteiro.\n\n"
+                    "**Dinâmica:** É sua vez → clique em um cipó → se aguentar, passa para o adversário.\n"
+                    "O cipó podre é sorteado aleatoriamente e ninguém sabe qual é.\n\n"
+                    "**Uso:** `!cipo @usuario <valor>`\n"
+                    "*Mínimo: 10 MC*"
+                ),
+                color=disnake.Color.green()
+            )
+            return await ctx.send(embed=embed)
         if oponente.id == ctx.author.id:
             return await ctx.send(f"🤡 {ctx.author.mention}, você não pode pular sozinho contra si mesmo!")
         if oponente.bot:

@@ -57,12 +57,23 @@ class CrashGame(commands.Cog):
     @commands.command(aliases=["foguetinho"])
     async def crash(self, ctx, aposta: float = None):
         if aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!crash <valor>`")
+            embed = disnake.Embed(
+                title="🚀 CRASH DO CIPÓ — Como funciona",
+                description=(
+                    "O multiplicador começa em **1.0x** e sobe continuamente.\n"
+                    "Clique em **🪂 SACAR** a qualquer momento para embolsar seus ganhos.\n"
+                    "Se o cipó arrebentar antes de você sacar, você perde tudo!\n\n"
+                    "**Risco:** Quanto mais tempo esperar, mais ganha — mas o risco aumenta.\n"
+                    "O ponto de crash é sorteado aleatoriamente antes do jogo começar.\n\n"
+                    "**Uso:** `!crash <valor>`"
+                ),
+                color=disnake.Color.green()
+            )
+            return await ctx.send(embed=embed)
         if aposta <= 0:
             return await ctx.send(f"❌ {ctx.author.mention}, a aposta deve ser maior que zero!")
         aposta = round(aposta, 2)
 
-        # Flag para controlar se o débito já foi feito (para reembolso em caso de erro)
         debito_realizado = False
 
         try:
@@ -147,7 +158,6 @@ class CrashGame(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !crash de {ctx.author}: {e}")
-            # FIX BUG 2: reembolsa o jogador se o débito já foi feito antes do erro
             if debito_realizado:
                 try:
                     user_refund = db.get_user_data(str(ctx.author.id))

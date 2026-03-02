@@ -260,7 +260,22 @@ class Jokenpo(commands.Cog):
     async def duelo(self, ctx, oponente: disnake.Member = None, aposta: float = None):
         """Desafia um jogador para o Jokenpô da Selva (Gorila, Caçador, Casca)."""
         if oponente is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!duelo @usuario <valor>`")
+            embed = disnake.Embed(
+                title="⚔️ JOKENPÔ DA SELVA — Como funciona",
+                description=(
+                    "Dois jogadores escolhem em segredo entre **Gorila**, **Caçador** ou **Casca**.\n"
+                    "As escolhas são reveladas ao mesmo tempo. Quem ganhar leva o pote!\n\n"
+                    "**Regras:**\n"
+                    "🦍 **Gorila** derrota o 🤠 **Caçador**\n"
+                    "🤠 **Caçador** destrói a 🍌 **Casca**\n"
+                    "🍌 **Casca** derruba o 🦍 **Gorila**\n\n"
+                    "Em caso de empate, as apostas são devolvidas.\n\n"
+                    "**Uso:** `!duelo @usuario <valor>`\n"
+                    "*Mínimo: 10 MC*"
+                ),
+                color=disnake.Color.blue()
+            )
+            return await ctx.send(embed=embed)
         if oponente.id == ctx.author.id:
             return await ctx.send(f"🤡 {ctx.author.mention}, você não pode duelar contra si mesmo!")
         if oponente.bot:

@@ -33,10 +33,11 @@ bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_comma
 bot.is_locked = True
 
 # ──────────────────────────────────────────────
-#  ANTI-SPAM GLOBAL (TRAVA TOTAL POR USUÁRIO)
+#  ANTI-SPAM GLOBAL (TRAVA INTELIGENTE)
 # ──────────────────────────────────────────────
-ANTI_SPAM_COOLDOWN = 2.5 # 2.5 segundos de espera entre QUALQUER comando
+ANTI_SPAM_COOLDOWN = 2.5 # Tempo de espera entre qualquer comando
 _spam_tracker: dict = {}
+_spam_warning_tracker: dict = {} # Controla quando avisamos o usuário para não floodarmos de volta
 
 @bot.check
 async def global_check(ctx):
@@ -44,28 +45,31 @@ async def global_check(ctx):
         return True
 
     if bot.is_locked:
-        await ctx.send(
-            f"🛠️ {ctx.author.mention}, o sistema está em manutenção programada. "
-            f"Por favor, aguarde a normalização dos serviços para usar este comando."
-        )
         raise commands.CheckFailure("Bot em manutenção.")
 
-    # A chave agora é APENAS o ID do autor. Impede o uso de comandos em massa.
     chave = str(ctx.author.id)
     agora = time.time()
     ultimo = _spam_tracker.get(chave, 0)
     restante = ANTI_SPAM_COOLDOWN - (agora - ultimo)
 
     if restante > 0:
-        try:
-            aviso = await ctx.send(
-                f"⏱️ {ctx.author.mention}, o bot precisa respirar! Aguarde **{restante:.1f}s** antes de usar outro comando."
-            )
-            await aviso.delete(delay=3)
-        except Exception:
-            pass
+        # Só enviamos a mensagem de aviso se não tivermos avisado nos últimos 5 segundos
+        ultimo_aviso = _spam_warning_tracker.get(chave, 0)
+        
+        if agora - ultimo_aviso > 5.0:
+            try:
+                aviso = await ctx.send(
+                    f"⏱️ {ctx.author.mention}, a selva tem limites! Aguarde **{restante:.1f}s** antes de usar outro comando."
+                )
+                await aviso.delete(delay=3)
+                _spam_warning_tracker[chave] = agora # Registra que acabamos de avisar
+            except Exception:
+                pass
+                
+        # Bloqueia a execução do comando de qualquer forma
         raise commands.CheckFailure("Anti-spam ativado.")
 
+    # Se o comando passou, atualizamos o tempo do último uso
     _spam_tracker[chave] = agora
     return True
 

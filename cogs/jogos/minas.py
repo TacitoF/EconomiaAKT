@@ -263,10 +263,20 @@ class MinasGame(commands.Cog):
     @commands.command(aliases=["minas", "mines", "mina", "mine"])
     async def campo_minado(self, ctx, bombas: int = None, aposta: float = None):
         if bombas is None or aposta is None:
-            return await ctx.send(
-                f"⚠️ {ctx.author.mention}, use: `!minas <1-5 bombas> <valor>`\n"
-                f"Mais bombas = mais risco = multiplicador maior por casa revelada!"
+            embed = disnake.Embed(
+                title="💣 CAMPO MINADO — Como funciona",
+                description=(
+                    "Um grid de **4×4** (16 casas) esconde bombas 💣 e casas seguras ✅.\n"
+                    "Cada casa segura que você revela aumenta o **multiplicador**.\n"
+                    "Clique em **💰 Sacar** para embolsar os ganhos antes de explodir!\n\n"
+                    "**Bombas:** Quanto mais bombas, maior o multiplicador por casa — mas maior o risco.\n"
+                    "Você escolhe entre **1 e 5 bombas** na hora de começar.\n\n"
+                    "**Uso:** `!minas <1-5 bombas> <valor>`\n"
+                    "*Exemplo: `!minas 3 500`*"
+                ),
+                color=disnake.Color.orange()
             )
+            return await ctx.send(embed=embed)
         if not (1 <= bombas <= 5):
             return await ctx.send(f"❌ {ctx.author.mention}, escolha entre 1 e 5 bombas.")
         if aposta <= 0:

@@ -242,7 +242,20 @@ class GatilhoRapido(commands.Cog):
     async def bang(self, ctx, oponente: disnake.Member = None, aposta: float = None):
         """Desafia um jogador para um duelo de velocidade (quem clicar primeiro ganha)."""
         if oponente is None or aposta is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!bang @usuario <valor>`")
+            embed = disnake.Embed(
+                title="🔫 GATILHO RÁPIDO — Como funciona",
+                description=(
+                    "Um duelo de reflexos entre dois jogadores.\n"
+                    "Ambos veem o botão **Aguarde...**. Em algum momento aleatório (entre 4 e 12 segundos), "
+                    "ele muda para **💥 ATIRAR!**.\n\n"
+                    "⚠️ **Clicar antes do sinal = Falsa Partida = você perde automaticamente!**\n"
+                    "✅ **Quem clicar primeiro após o sinal vence e leva o pote.**\n\n"
+                    "**Uso:** `!bang @usuario <valor>`\n"
+                    "*Mínimo: 10 MC*"
+                ),
+                color=disnake.Color.dark_red()
+            )
+            return await ctx.send(embed=embed)
         if oponente.id == ctx.author.id:
             return await ctx.send(f"🤡 {ctx.author.mention}, você não pode atirar em si mesmo!")
         if oponente.bot:

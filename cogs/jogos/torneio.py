@@ -194,7 +194,23 @@ class TorneioSimio(commands.Cog):
     async def torneio(self, ctx, aposta: float = None):
         """Abre as inscrições para um Torneio de Jokenpô (Máx 8 jogadores)."""
         if aposta is None or aposta < 100:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, a entrada mínima do torneio é **100 MC**. Usa: `!torneio <valor>`")
+            embed = disnake.Embed(
+                title="🏆 TORNEIO DO REI SÍMIO — Como funciona",
+                description=(
+                    "Um torneio mata-mata de **Jokenpô da Selva** com até **8 jogadores**!\n\n"
+                    "**Regras do Jokenpô:**\n"
+                    "🦍 **Gorila** derrota o 🤠 **Caçador**\n"
+                    "🤠 **Caçador** destrói a 🍌 **Casca**\n"
+                    "🍌 **Casca** derruba o 🦍 **Gorila**\n\n"
+                    "**Formato:** Os jogadores se enfrentam em duelos via botões. "
+                    "Em caso de 3 empates seguidos, o juiz decide na moeda.\n\n"
+                    "**Prêmios:** 🥇 1º lugar recebe **80%** do pote · 🥈 2º lugar recebe **20%**\n"
+                    "**Entrada mínima:** 100 MC\n\n"
+                    "**Uso:** `!torneio <valor>`"
+                ),
+                color=disnake.Color.gold()
+            )
+            return await ctx.send(embed=embed)
         aposta = round(aposta, 2)
 
         try:
