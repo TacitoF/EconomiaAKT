@@ -98,7 +98,7 @@ async def atualizar_canal_status(online: bool):
 
         if online:
             embed = disnake.Embed(
-                title="<:online:1> KOBA OPERACIONAL",
+                title="✅ KOBA OPERACIONAL",
                 description=(
                     "```ansi\n"
                     "\u001b[1;32m● SISTEMA ATIVO\u001b[0m\n"
