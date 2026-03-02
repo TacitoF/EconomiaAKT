@@ -5,6 +5,10 @@ import time
 
 ESCUDO_CARGAS = 3
 
+def formatar_moeda(valor: float) -> str:
+    """Formata para o padrão brasileiro: 1.000,00"""
+    return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 class Profiles(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -186,7 +190,7 @@ class Profiles(commands.Cog):
                 emblemas.append("💀 Rei do Crime")
 
             cargo_icon, embed_color = self._CARGO_INFO.get(cargo, ("🐒", 0xFFD700))
-            saldo_fmt = f"{saldo:,.2f} MC".replace(",", ".")
+            saldo_fmt = f"{formatar_moeda(saldo)} MC"
 
             sep = "─" * 34
             desc = (
@@ -196,7 +200,7 @@ class Profiles(commands.Cog):
                 f"💰  **Saldo:** `{saldo_fmt}`"
             )
             if rec > 0:
-                rec_fmt = f"{rec:,.2f} MC".replace(",", ".")
+                rec_fmt = f"{formatar_moeda(rec)} MC"
                 desc += f"\n🚨  **Recompensa:** `{rec_fmt}`"
 
             embed = disnake.Embed(description=desc, color=embed_color)
@@ -270,9 +274,9 @@ class Profiles(commands.Cog):
             }
 
             def _fmt(s):
-                if s >= 1_000_000: return f"{s/1_000_000:.2f}M MC"
-                if s >= 1_000:     return f"{s/1_000:.1f}K MC"
-                return f"{s:.2f} MC"
+                if s >= 1_000_000: return f"{formatar_moeda(s/1_000_000)}M MC"
+                if s >= 1_000:     return f"{formatar_moeda(s/1_000)}K MC"
+                return f"{formatar_moeda(s)} MC"
 
             autor_id  = str(ctx.author.id)
             autor_pos = None

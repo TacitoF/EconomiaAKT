@@ -230,7 +230,10 @@ class Esportes(commands.Cog):
         self.cache_embed = None
         self.cache_jogos = None
         self.cache_time  = None
+        
+        # Inicia as tarefas em loop
         self.checar_resultados.start()
+        self.rotina_limpeza_apostas.start()
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != "🎰・akbet":
@@ -422,7 +425,6 @@ class Esportes(commands.Cog):
 
             print(f"⚽ {home_nome} {placar} {away_nome} — {len(apostas_deste_jogo)} aposta(s).")
 
-            # Listas para agrupar os resultados no Embed
             lista_vencedores = []
             lista_perdedores = []
             mencoes_unicas = set()
@@ -445,7 +447,6 @@ class Esportes(commands.Cog):
                     db.atualizar_status_aposta(aposta["row"], "Perdeu")
                     lista_perdedores.append(f"<@{aposta['user_id']}>: `-{formatar_moeda(aposta['valor'])} MC`")
 
-            # Monta um ÚNICO Embed para o jogo inteiro
             if canal_cassino:
                 embed = disnake.Embed(
                     title=f"🏁 FIM DE JOGO: {home_nome} vs {away_nome}",
@@ -453,7 +454,6 @@ class Esportes(commands.Cog):
                     color=disnake.Color.blurple()
                 )
                 
-                # Junta as listas com limite de caracteres do Discord (1024)
                 if lista_vencedores:
                     texto_v = "\n".join(lista_vencedores)
                     embed.add_field(name="🏆 Vencedores", value=texto_v[:1020] + ("..." if len(texto_v) > 1020 else ""), inline=False)
@@ -464,7 +464,6 @@ class Esportes(commands.Cog):
 
                 embed.set_footer(text="Apostas liquidadas! O saldo foi atualizado automaticamente.")
                 
-                # Envia apenas 1 mensagem marcando todo mundo que apostou
                 texto_mencoes = " ".join(mencoes_unicas)[:2000]
                 try:
                     await canal_cassino.send(content=texto_mencoes, embed=embed)
@@ -481,6 +480,43 @@ class Esportes(commands.Cog):
         await self.bot.wait_until_ready()
         await asyncio.sleep(10)
         print("✅ Bot pronto, iniciando loop de apostas esportivas.")
+
+    # -------------------------------------------------------------------------
+    # ROTINA DE LIMPEZA AUTOMÁTICA (FAXINA)
+    # -------------------------------------------------------------------------
+    @tasks.loop(hours=24)
+    async def rotina_limpeza_apostas(self):
+        print("🧹 [Auto-Faxina] Iniciando limpeza diária de apostas finalizadas...")
+        try:
+            apagadas = db.limpar_apostas_finalizadas()
+            if apagadas > 0:
+                print(f"✅ [Auto-Faxina] Sucesso: {apagadas} apostas antigas foram removidas da planilha.")
+            else:
+                print("✨ [Auto-Faxina] A planilha já estava limpa.")
+        except Exception as e:
+            print(f"❌ [Auto-Faxina] Erro ao limpar apostas na rotina: {e}")
+
+    @rotina_limpeza_apostas.before_loop
+    async def before_rotina_limpeza_apostas(self):
+        await self.bot.wait_until_ready()
+        # Aguarda 5 segundos após o bot ligar para realizar a primeira faxina, 
+        # depois repetirá exatamente a cada 24 horas.
+        await asyncio.sleep(5) 
+
+    @commands.command(name="limpar_apostas")
+    @commands.has_permissions(administrator=True)
+    async def limpar_apostas_cmd(self, ctx):
+        """Limpa as apostas finalizadas (Venceu/Perdeu) da planilha manualmente."""
+        msg = await ctx.send("🧹 Iniciando a faxina nas apostas esportivas... Isso pode levar alguns segundos!")
+        try:
+            apagadas = db.limpar_apostas_finalizadas()
+            if apagadas > 0:
+                await msg.edit(content=f"✅ Faxina concluída! **{apagadas}** apostas antigas foram apagadas da planilha.")
+            else:
+                await msg.edit(content="✨ A planilha já está limpa! Nenhuma aposta finalizada foi encontrada.")
+        except Exception as e:
+            print(f"❌ Erro ao limpar apostas: {e}")
+            await msg.edit(content="⚠️ Ocorreu um erro ao tentar limpar a planilha. Verifique o console.")
 
 
 def setup(bot):
