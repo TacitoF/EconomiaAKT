@@ -194,7 +194,7 @@ class TorneioSimio(commands.Cog):
     async def torneio(self, ctx, aposta: float = None):
         """Abre as inscrições para um Torneio de Jokenpô (Máx 8 jogadores)."""
         if aposta is None or aposta < 100:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, a entrada mínima do torneio é **100 MC**. Use: `!torneio <valor>`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, a entrada mínima do torneio é **100 MC**. Usa: `!torneio <valor>`")
         aposta = round(aposta, 2)
 
         try:
@@ -283,7 +283,7 @@ class TorneioSimio(commands.Cog):
                     view_luta = TorneioMatchView(p1, p2)
                     embed_luta = disnake.Embed(
                         title=f"{fase_nome} — LUTA!",
-                        description=f"{p1.mention} **VS** {p2.mention}\n\nUsem os botões abaixo! Vocês têm 30 segundos.",
+                        description=f"{p1.mention} **VS** {p2.mention}\n\nUsem os botões abaixo! Têm 30 segundos.",
                         color=cor_fase
                     )
                     

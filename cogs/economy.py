@@ -4,10 +4,9 @@ import database as db
 import time
 import random
 
-ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
+ESCUDO_CARGAS = 3
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 class Economy(commands.Cog):
@@ -30,6 +29,7 @@ class Economy(commands.Cog):
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["work"])
+    @commands.cooldown(1, 5, commands.BucketType.user) # Evita spam
     async def trabalhar(self, ctx):
         user_id = str(ctx.author.id)
         try:
@@ -96,16 +96,15 @@ class Economy(commands.Cog):
             db.update_value(user['row'], 3, novo_saldo)
             db.update_value(user['row'], 5, agora)
 
-            # --- SISTEMA DE DROPS DE LOOTBOX ---
             drop_msg = ""
             chance_drop = random.random()
             caixa_ganha = None
 
-            if chance_drop <= 0.005:   # 0.5% Lendário
+            if chance_drop <= 0.001:
                 caixa_ganha = "Relíquia Ancestral"
-            elif chance_drop <= 0.025: # 2% Raro
+            elif chance_drop <= 0.010:
                 caixa_ganha = "Baú do Caçador"
-            elif chance_drop <= 0.125: # 10% Comum
+            elif chance_drop <= 0.050:
                 caixa_ganha = "Caixote de Madeira"
 
             if caixa_ganha:
@@ -115,7 +114,6 @@ class Economy(commands.Cog):
                 db.update_value(user['row'], 6, ", ".join(inv_list))
                 drop_msg = f"\n📦 **SORTE GRANDE!** Você escavou e encontrou um(a) **{caixa_ganha}**!\n*(Use `!abrir {caixa_ganha.split()[0]}` para ver o que tem dentro)*"
 
-            # --- SISTEMA DE CONQUISTA ---
             tracker = self.bot.tracker_emblemas['trabalhos']
             if user_id not in tracker: tracker[user_id] = []
             tracker[user_id] = [t for t in tracker[user_id] if agora - t < 86400]
@@ -159,7 +157,13 @@ class Economy(commands.Cog):
             print(f"❌ Erro no !trabalhar de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
+    @trabalhar.error
+    async def trabalhar_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ Calma, macaco! Aguarde {error.retry_after:.1f}s para usar o comando de novo.", delete_after=4)
+
     @commands.command(aliases=["assaltar", "furtar", "rob"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def roubar(self, ctx, vitima: disnake.Member = None):
         if vitima is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!roubar @usuario`")
@@ -347,7 +351,13 @@ class Economy(commands.Cog):
             print(f"❌ Erro no !roubar de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
+    @roubar.error
+    async def roubar_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ Agarre a sua máscara! Aguarde {error.retry_after:.1f}s.", delete_after=3)
+
     @commands.command(aliases=["pix", "transferir", "pay"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def pagar(self, ctx, recebedor: disnake.Member = None, valor: float = None):
         if recebedor is None or valor is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!pagar @usuario <valor>`")
@@ -390,6 +400,11 @@ class Economy(commands.Cog):
         except Exception as e:
             print(f"❌ Erro no !pagar de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    @pagar.error
+    async def pagar_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ O banco central bloqueou o seu pix temporariamente. Aguarde {error.retry_after:.1f}s.", delete_after=3)
 
 def setup(bot):
     bot.add_cog(Economy(bot))

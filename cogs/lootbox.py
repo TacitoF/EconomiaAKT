@@ -19,7 +19,6 @@ class Lootbox(commands.Cog):
             raise commands.CommandError("Canal incorreto.")
 
     def sortear_comum(self):
-        # 🪵 CAIXOTE DE MADEIRA (Valor base: 800 MC)
         chance = random.randint(1, 100)
         if chance <= 40:
             return {"tipo": "mc", "valor": random.randint(500, 1100), "nome": "Macacoins", "emoji": "💵"}
@@ -31,7 +30,6 @@ class Lootbox(commands.Cog):
             return {"tipo": "item", "nome": "Bomba de Fumaça", "emoji": "💨"}
 
     def sortear_raro(self):
-        # 🪙 BAÚ DO CAÇADOR (Valor base: 3.500 MC)
         chance = random.randint(1, 100)
         if chance <= 35:
             return {"tipo": "mc", "valor": random.randint(2000, 4500), "nome": "Macacoins", "emoji": "💵"}
@@ -45,7 +43,6 @@ class Lootbox(commands.Cog):
             return {"tipo": "item", "nome": "Seguro", "emoji": "📄"}
 
     def sortear_lendario(self):
-        # 🏺 RELÍQUIA ANCESTRAL (Valor base: 15.000 MC)
         chance = random.randint(1, 100)
         if chance <= 30:
             return {"tipo": "mc", "valor": random.randint(10000, 25000), "nome": "Macacoins Fortificados", "emoji": "💰"}
@@ -59,6 +56,7 @@ class Lootbox(commands.Cog):
             return {"tipo": "item", "nome": "Troca de Nick", "emoji": "🪄"}
 
     @commands.command(aliases=["abrir"])
+    @commands.cooldown(1, 10, commands.BucketType.user) # 1 vez a cada 10 segundos
     async def abrir_caixa(self, ctx, *, nome_caixa: str = None):
         if nome_caixa is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!abrir <Caixote / Baú / Relíquia>`")
@@ -68,7 +66,7 @@ class Lootbox(commands.Cog):
             caixa_alvo = "Caixote de Madeira"
             emoji_caixa = "🪵"
             sorteio_func = self.sortear_comum
-            cor_final = disnake.Color.from_rgb(139, 69, 19) # Marrom
+            cor_final = disnake.Color.from_rgb(139, 69, 19)
         elif "baú" in nome_caixa or "bau" in nome_caixa or "caçador" in nome_caixa:
             caixa_alvo = "Baú do Caçador"
             emoji_caixa = "🪙"
@@ -92,18 +90,18 @@ class Lootbox(commands.Cog):
             if caixa_alvo not in inv_list:
                 return await ctx.send(f"❌ Você não tem nenhum **{caixa_alvo}** no inventário!")
 
-            # Remove a caixa
+            # Remove a caixa para evitar bug de duplicação
             inv_list.remove(caixa_alvo)
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
             # Roda o RNG
             premio = sorteio_func()
 
-            # Suspense visual
-            msg = await ctx.send(f"🔓 {ctx.author.mention} está quebrando o cadeado do **{caixa_alvo}**...")
-            await asyncio.sleep(1.5)
-            await msg.edit(content=f"✨ A tampa está se abrindo...")
-            await asyncio.sleep(1.5)
+            # Mensagem inicial única (economiza requisições)
+            msg = await ctx.send(f"🔓 {ctx.author.mention} está abrindo o(a) **{caixa_alvo}**... {emoji_caixa}")
+            
+            # Suspense único
+            await asyncio.sleep(3.0)
 
             # Entrega o prêmio
             if premio["tipo"] == "mc":
@@ -111,13 +109,15 @@ class Lootbox(commands.Cog):
                 db.update_value(user['row'], 3, round(saldo + premio["valor"], 2))
                 texto_premio = f"`{formatar_moeda(premio['valor'])} MC`"
             else:
-                inv_list.append(premio["nome"])
-                db.update_value(user['row'], 6, ", ".join(inv_list))
+                user_atual = db.get_user_data(str(ctx.author.id))
+                inv_atual = [i.strip() for i in str(user_atual['data'][5]).split(',') if i.strip()]
+                inv_atual.append(premio["nome"])
+                db.update_value(user_atual['row'], 6, ", ".join(inv_atual))
                 texto_premio = f"1x **{premio['nome']}**"
 
             embed = disnake.Embed(
                 title=f"🎉 {emoji_caixa} LOOT OBTIDO!",
-                description=f"O {caixa_alvo} abriu e dentro dele você encontrou:\n\n{premio['emoji']} {texto_premio}",
+                description=f"A caixa foi aberta e revelou:\n\n{premio['emoji']} {texto_premio}",
                 color=cor_final
             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
@@ -125,15 +125,21 @@ class Lootbox(commands.Cog):
             if premio["nome"] in ["Energético Símio", "Bomba de Fumaça", "Carga de C4"]:
                 embed.set_footer(text="Dica: Itens consumíveis são usados diretamente. Ex: !energetico")
             elif premio["nome"] in ["Estátua de Ouro", "Diamante Bruto"]:
-                embed.set_footer(text="Dica: Use !vender <nome> para trocar esse tesouro por Macacoins no mercado negro!")
+                embed.set_footer(text="Dica: Use !vender <nome> para trocar tesouros por Macacoins!")
 
+            # Edição final
             await msg.edit(content="", embed=embed)
 
         except commands.CommandError:
             raise
         except Exception as e:
             print(f"❌ Erro no !abrir de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro ao abrir a caixa. Seu item não foi perdido, tente novamente!")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro ao abrir a caixa. Seu item está seguro, tente novamente!")
+
+    @abrir_caixa.error
+    async def abrir_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ Calma, macaco! Você está mexendo muito rápido. Tente novamente em {error.retry_after:.1f}s.", delete_after=5)
 
 def setup(bot):
     bot.add_cog(Lootbox(bot))

@@ -16,7 +16,6 @@ class Profiles(commands.Cog):
             await ctx.send(f"⚠️ {ctx.author.mention}, use este comando no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
-    # ── Ícone e cor do embed por cargo ──────────────────────────
     _CARGO_INFO = {
         "Lêmure":      ("🐭", 0x7b7b7b),
         "Macaquinho":  ("🐒", 0x8B5E3C),
@@ -28,7 +27,6 @@ class Profiles(commands.Cog):
         "Rei Símio":   ("👑", 0xFFD700),
     }
 
-    # ── Slugs do banco → label da conquista ─────────────────────
     _MAPA_CONQUISTAS = {
         "palhaco":           "🤡 Palhaço",
         "filho_da_sorte":    "🍀 Sortudo",
@@ -51,6 +49,7 @@ class Profiles(commands.Cog):
     }
 
     @commands.command(aliases=["emblemas"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def conquistas(self, ctx):
         embed = disnake.Embed(
             title="🏆 MURAL DE CONQUISTAS DA SELVA",
@@ -101,7 +100,13 @@ class Profiles(commands.Cog):
         embed.set_footer(text="Apenas os astutos dominarão a selva. 🐒")
         await ctx.send(embed=embed)
 
+    @conquistas.error
+    async def conquistas_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ Tente novamente em {error.retry_after:.1f}s.", delete_after=3)
+
     @commands.command(aliases=["p", "status"])
+    @commands.cooldown(1, 6, commands.BucketType.user) # 1 vez a cada 6 segundos
     async def perfil(self, ctx, membro: disnake.Member = None):
         membro  = membro or ctx.author
         user_id = str(membro.id)
@@ -114,7 +119,6 @@ class Profiles(commands.Cog):
             cargo = user["data"][3] if len(user["data"]) > 3 and user["data"][3] else "Lêmure"
             agora = time.time()
 
-            # ── Cooldowns ─────────────────────────────────────────
             ultimo_work   = db.parse_float(user["data"][4] if len(user["data"]) > 4 else None)
             ultimo_roubo  = db.parse_float(user["data"][6] if len(user["data"]) > 6 else None)
             ultimo_invest = db.parse_float(user["data"][7] if len(user["data"]) > 7 else None)
@@ -126,7 +130,6 @@ class Profiles(commands.Cog):
             st_roubo  = _cd(ultimo_roubo,  7200)
             st_invest = _cd(ultimo_invest, 86400)
 
-            # ── Inventário ────────────────────────────────────────
             inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.strip().lower() != "nenhum"]
             cargas_escudo = self.bot.escudos_ativos.get(user_id, 0) if hasattr(self.bot, "escudos_ativos") else 0
@@ -142,9 +145,7 @@ class Profiles(commands.Cog):
                 itens.append(f"`🛡️ Escudo ({cargas_escudo}/{ESCUDO_CARGAS})`")
             inv_val = "  ".join(itens) if itens else "*Mochila vazia*"
 
-            # ── Conquistas ────────────────────────────────────────
             emblemas = []
-
             if saldo >= 500000:   emblemas.append("🤑 Burguês Safado")
             elif saldo >= 100000: emblemas.append("💎 Magnata")
             if 0 < saldo < 100:   emblemas.append("📉 Falência Técnica")
@@ -166,8 +167,6 @@ class Profiles(commands.Cog):
                             elif i == 1: emblemas.append("🥈 Vice-Líder")
                             elif i == 2: emblemas.append("🥉 Bronze de Ouro")
                             break
-            except commands.CommandError:
-                raise
             except Exception as e:
                 print(f"⚠️ Rank no !perfil: {e}")
 
@@ -183,11 +182,9 @@ class Profiles(commands.Cog):
             if valores_rec and max(recompensas_gerais, key=recompensas_gerais.get) == user_id:
                 emblemas.append("💀 Rei do Crime")
 
-            # ── Monta o embed ─────────────────────────────────────
             cargo_icon, embed_color = self._CARGO_INFO.get(cargo, ("🐒", 0xFFD700))
             saldo_fmt = f"{saldo:,.2f} MC".replace(",", ".")
 
-            # Cabeçalho: nome + cargo + saldo na descrição
             sep = "─" * 34
             desc = (
                 f"### {cargo_icon}  {membro.display_name}\n"
@@ -206,15 +203,12 @@ class Profiles(commands.Cog):
             )
             embed.set_thumbnail(url=membro.display_avatar.url)
 
-            # Cooldowns — 3 colunas inline
             embed.add_field(name="🔨  Trabalho",     value=st_work,   inline=True)
             embed.add_field(name="🔫  Roubo",        value=st_roubo,  inline=True)
             embed.add_field(name="🏛️  Investimento", value=st_invest, inline=True)
 
-            # Inventário
             embed.add_field(name="🎒  Inventário", value=inv_val, inline=False)
 
-            # Conquistas agrupadas em linhas de 3
             if emblemas:
                 linhas = []
                 for i in range(0, len(emblemas), 3):
@@ -237,13 +231,17 @@ class Profiles(commands.Cog):
             print(f"❌ Erro no !perfil: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, erro ao carregar perfil. Tente novamente!")
 
+    @perfil.error
+    async def perfil_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ Não faça spam, macaco! Tente novamente em {error.retry_after:.1f}s.", delete_after=5)
+
     @commands.command(aliases=["top", "ricos", "placar"])
+    @commands.cooldown(1, 10, commands.BucketType.guild) # 1 vez a cada 10s no SERVIDOR (evita bloqueio no Google Sheets)
     async def rank(self, ctx):
         try:
             try:
                 all_rows = db.sheet.get_all_values()
-            except commands.CommandError:
-                raise
             except Exception as e:
                 print(f"❌ Erro ao acessar planilha no !rank: {e}")
                 return await ctx.send("⚠️ **O banco está ocupado!** Tente novamente em 1 minuto.")
@@ -274,7 +272,6 @@ class Profiles(commands.Cog):
                 if s >= 1_000:     return f"{s/1_000:.1f}K MC"
                 return f"{s:.2f} MC"
 
-            # Posição do autor
             autor_id  = str(ctx.author.id)
             autor_pos = None
             autor_row = None
@@ -290,7 +287,6 @@ class Profiles(commands.Cog):
                 color       = 0xFFD700,
             )
 
-            # ── Pódio inline (top 3) ──────────────────────────────
             PODIO = ["🥇  **1º Lugar**", "🥈  **2º Lugar**", "🥉  **3º Lugar**"]
             for i in range(min(3, len(top))):
                 row   = top[i]
@@ -304,7 +300,6 @@ class Profiles(commands.Cog):
                     inline= True,
                 )
 
-            # ── Posições 4–10 ─────────────────────────────────────
             if len(top) > 3:
                 embed.add_field(name="\u200b", value="\u200b", inline=False)
                 NUMS = ["4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
@@ -317,7 +312,6 @@ class Profiles(commands.Cog):
                     linhas.append(f"{NUMS[i-3]}  {c_em} **{nome}** — `{_fmt(saldo)}`")
                 embed.add_field(name="📊  Classificação", value="\n".join(linhas), inline=False)
 
-            # ── Posição do autor fora do top 10 ───────────────────
             if autor_pos and autor_pos > 10 and autor_row:
                 embed.add_field(
                     name  = "📍  Sua posição",
@@ -332,6 +326,11 @@ class Profiles(commands.Cog):
         except Exception as e:
             print(f"❌ Erro no !rank: {e}")
             await ctx.send("⚠️ **O banco está ocupado!** Tente novamente em 1 minuto.")
+
+    @rank.error
+    async def rank_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ O painel de rank está sendo atualizado. Aguarde {error.retry_after:.1f}s.", delete_after=5)
 
 def setup(bot):
     bot.add_cog(Profiles(bot))

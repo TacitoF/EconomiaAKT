@@ -237,7 +237,7 @@ class CipoPodre(commands.Cog):
         if oponente.bot:
             return await ctx.send(f"🤖 {ctx.author.mention}, os bots flutuam, não caem em penhascos.")
         if aposta < 10:
-            return await ctx.send("❌ A aposta mínima para saltar no cipó é de **10 MC**.")
+            return await ctx.send("❌ A aposta mínima para pular no cipó é de **10 MC**.")
 
         aposta = round(aposta, 2)
 

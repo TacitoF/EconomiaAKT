@@ -19,7 +19,7 @@ def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 400)
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
+    """Formata um float para o padrão de moeda. Ex: 1234.56 -> 1.234,56"""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -278,7 +278,7 @@ class GatilhoRapido(commands.Cog):
                 description=(
                     f"**{ctx.author.mention}** sacou da luva e desafiou **{oponente.mention}** para um Gatilho Rápido!\n\n"
                     f"💰 **Aposta:** `{formatar_moeda(aposta)} MC` (Pote: `{formatar_moeda(aposta * 2)} MC`)\n"
-                    f"Você aceita testar o seu tempo de reação?"
+                    f"Aceita testar o seu tempo de reação?"
                 ),
                 color=disnake.Color.dark_red()
             )
