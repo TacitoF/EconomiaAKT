@@ -26,6 +26,12 @@ def save_achievement(user_data, slug):
         db.update_value(user_data['row'], 10, ", ".join(lista))
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  JOGO DO BICHO — constantes globais (usadas pelo Cog e pela View)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# 5 animais, cada um cobre 20 números (0-19, 20-39, ... 80-99)
+# número sorteado: 0-99  →  bicho = número // 20
 BICHOS = [
     ("🦁", "Leão",     "00–19"),
     ("🐍", "Cobra",    "20–39"),
@@ -33,11 +39,16 @@ BICHOS = [
     ("🦜", "Arara",    "60–79"),
     ("🐘", "Elefante", "80–99"),
 ]
-BICHO_MULT = 4.0
+BICHO_MULT = 4.0   # paga 4× o apostado
 
 def numero_para_bicho(n: int):
+    """Recebe 0-99, devolve (emoji, nome, faixa_str)."""
     return BICHOS[n // 20]
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  VIEW — 5 botões de escolha
+# ══════════════════════════════════════════════════════════════════════════════
 
 class BichoEscolhaView(disnake.ui.View):
     def __init__(self, ctx, aposta: float):
@@ -58,6 +69,7 @@ class BichoEscolhaView(disnake.ui.View):
 
     def _make_callback(self, emoji_escolhido: str, nome_escolhido: str):
         async def callback(inter: disnake.MessageInteraction):
+            # ── Validações ──────────────────────────────────────────────
             if inter.author.id != self.ctx.author.id:
                 return await inter.response.send_message("❌ Não é o seu jogo!", ephemeral=True)
             if self.jogou:
@@ -67,6 +79,7 @@ class BichoEscolhaView(disnake.ui.View):
             for item in self.children:
                 item.disabled = True
 
+            # ── Busca e debita saldo ─────────────────────────────────────
             user = db.get_user_data(str(inter.author.id))
             if not user:
                 await inter.response.edit_message(view=self)
@@ -79,6 +92,7 @@ class BichoEscolhaView(disnake.ui.View):
 
             db.update_value(user['row'], 3, round(saldo - self.aposta, 2))
 
+            # ── Embed de sorteio ─────────────────────────────────────────
             embed_spin = disnake.Embed(
                 title       = "🎲 JOGO DO BICHO",
                 description = (
@@ -91,10 +105,12 @@ class BichoEscolhaView(disnake.ui.View):
             await inter.response.edit_message(embed=embed_spin, view=self)
             await asyncio.sleep(2)
 
+            # ── Sorteio ──────────────────────────────────────────────────
             numero = random.randint(0, 99)
             emoji_saiu, nome_saiu, faixa_saiu = numero_para_bicho(numero)
             ganhou = (nome_saiu == nome_escolhido)
 
+            # ── Paga ou registra perda ───────────────────────────────────
             user_atual  = db.get_user_data(str(inter.author.id))
             saldo_atual = db.parse_float(user_atual['data'][2])
 
@@ -102,6 +118,7 @@ class BichoEscolhaView(disnake.ui.View):
                 premio = round(self.aposta * BICHO_MULT, 2)
                 lucro  = round(premio - self.aposta, 2)
                 db.update_value(user_atual['row'], 3, round(saldo_atual + premio, 2))
+
                 embed_result = disnake.Embed(
                     title       = "🎉 ACERTOU O BICHO!",
                     description = (
@@ -132,10 +149,16 @@ class BichoEscolhaView(disnake.ui.View):
         for item in self.children:
             item.disabled = True
         try:
-            await self.ctx.send(f"⏰ {self.ctx.author.mention}, o tempo esgotou! Nenhum valor foi debitado.")
+            await self.ctx.send(
+                f"⏰ {self.ctx.author.mention}, o tempo esgotou! Nenhum valor foi debitado."
+            )
         except:
             pass
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  COG
+# ══════════════════════════════════════════════════════════════════════════════
 
 class Cassino(commands.Cog):
     def __init__(self, bot):
@@ -148,6 +171,7 @@ class Cassino(commands.Cog):
             await ctx.send(f"🐒 Ei {ctx.author.mention}, macaco esperto joga no lugar certo! Vai para {mencao}.")
             raise commands.CommandError("Canal incorreto.")
 
+    # ── Slots ─────────────────────────────────────────────────────────────────
     @commands.command(name="cassino")
     async def cassino_slots(self, ctx, aposta: float = None):
         if aposta is None:
@@ -209,22 +233,18 @@ class Cassino(commands.Cog):
             print(f"❌ Erro no !cassino de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
+    # ── Jogo do Bicho ─────────────────────────────────────────────────────────
     @commands.command(name="bicho")
     async def jogo_bicho(self, ctx, aposta: float = None):
         """Jogo do Bicho com seleção por botões. Use: !bicho <valor>"""
         if aposta is None:
             linhas = "\n".join(f"{e} **{n}** *(faixa {f})*" for e, n, f in BICHOS)
-            embed = disnake.Embed(
-                title="🎲 JOGO DO BICHO — Como funciona",
-                description=(
-                    "Um número de **00 a 99** é sorteado. Cada animal cobre uma faixa de 20 números.\n"
-                    "Escolha o animal via botão. Se o número cair na sua faixa, você ganha **4x**!\n\n"
-                    f"{linhas}\n\n"
-                    "**Uso:** `!bicho <valor>`"
-                ),
-                color=disnake.Color.from_rgb(34, 139, 34)
+            return await ctx.send(
+                f"⚠️ {ctx.author.mention}, use: `!bicho <valor>`\n\n"
+                f"🎲 **Como funciona:** Um número de **00 a 99** é sorteado.\n"
+                f"Cada animal cobre uma faixa de 20 números. Acertou? Ganha **{BICHO_MULT:.0f}x**!\n\n"
+                f"{linhas}"
             )
-            return await ctx.send(embed=embed)
         if aposta <= 0:
             return await ctx.send("❌ Aposta inválida!")
         aposta = round(aposta, 2)
@@ -265,22 +285,11 @@ class Cassino(commands.Cog):
             print(f"❌ Erro no !bicho de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
+    # ── Corrida de Macacos ────────────────────────────────────────────────────
     @commands.command(name="corrida")
     async def corrida_macaco(self, ctx, escolha: str = None, aposta: float = None):
         if escolha is None or aposta is None:
-            embed = disnake.Embed(
-                title="🏁 CORRIDA DE MACACOS — Como funciona",
-                description=(
-                    "Três macacos disputam uma corrida em tempo real. Aposte no seu favorito e torça!\n"
-                    "Cada macaco avança aleatoriamente a cada segundo. O primeiro a cruzar a linha vence.\n\n"
-                    "**Animais disponíveis:** `macaquinho` 🐒 · `gorila` 🦍 · `orangutango` 🦧\n"
-                    "**Prêmio:** **2x** o valor apostado\n\n"
-                    "**Uso:** `!corrida <animal> <valor>`\n"
-                    "*Exemplo: `!corrida gorila 200`*"
-                ),
-                color=disnake.Color.green()
-            )
-            return await ctx.send(embed=embed)
+            return await ctx.send(f"⚠️ {ctx.author.mention}, use: `!corrida <animal> <valor>`\nAnimais: `macaquinho`, `gorila`, `orangutango`")
 
         opcoes = {"macaquinho": "🐒", "gorila": "🦍", "orangutango": "🦧"}
         escolha = escolha.lower()

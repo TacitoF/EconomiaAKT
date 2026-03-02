@@ -6,7 +6,6 @@ import time
 ESCUDO_CARGAS = 3
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 LIMITES_CARGO = {
@@ -56,7 +55,7 @@ class Shop(commands.Cog):
             ), inline=True
         )
 
-        embed.add_field(name="\u200B", value="\u200B", inline=True) # Espaçador invisível para arrumar o layout
+        embed.add_field(name="\u200B", value="\u200B", inline=True)  # espaçador pra alinhar os campos
 
         embed.add_field(
             name="🛡️ EQUIPAMENTOS E DEFESA",
@@ -120,34 +119,33 @@ class Shop(commands.Cog):
                 return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
             loja = {
-                "macaquinho":        {"nome": "Macaquinho",        "preco": 1200.0,   "tipo": "cargo"},
-                "babuíno":           {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
-                "babuino":           {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
-                "chimpanzé":         {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
-                "chimpanze":         {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
-                "orangutango":       {"nome": "Orangutango",       "preco": 35000.0,  "tipo": "cargo"},
-                "gorila":            {"nome": "Gorila",            "preco": 85000.0,  "tipo": "cargo"},
-                "ancestral":         {"nome": "Ancestral",         "preco": 210000.0, "tipo": "cargo"},
-                "rei símio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
-                "rei simio":         {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
-                "escudo":            {"nome": "Escudo",            "preco": 1000.0,   "tipo": "item"},
-                "pé de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
-                "pe de cabra":       {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
-                "seguro":            {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
-                "casca de banana":   {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
-                "imposto do gorila": {"nome": "Imposto do Gorila", "preco": 1500.0,   "tipo": "item"},
-                "troca de nick":     {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
-                # CAIXAS
-                "caixote de madeira":{"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
-                "caixote":           {"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
-                "baú do caçador":    {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
-                "bau do cacador":    {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
-                "baú":               {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
-                "bau":               {"nome": "Baú do Caçador",    "preco": 3500.0,   "tipo": "item"},
-                "relíquia ancestral":{"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
-                "reliquia ancestral":{"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
-                "relíquia":          {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
-                "reliquia":          {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
+                "macaquinho":         {"nome": "Macaquinho",        "preco": 1200.0,   "tipo": "cargo"},
+                "babuíno":            {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
+                "babuino":            {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
+                "chimpanzé":          {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
+                "chimpanze":          {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
+                "orangutango":        {"nome": "Orangutango",       "preco": 35000.0,  "tipo": "cargo"},
+                "gorila":             {"nome": "Gorila",            "preco": 85000.0,  "tipo": "cargo"},
+                "ancestral":          {"nome": "Ancestral",         "preco": 210000.0, "tipo": "cargo"},
+                "rei símio":          {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
+                "rei simio":          {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
+                "escudo":             {"nome": "Escudo",            "preco": 1000.0,   "tipo": "item"},
+                "pé de cabra":        {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
+                "pe de cabra":        {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
+                "seguro":             {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
+                "casca de banana":    {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
+                "imposto do gorila":  {"nome": "Imposto do Gorila", "preco": 1500.0,   "tipo": "item"},
+                "troca de nick":      {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
+                "caixote de madeira": {"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
+                "caixote":            {"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
+                "baú do caçador":     {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
+                "bau do cacador":     {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
+                "baú":                {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
+                "bau":                {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
+                "relíquia ancestral": {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
+                "reliquia ancestral": {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
+                "relíquia":           {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
+                "reliquia":           {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
             }
 
             escolha = item.lower()
@@ -176,22 +174,30 @@ class Shop(commands.Cog):
 
                 if item_data["nome"] == "Escudo":
                     agora = time.time()
+                    
+                    # --- SINCRONIZAÇÃO DO ESCUDO (COLUNA L) ---
+                    if user_id not in self.bot.escudos_ativos and len(user['data']) > 11:
+                        dado_escudo = str(user['data'][11]).strip()
+                        if dado_escudo.isdigit() and int(dado_escudo) > 0:
+                            self.bot.escudos_ativos[user_id] = int(dado_escudo)
+                    # ------------------------------------------
+
                     escudo_ativo = hasattr(self.bot, 'escudos_ativos') and \
                                    self.bot.escudos_ativos.get(user_id, 0) > 0
                     if "Escudo" in inv_list or escudo_ativo:
-                        db.update_value(user['row'], 3, round(saldo, 2))  # estorna
+                        db.update_value(user['row'], 3, round(saldo, 2))  # estorna o valor
                         return await ctx.send(
                             f"❌ {ctx.author.mention}, você já tem um **Escudo** "
                             f"{'ativo' if escudo_ativo else 'no inventário'}! "
                             f"Só pode ter 1 de cada vez."
                         )
 
-                    historico = self.bot.escudo_compras.get(user_id, (0, 0.0))
+                    historico        = self.bot.escudo_compras.get(user_id, (0, 0.0))
                     ultima_compra_ts = historico[1]
 
                     if agora - ultima_compra_ts < 86400:
                         libera_em = int(ultima_compra_ts + 86400)
-                        db.update_value(user['row'], 3, round(saldo, 2))  # estorna
+                        db.update_value(user['row'], 3, round(saldo, 2))  # estorna o valor
                         return await ctx.send(
                             f"⏳ {ctx.author.mention}, você já comprou um **Escudo** hoje! "
                             f"Pode comprar outro <t:{libera_em}:R>."

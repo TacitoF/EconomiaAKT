@@ -26,7 +26,7 @@ class Bounty(commands.Cog):
         valor = round(valor, 2)
         try:
             pagador = db.get_user_data(str(ctx.author.id))
-            saldo = db.parse_float(pagador['data'][2]) if pagador else 0.0
+            saldo   = db.parse_float(pagador['data'][2]) if pagador else 0.0
             if not pagador or saldo < valor:
                 return await ctx.send("❌ Saldo insuficiente!")
 

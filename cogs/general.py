@@ -91,14 +91,14 @@ class General(commands.Cog):
         )
 
         tabela = [
-            ("🐒 Lêmure",      "40 – 80 MC",       "—",           "1.200 MC"),
-            ("🐵 Macaquinho",  "130 – 230 MC",     "1.200 MC",    "5.500 MC"),
-            ("🦍 Babuíno",     "320 – 530 MC",     "5.500 MC",    "14.000 MC"),
-            ("🦧 Chimpanzé",   "780 – 1.320 MC",   "14.000 MC",   "35.000 MC"),
-            ("🌴 Orangutango", "1.900 – 3.200 MC", "35.000 MC",   "85.000 MC"),
-            ("🌋 Gorila",      "4.700 – 7.800 MC", "85.000 MC",   "210.000 MC"),
-            ("🗿 Ancestral",   "11.500 – 19.000 MC","210.000 MC", "600.000 MC"),
-            ("👑 Rei Símio",   "27.000 – 45.000 MC","600.000 MC", "MÁXIMO 👑"),
+            ("🐒 Lêmure",      "40 – 80 MC",        "—",            "1.200 MC"),
+            ("🐵 Macaquinho",  "130 – 230 MC",      "1.200 MC",     "5.500 MC"),
+            ("🦍 Babuíno",     "320 – 530 MC",      "5.500 MC",     "14.000 MC"),
+            ("🦧 Chimpanzé",   "780 – 1.320 MC",    "14.000 MC",    "35.000 MC"),
+            ("🌴 Orangutango", "1.900 – 3.200 MC",  "35.000 MC",    "85.000 MC"),
+            ("🌋 Gorila",      "4.700 – 7.800 MC",  "85.000 MC",    "210.000 MC"),
+            ("🗿 Ancestral",   "11.500 – 19.000 MC","210.000 MC",   "600.000 MC"),
+            ("👑 Rei Símio",   "27.000 – 45.000 MC","600.000 MC",   "MÁXIMO 👑"),
         ]
 
         for cargo, salario, custo_este, custo_prox in tabela:

@@ -54,22 +54,34 @@ class Economy(commands.Cog):
             cargo = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
 
             salarios = {
-                "Lêmure":      (40,   80),
-                "Macaquinho":  (130,  230),
-                "Babuíno":     (320,  530),
-                "Chimpanzé":   (780,  1320),
-                "Orangutango": (1900, 3200),
-                "Gorila":      (4700, 7800),
+                "Lêmure":      (40,    80),
+                "Macaquinho":  (130,   230),
+                "Babuíno":     (320,   530),
+                "Chimpanzé":   (780,   1320),
+                "Orangutango": (1900,  3200),
+                "Gorila":      (4700,  7800),
                 "Ancestral":   (11500, 19000),
                 "Rei Símio":   (27000, 45000),
             }
             min_ganho, max_ganho = salarios.get(cargo, (40, 80))
             ganho = round(random.uniform(min_ganho, max_ganho), 2)
 
+            # --- SINCRONIZAÇÃO COM O BANCO DE DADOS (COLUNA K) ---
+            # Se o bot reiniciou e o usuário não está na memória, ele puxa da planilha!
+            if user_id not in self.bot.impostos and len(user['data']) > 10:
+                dado_imposto = str(user['data'][10]).strip()
+                if "|" in dado_imposto:
+                    cobrador_id, cargas_str = dado_imposto.split("|")
+                    self.bot.impostos[user_id] = {
+                        'cobrador_id': cobrador_id,
+                        'cargas': int(cargas_str)
+                    }
+            # -----------------------------------------------------
+
             imposto_msg = ""
             if user_id in self.bot.impostos:
                 imposto_data = self.bot.impostos[user_id]
-                taxa = round(ganho * 0.25, 2)
+                taxa  = round(ganho * 0.25, 2)
                 ganho = round(ganho - taxa, 2)
 
                 cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
@@ -84,20 +96,24 @@ class Economy(commands.Cog):
 
                 if cargas_restantes <= 0:
                     del self.bot.impostos[user_id]
-                    db.clear_imposto(user['row'])
+                    try:
+                        db.clear_imposto(user['row'])
+                    except AttributeError:
+                        db.update_value(user['row'], 11, "")
+                        
                     libera_em = int(time.time() + 86400)
                     self.bot.cooldown_imposto[user_id] = libera_em
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor!\n🕊️ *O Imposto acabou. Você está imune a novos impostos por **24h** (<t:{libera_em}:R>).*"
                 else:
+                    db.update_value(user['row'], 11, f"{imposto_data['cobrador_id']}|{cargas_restantes}")
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
 
             saldo_atual = db.parse_float(user['data'][2])
-            novo_saldo = round(saldo_atual + ganho, 2)
+            novo_saldo  = round(saldo_atual + ganho, 2)
             db.update_value(user['row'], 3, novo_saldo)
             db.update_value(user['row'], 5, agora)
 
-            # --- SISTEMA DE DROPS DE CAIXAS ---
-            drop_msg = ""
+            drop_msg    = ""
             chance_drop = random.random()
             caixa_ganha = None
             emoji_caixa = ""
@@ -113,13 +129,11 @@ class Economy(commands.Cog):
                 emoji_caixa = "🪵"
 
             if caixa_ganha:
-                inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
+                inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
                 inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
                 inv_list.append(caixa_ganha)
                 db.update_value(user['row'], 6, ", ".join(inv_list))
-                
                 drop_msg = f"\n{emoji_caixa} **SORTE GRANDE!** Você escavou e encontrou um(a) **{caixa_ganha}**!\n*(Use `!abrir {caixa_ganha.split()[0]}` para ver o que tem dentro)*"
-            # ----------------------------------
 
             tracker = self.bot.tracker_emblemas['trabalhos']
             if user_id not in tracker: tracker[user_id] = []
@@ -128,7 +142,7 @@ class Economy(commands.Cog):
 
             conquista_msg = ""
             if len(tracker[user_id]) >= 10:
-                conquistas_user = str(user['data'][9]) if len(user['data']) > 9 else ""
+                conquistas_user  = str(user['data'][9]) if len(user['data']) > 9 else ""
                 lista_conquistas = [c.strip() for c in conquistas_user.split(',') if c.strip()]
                 if "proletario" not in lista_conquistas:
                     lista_conquistas.append("proletario")
@@ -146,9 +160,9 @@ class Economy(commands.Cog):
                 name     = f"{ctx.author.display_name} foi trabalhar",
                 icon_url = ctx.author.display_avatar.url,
             )
-            embed.add_field(name="💰 Ganho",         value=f"**+{formatar_moeda(ganho)} MC**", inline=True)
-            embed.add_field(name="🏦 Saldo atual",   value=f"`{formatar_moeda(novo_saldo)} MC`", inline=True)
-            embed.add_field(name="⏰ Próximo turno", value=f"<t:{proximo_cd}:R>", inline=True)
+            embed.add_field(name="💰 Ganho",         value=f"**+{formatar_moeda(ganho)} MC**",    inline=True)
+            embed.add_field(name="🏦 Saldo atual",   value=f"`{formatar_moeda(novo_saldo)} MC`",  inline=True)
+            embed.add_field(name="⏰ Próximo turno", value=f"<t:{proximo_cd}:R>",                 inline=True)
             if imposto_msg:
                 embed.add_field(name="🦍 Imposto do Gorila", value=imposto_msg.strip().lstrip("\n"), inline=False)
             if drop_msg:
@@ -222,16 +236,25 @@ class Economy(commands.Cog):
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
+            # --- SINCRONIZAÇÃO DO ESCUDO (COLUNA L) ---
+            if vitima_id not in self.bot.escudos_ativos and len(alvo_data['data']) > 11:
+                dado_escudo = str(alvo_data['data'][11]).strip()
+                if dado_escudo.isdigit() and int(dado_escudo) > 0:
+                    self.bot.escudos_ativos[vitima_id] = int(dado_escudo)
+            # ------------------------------------------
+
             cargas_atuais = self.bot.escudos_ativos.get(vitima_id, 0)
 
+            # ativa o escudo do inventário na primeira tentativa de roubo
             if cargas_atuais == 0 and "Escudo" in inv_alvo:
                 cargas_atuais = ESCUDO_CARGAS
                 self.bot.escudos_ativos[vitima_id] = cargas_atuais
                 inv_alvo.remove("Escudo")
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
+                db.update_value(alvo_data['row'], 12, str(cargas_atuais)) # SALVA NA PLANILHA
 
             escudo_ativo = cargas_atuais > 0
-            msg_escudo = ""
+            msg_escudo   = ""
 
             if escudo_ativo:
                 cargas_atuais -= 1
@@ -239,9 +262,11 @@ class Economy(commands.Cog):
 
                 if cargas_atuais > 0:
                     self.bot.escudos_ativos[vitima_id] = cargas_atuais
+                    db.update_value(alvo_data['row'], 12, str(cargas_atuais)) # ATUALIZA PLANILHA
                     texto_carga = f"*(Cargas restantes: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️)*"
                 else:
                     del self.bot.escudos_ativos[vitima_id]
+                    db.update_value(alvo_data['row'], 12, "") # LIMPA DA PLANILHA QUANDO QUEBRA
                     texto_carga = f"*(O escudo **QUEBROU** com o impacto! {vitima.mention} está desprotegido 💥)*"
 
                 if usou_pe_de_cabra:
@@ -301,7 +326,7 @@ class Economy(commands.Cog):
                 conquista_msg = ""
                 if len(tracker[ladrao_id]) >= 5:
                     conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
-                    lista_conquistas = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
+                    lista_conquistas  = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
                     if "mestre_sombras" not in lista_conquistas:
                         lista_conquistas.append("mestre_sombras")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_conquistas))
@@ -375,7 +400,7 @@ class Economy(commands.Cog):
         valor = round(valor, 2)
 
         try:
-            pag = db.get_user_data(str(ctx.author.id))
+            pag       = db.get_user_data(str(ctx.author.id))
             saldo_pag = db.parse_float(pag['data'][2]) if pag else 0.0
             if not pag or saldo_pag < valor:
                 return await ctx.send("❌ Saldo insuficiente!")
@@ -396,7 +421,7 @@ class Economy(commands.Cog):
             await ctx.send(embed=embed)
 
             if valor == 0.01:
-                conquistas_pag = str(pag['data'][9]) if len(pag['data']) > 9 else ""
+                conquistas_pag   = str(pag['data'][9]) if len(pag['data']) > 9 else ""
                 lista_conquistas = [c.strip() for c in conquistas_pag.split(',') if c.strip()]
                 if "pix_irritante" not in lista_conquistas:
                     lista_conquistas.append("pix_irritante")

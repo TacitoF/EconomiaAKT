@@ -39,7 +39,6 @@ class Bank(commands.Cog):
             if saldo < valor:
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
 
-            # ── RENDA FIXA ────────────────────────────────────────────────────
             if tipo == 'fixo':
                 if valor > 5000.0:
                     return await ctx.send("❌ O banco só aceita até **5.000 MC** na Renda Fixa por dia!")
@@ -53,17 +52,14 @@ class Bank(commands.Cog):
                 db.update_value(user['row'], 8, agora)
                 await ctx.send(f"🏛️ **RENDA FIXA!** Rendimento de 10% aplicado. Você ganhou **+{lucro:.2f} MC**, {ctx.author.mention}!")
 
-            # ── CRIPTO ────────────────────────────────────────────────────────
             elif tipo == 'cripto':
-                # FIX BUG 4: lê usos do banco de dados (persistente entre restarts)
+                # usos persistidos no banco pra não perder entre restarts
                 usos_atual, timestamp_inicio = db.get_cripto_usos(user)
 
-                # Se já passou 24h desde o primeiro uso, reseta o contador
                 if agora - timestamp_inicio >= 86400:
-                    usos_atual = 0
+                    usos_atual       = 0
                     timestamp_inicio = agora
 
-                # Se já usou 4 vezes, bloqueia
                 if usos_atual >= 4:
                     tempo_restauracao = int(timestamp_inicio + 86400)
                     return await ctx.send(
@@ -71,10 +67,9 @@ class Bank(commands.Cog):
                         f"O mercado reabre para você <t:{tempo_restauracao}:R>."
                     )
 
-                # Debita o saldo ANTES do sleep para evitar double-spend
+                # debita antes do sleep pra evitar double-spend
                 db.update_value(user['row'], 3, round(saldo - valor, 2))
 
-                # Incrementa e persiste o contador no banco
                 usos_atual += 1
                 db.set_cripto_usos(user['row'], usos_atual, timestamp_inicio)
 
@@ -86,16 +81,14 @@ class Bank(commands.Cog):
                 try:
                     await asyncio.sleep(30)
 
-                    # Rebusca o saldo atualizado após o sleep
                     user_atual = db.get_user_data(user_id_str)
                     if not user_atual:
                         raise ValueError("Conta não encontrada após o sleep.")
 
                     opcoes_variacao = [-0.25, -0.15, -0.05, 0.0, 0.05, 0.10, 0.20]
-                    variacao  = random.choice(opcoes_variacao)
-
-                    retorno   = round(valor * (1 + variacao), 2)
-                    lucro     = round(retorno - valor, 2)
+                    variacao = random.choice(opcoes_variacao)
+                    retorno  = round(valor * (1 + variacao), 2)
+                    lucro    = round(retorno - valor, 2)
 
                     db.update_value(user_atual['row'], 3, round(db.parse_float(user_atual['data'][2]) + retorno, 2))
 
@@ -107,14 +100,13 @@ class Bank(commands.Cog):
                         await ctx.send(f"📉 **CRASH!** {ctx.author.mention} resgatou apenas **{retorno:.2f} MC** (Prejuízo: `{lucro:.2f} MC`).")
 
                 except Exception as inner_e:
-                    # Qualquer erro após o débito devolve o valor e decrementa o contador
+                    # qualquer erro após o débito devolve o valor e decrementa o uso
                     print(f"❌ Erro durante o sleep do !investir cripto de {ctx.author}: {inner_e}")
                     try:
                         user_refund = db.get_user_data(user_id_str)
                         if user_refund:
                             saldo_refund = db.parse_float(user_refund['data'][2])
                             db.update_value(user_refund['row'], 3, round(saldo_refund + valor, 2))
-                            # Decrementa o uso pois o investimento não completou
                             usos_refund, ts_refund = db.get_cripto_usos(user_refund)
                             if usos_refund > 0:
                                 db.set_cripto_usos(user_refund['row'], usos_refund - 1, ts_refund)

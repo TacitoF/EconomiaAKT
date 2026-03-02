@@ -62,7 +62,7 @@ class Eventos(commands.Cog):
         self.coco_active = False
         self.coco_players = []
         self.coco_aposta = 0.0
-        self.coco_streak = {} # Memória de vitórias consecutivas no Coco
+        self.coco_streak = {}
 
     async def cog_before_invoke(self, ctx):
         cmd = ctx.command.name
@@ -206,82 +206,77 @@ class Eventos(commands.Cog):
 
         embed = disnake.Embed(
             title       = "🎰 AK-BET — CASSINO DA SELVA",
-            description = "Escolha seu veneno e transforme seus **Macacoins** em fortuna!\nTodos os jogos usam **botões interativos**. 🐒",
+            description = "Escolha seu veneno e transforme seus **Macacoins** em fortuna!\nTodos os jogos usam **botões interativos**. 🐒\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             color       = disnake.Color.from_rgb(255, 180, 0),
         )
 
         embed.add_field(
-            name  = "🃏 Jogos Solo",
+            name  = "🎰 JOGOS SOLO",
             value = (
-                "🚀 **!crash `<valor>`**\n"
-                "╰ Suba no gráfico e saque antes de arrebentar!\n"
-                "♠️ **!21 `<valor>`**\n"
-                "╰ Blackjack completo contra o dealer.\n"
-                "🎰 **!cassino `<valor>`**\n"
-                "╰ Caça-níquel — 3 iguais = JACKPOT `10x`!\n"
-                "💣 **!minas `<1-5 bombas>` `<valor>`**\n"
-                "╰ Campo minado — mais bombas, mais risco, mais lucro."
+                "🚀 **`!crash <valor>`**\n"
+                "└ *Suba no gráfico e saque antes de arrebentar!*\n"
+                "🎰 **`!cassino <valor>`**\n"
+                "└ *Caça-níquel — 3 iguais = JACKPOT 10x!*\n"
+                "💣 **`!minas <bombas> <valor>`**\n"
+                "└ *Campo minado — mais risco, mais lucro!*\n"
+                "🏁 **`!corrida <animal> <valor>`**\n"
+                "└ *Macaquinho, Gorila ou Orangutango (Paga 2x).*\n"
+                "🎲 **`!bicho <valor>`**\n"
+                "└ *Escolha um animal via botão e torça (Paga 4x)!*\n"
+                "🎫 **`!raspadinha <valor>`**\n"
+                "└ *Raspe instantaneamente por prêmios de até 10x.*"
             ),
             inline = False,
         )
 
         embed.add_field(
-            name  = "🦁 Apostas de Sorte",
+            name  = "⚔️ 1X1 (PVP)",
             value = (
-                "🎲 **!bicho `<valor>`**\n"
-                "╰ Escolha um animal via botão e torça! Paga **4x**.\n"
-                "🐒 **!corrida `<animal>` `<valor>`**\n"
-                "╰ Macaquinho, Gorila ou Orangutango — paga **2x**.\n"
-                "🦁 *Animais do bicho:* Leão · Cobra · Jacaré · Arara · Elefante\n"
-                "🎫 **!raspadinha `<valor>`** — jogue instantaneamente.\n"
-                "Prêmios: 1.5x · 2x · 3x · 5x · **Jackpot 10x**"
+                "✂️ **`!duelo @user <valor>`**\n"
+                "└ *Jokenpô da selva (Gorila, Caçador, Casca).*\n"
+                "🌿 **`!cipo @user <valor>`**\n"
+                "└ *Roleta Russa — um cai, o outro ganha tudo.*\n"
+                "🔫 **`!bang @user <valor>`**\n"
+                "└ *Gatilho Rápido — quem clicar primeiro vence.*\n"
+                "🥊 **`!briga @user <valor>`**\n"
+                "└ *Luta de macacos — a sorte decide o nocaute.*\n"
+                "🃏 **`!carta @user <valor>`**\n"
+                "└ *Duelo de cartas — a maior carta leva o pote.*\n"
+                "🗺️ **`!explorar @user <valor>`**\n"
+                "└ *Caça ao tesouro (mini campo minado 5x5).*"
             ),
             inline = False,
         )
 
         embed.add_field(
-            name  = "⚔️ PvP — Jogador vs Jogador",
+            name  = "🎮 MULTIPLAYER",
             value = (
-                "✂️ **!duelo `@user` `<valor>`**\n"
-                "╰ Jokenpô da selva (Gorila, Caçador, Casca).\n"
-                "🌿 **!cipo `@user` `<valor>`**\n"
-                "╰ Cipó Podre (Roleta Russa) — um cai, outro ganha.\n"
-                "🗺️ **!explorar `@user` `<valor>`**\n"
-                "╰ Caça ao tesouro — mini campo minado 5x5.\n"
-                "🔫 **!bang `@user` `<valor>`**\n"
-                "╰ Gatilho Rápido — quem clicar primeiro vence.\n"
-                "🃏 **!carta `@user` `<valor>`**\n"
-                "╰ Duelo de cartas — maior carta leva tudo.\n"
-                "🥊 **!briga `@user` `<valor>`**\n"
-                "╰ Luta de macacos — sorte decide o nocaute."
+                "♠️ **`!21 <valor>`**\n"
+                "└ *Blackjack — derrote o dealer (Mesa p/ até 5).*\n"
+                "🎡 **`!roleta`** → Depois **`!apostar <valor> <opção>`**\n"
+                "└ *Aposte em Cores (2x), Par/Ímpar (2x) ou Números (36x).*\n"
+                "🎲 **`!mentira <valor>`**\n"
+                "└ *Jogo de dados mentiroso (estilo Perudo).*\n"
+                "🏆 **`!torneio <valor>`**\n"
+                "└ *Torneio mata-mata extremo de Jokenpô (até 8 jogadores).*\n"
+                "🥥 **`!coco <valor>`**\n"
+                "└ *Roleta do Coco Explosivo — sobreviva e leve o pote!*"
             ),
             inline = False,
         )
 
         embed.add_field(
-            name  = "👥 Multiplayer",
+            name  = "⚽ APOSTAS ESPORTIVAS",
             value = (
-                "🏆 **!torneio `<valor>`**\n"
-                "╰ Torneio mata-mata extremo de Jokenpô (até 8 jogadores)!\n"
-                "🥥 **!coco `<valor>`**\n"
-                "╰ Roleta do Coco Explosivo — sobreviva à explosão!\n"
-                "🎰 **!roleta** → depois **!apostar `<valor>` `<opção>`**\n"
-                "╰ Mesa aberta por 30s. Cores/Par/Ímpar = **2x** · Número exato = **36x**!"
+                "⚽ **`!futebol`**\n"
+                "└ *Veja os próximos jogos e aposte pelo menu interativo.*\n"
+                "🎟️ **`!pule`**\n"
+                "└ *Veja seus bilhetes pendentes (Odd fixa 2.0x e auto-pagamento).*"
             ),
             inline = False,
         )
 
-        embed.add_field(
-            name  = "⚽ Apostas Esportivas",
-            value = (
-                "**!futebol** — veja os próximos jogos e aposte pelo menu.\n"
-                "**!pule** — seus bilhetes esportivos pendentes.\n"
-                "╰ Odd fixa **2x** · Pagamento automático após o jogo."
-            ),
-            inline = False,
-        )
-
-        embed.set_footer(text="💡 Dica: use !saldo para ver seus MC antes de apostar.")
+        embed.set_footer(text="💡 Dica: use !perfil para ver seus MC antes de apostar.")
         await ctx.send(embed=embed)
 
 def setup(bot):

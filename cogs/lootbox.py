@@ -21,62 +21,62 @@ class Lootbox(commands.Cog):
     def sortear_comum(self):
         chance = random.randint(1, 100)
         if chance <= 40:
-            return {"tipo": "mc", "valor": random.randint(500, 1100), "nome": "Macacoins", "emoji": "💵"}
+            return {"tipo": "mc",   "valor": random.randint(500, 1100), "nome": "Macacoins",      "emoji": "💵"}
         elif chance <= 65:
-            return {"tipo": "item", "nome": "Casca de Banana", "emoji": "🍌"}
+            return {"tipo": "item", "nome": "Casca de Banana",          "emoji": "🍌"}
         elif chance <= 90:
-            return {"tipo": "item", "nome": "Energético Símio", "emoji": "🧪"}
+            return {"tipo": "item", "nome": "Energético Símio",         "emoji": "🧪"}
         else:
-            return {"tipo": "item", "nome": "Bomba de Fumaça", "emoji": "💨"}
+            return {"tipo": "item", "nome": "Bomba de Fumaça",          "emoji": "💨"}
 
     def sortear_raro(self):
         chance = random.randint(1, 100)
         if chance <= 35:
-            return {"tipo": "mc", "valor": random.randint(2000, 4500), "nome": "Macacoins", "emoji": "💵"}
+            return {"tipo": "mc",   "valor": random.randint(2000, 4500), "nome": "Macacoins", "emoji": "💵"}
         elif chance <= 55:
-            return {"tipo": "item", "nome": "Escudo", "emoji": "🛡️"}
+            return {"tipo": "item", "nome": "Escudo",                    "emoji": "🛡️"}
         elif chance <= 75:
-            return {"tipo": "item", "nome": "Pé de Cabra", "emoji": "🕵️"}
+            return {"tipo": "item", "nome": "Pé de Cabra",               "emoji": "🕵️"}
         elif chance <= 90:
-            return {"tipo": "item", "nome": "Carga de C4", "emoji": "🧨"}
+            return {"tipo": "item", "nome": "Carga de C4",               "emoji": "🧨"}
         else:
-            return {"tipo": "item", "nome": "Seguro", "emoji": "📄"}
+            return {"tipo": "item", "nome": "Seguro",                    "emoji": "📄"}
 
     def sortear_lendario(self):
         chance = random.randint(1, 100)
         if chance <= 30:
-            return {"tipo": "mc", "valor": random.randint(10000, 25000), "nome": "Macacoins Fortificados", "emoji": "💰"}
+            return {"tipo": "mc",   "valor": random.randint(10000, 25000), "nome": "Macacoins Fortificados", "emoji": "💰"}
         elif chance <= 55:
-            return {"tipo": "item", "nome": "Estátua de Ouro", "emoji": "🗿"}
+            return {"tipo": "item", "nome": "Estátua de Ouro",             "emoji": "🗿"}
         elif chance <= 75:
-            return {"tipo": "item", "nome": "Imposto do Gorila", "emoji": "🦍"}
+            return {"tipo": "item", "nome": "Imposto do Gorila",           "emoji": "🦍"}
         elif chance <= 90:
-            return {"tipo": "item", "nome": "Diamante Bruto", "emoji": "💎"}
+            return {"tipo": "item", "nome": "Diamante Bruto",              "emoji": "💎"}
         else:
-            return {"tipo": "item", "nome": "Troca de Nick", "emoji": "🪄"}
+            return {"tipo": "item", "nome": "Troca de Nick",               "emoji": "🪄"}
 
     @commands.command(aliases=["abrir"])
-    @commands.cooldown(1, 10, commands.BucketType.user) # 1 vez a cada 10 segundos
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def abrir_caixa(self, ctx, *, nome_caixa: str = None):
         if nome_caixa is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!abrir <Caixote / Baú / Relíquia>`")
 
         nome_caixa = nome_caixa.lower()
         if "caixote" in nome_caixa or "madeira" in nome_caixa:
-            caixa_alvo = "Caixote de Madeira"
-            emoji_caixa = "🪵"
+            caixa_alvo   = "Caixote de Madeira"
+            emoji_caixa  = "🪵"
             sorteio_func = self.sortear_comum
-            cor_final = disnake.Color.from_rgb(139, 69, 19)
+            cor_final    = disnake.Color.from_rgb(139, 69, 19)
         elif "baú" in nome_caixa or "bau" in nome_caixa or "caçador" in nome_caixa:
-            caixa_alvo = "Baú do Caçador"
-            emoji_caixa = "🪙"
+            caixa_alvo   = "Baú do Caçador"
+            emoji_caixa  = "🪙"
             sorteio_func = self.sortear_raro
-            cor_final = disnake.Color.blue()
+            cor_final    = disnake.Color.blue()
         elif "relíquia" in nome_caixa or "reliquia" in nome_caixa or "ancestral" in nome_caixa:
-            caixa_alvo = "Relíquia Ancestral"
-            emoji_caixa = "🏺"
+            caixa_alvo   = "Relíquia Ancestral"
+            emoji_caixa  = "🏺"
             sorteio_func = self.sortear_lendario
-            cor_final = disnake.Color.gold()
+            cor_final    = disnake.Color.gold()
         else:
             return await ctx.send("❌ Caixa inválida! Escolha entre: `Caixote`, `Baú` ou `Relíquia`.")
 
@@ -84,33 +84,28 @@ class Lootbox(commands.Cog):
             user = db.get_user_data(str(ctx.author.id))
             if not user: return await ctx.send("❌ Você não tem conta!")
 
-            inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
+            inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
 
             if caixa_alvo not in inv_list:
                 return await ctx.send(f"❌ Você não tem nenhum **{caixa_alvo}** no inventário!")
 
-            # Remove a caixa para evitar bug de duplicação
+            # remove a caixa antes de sortear pra evitar duplicação em caso de erro
             inv_list.remove(caixa_alvo)
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
-            # Roda o RNG
             premio = sorteio_func()
 
-            # Mensagem inicial única (economiza requisições)
             msg = await ctx.send(f"🔓 {ctx.author.mention} está abrindo o(a) **{caixa_alvo}**... {emoji_caixa}")
-            
-            # Suspense único
             await asyncio.sleep(3.0)
 
-            # Entrega o prêmio
             if premio["tipo"] == "mc":
                 saldo = db.parse_float(user['data'][2])
                 db.update_value(user['row'], 3, round(saldo + premio["valor"], 2))
                 texto_premio = f"`{formatar_moeda(premio['valor'])} MC`"
             else:
                 user_atual = db.get_user_data(str(ctx.author.id))
-                inv_atual = [i.strip() for i in str(user_atual['data'][5]).split(',') if i.strip()]
+                inv_atual  = [i.strip() for i in str(user_atual['data'][5]).split(',') if i.strip()]
                 inv_atual.append(premio["nome"])
                 db.update_value(user_atual['row'], 6, ", ".join(inv_atual))
                 texto_premio = f"1x **{premio['nome']}**"
@@ -121,13 +116,12 @@ class Lootbox(commands.Cog):
                 color=cor_final
             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-            
+
             if premio["nome"] in ["Energético Símio", "Bomba de Fumaça", "Carga de C4"]:
                 embed.set_footer(text="Dica: Itens consumíveis são usados diretamente. Ex: !energetico")
             elif premio["nome"] in ["Estátua de Ouro", "Diamante Bruto"]:
                 embed.set_footer(text="Dica: Use !vender <nome> para trocar tesouros por Macacoins!")
 
-            # Edição final
             await msg.edit(content="", embed=embed)
 
         except commands.CommandError:

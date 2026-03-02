@@ -19,13 +19,12 @@ LIGAS_EMOJI = {
 }
 
 def sanitizar(valor: str) -> str:
-    """Remove caracteres surrogate inválidos que causam o erro UTF-8 do disnake."""
+    # remove caracteres surrogate que quebram o encode do disnake
     if not isinstance(valor, str):
         return str(valor)
     return valor.encode('utf-8', errors='replace').decode('utf-8')
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão brasileiro de moeda."""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 class Admin(commands.Cog):
@@ -154,7 +153,6 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def apistatus(self, ctx):
-        """[ADMIN] Checa o status e o uso da API de Futebol"""
         if ctx.author.id != OWNER_ID:
             return await ctx.send("❌ Você não tem permissão para usar este comando.")
 
@@ -186,15 +184,11 @@ class Admin(commands.Cog):
                         cor        = disnake.Color.orange()
                         status_msg = f"⚠️ Status desconhecido ou erro ({status_code})."
 
-                    embed = disnake.Embed(
-                        title="📊 Painel de Controle - API de Futebol",
-                        color=cor
-                    )
+                    embed = disnake.Embed(title="📊 Painel de Controle - API de Futebol", color=cor)
                     embed.description = status_msg
-                    embed.add_field(name="🔑 Tipo de Conta",                       value=f"`{conta_tipo}`",              inline=False)
-                    embed.add_field(name="⏱️ Requisições Livres (Neste Minuto)",   value=f"`{disponivel_minuto} de 10`", inline=False)
+                    embed.add_field(name="🔑 Tipo de Conta",                      value=f"`{conta_tipo}`",              inline=False)
+                    embed.add_field(name="⏱️ Requisições Livres (Neste Minuto)",  value=f"`{disponivel_minuto} de 10`", inline=False)
                     embed.set_footer(text="A cota de 10 chamadas reinicia a cada 60 segundos.")
-
                     await msg.edit(content=None, embed=embed)
 
         except Exception as e:
@@ -203,7 +197,6 @@ class Admin(commands.Cog):
 
     @commands.command(aliases=["forcar_pagamento", "pagar_apostas"])
     async def pagarapostas(self, ctx):
-        """[ADMIN] Força a verificação exata por lote para evitar erro 400 da API."""
         if ctx.author.id != OWNER_ID:
             return await ctx.send("❌ Você não tem permissão para usar este comando.")
 
@@ -221,9 +214,9 @@ class Admin(commands.Cog):
         headers = {"X-Auth-Token": api_key}
         processadas = 0
 
-        agora = datetime.utcnow()
-        data_de = (agora - timedelta(days=5)).strftime("%Y-%m-%d")
-        data_at = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
+        agora    = datetime.utcnow()
+        data_de  = (agora - timedelta(days=5)).strftime("%Y-%m-%d")
+        data_at  = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
         resultados_api = {}
 
         try:
@@ -234,7 +227,7 @@ class Admin(commands.Cog):
                         return await msg.edit(content="⚠️ Erro: Rate limit da API atingido. Tente novamente em 1 minuto.")
                     if resp.status != 200:
                         return await msg.edit(content=f"⚠️ API retornou código de erro {resp.status}.")
-                    
+
                     for match in (await resp.json()).get("matches", []):
                         mid = str(match["id"])
                         if mid in match_ids_pendentes:
@@ -267,12 +260,11 @@ class Admin(commands.Cog):
 
             LABEL = {"casa": home_nome, "fora": away_nome, "empate": "Empate"}
             apostas_deste_jogo = [a for a in apostas_pendentes if str(a['match_id']) == match_id]
-            
+
             for aposta in apostas_deste_jogo:
                 palpite_key = aposta['palpite'].lower()
                 palpite_fmt = LABEL.get(palpite_key, aposta['palpite'])
 
-                # Logica de busca de usuario consertada idêntica ao esportes.py
                 jogador = self.bot.get_user(int(aposta["user_id"]))
                 if jogador is None:
                     try:

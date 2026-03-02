@@ -4,13 +4,13 @@ import database as db
 import random
 import asyncio
 
-# Configuração: IDs dos canais onde o Airdrop pode cair
-CANAIS_AIRDROP = [1474153029690200105] 
+# canais onde o airdrop pode cair — adicione mais IDs se precisar
+CANAIS_AIRDROP = [1474153029690200105]
 
 class AirdropView(disnake.ui.View):
     def __init__(self, caixa_nome: str):
         super().__init__(timeout=300)
-        self.caixa_nome = caixa_nome
+        self.caixa_nome  = caixa_nome
         self.reivindicado = False
 
     @disnake.ui.button(label="SAQUEAR", style=disnake.ButtonStyle.success, emoji="🥷")
@@ -19,22 +19,21 @@ class AirdropView(disnake.ui.View):
             return await inter.response.send_message("❌ Tarde demais! Outro macaco já levou esse suprimento.", ephemeral=True)
 
         user_id = str(inter.author.id)
-        user = db.get_user_data(user_id)
-        
+        user    = db.get_user_data(user_id)
+
         if not user:
             return await inter.response.send_message("❌ Você precisa de uma conta! Use `!trabalhar`.", ephemeral=True)
 
         self.reivindicado = True
         self.stop()
 
-        inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
+        inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
         inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
         inv_list.append(self.caixa_nome)
         db.update_value(user['row'], 6, ", ".join(inv_list))
 
-        # Adicionada a instrução de como abrir a caixa
-        nome_curto = self.caixa_nome.split()[0] # Pega a primeira palavra (Caixote, Baú ou Relíquia)
-        
+        nome_curto = self.caixa_nome.split()[0]  # pega só a primeira palavra pra usar no !abrir
+
         embed = inter.message.embeds[0]
         embed.title = "🏁 AIRDROP REIVINDICADO"
         embed.description = (
@@ -43,10 +42,10 @@ class AirdropView(disnake.ui.View):
             f"*(Dica: Use `!abrir {nome_curto}` para ver o que tem dentro!)*"
         )
         embed.color = disnake.Color.dark_grey()
-        
+
         button.disabled = True
-        button.label = "SAQUEADO"
-        button.style = disnake.ButtonStyle.secondary
+        button.label    = "SAQUEADO"
+        button.style    = disnake.ButtonStyle.secondary
 
         await inter.response.edit_message(embed=embed, view=self)
 
@@ -60,32 +59,30 @@ class EventosGlobais(commands.Cog):
 
     @tasks.loop(minutes=30.0)
     async def airdrop_loop(self):
-        # Reduzida a chance de passar o avião para 20%
-        if random.random() > 0.20: 
+        # 20% de chance de passar o avião a cada 30 minutos
+        if random.random() > 0.20:
             return
 
         canal = self.bot.get_channel(random.choice(CANAIS_AIRDROP))
         if not canal: return
 
-        # Novas probabilidades mais difíceis
         sorteio = random.random()
-        if sorteio <= 0.02: # Apenas 2% de chance para a Relíquia
-            caixa = "Relíquia Ancestral"
-            cor = disnake.Color.gold()
+        if sorteio <= 0.02:    # 2% — lendário
+            caixa  = "Relíquia Ancestral"
+            cor    = disnake.Color.gold()
             header = "⭐ [ LENDÁRIO ] ⭐"
             visual = "✨ 🏺 ✨"
-        elif sorteio <= 0.12: # 10% de chance para o Baú
-            caixa = "Baú do Caçador"
-            cor = disnake.Color.blue()
+        elif sorteio <= 0.12:  # 10% — raro
+            caixa  = "Baú do Caçador"
+            cor    = disnake.Color.blue()
             header = "🔷 [ RARO ] 🔷"
             visual = "⛓️ 🪙 ⛓️"
-        else: # 88% de chance para o Caixote comum
-            caixa = "Caixote de Madeira"
-            cor = disnake.Color.from_rgb(139, 69, 19)
+        else:                  # 88% — comum
+            caixa  = "Caixote de Madeira"
+            cor    = disnake.Color.from_rgb(139, 69, 19)
             header = "📦 [ COMUM ] 📦"
             visual = "🪵 📦 🪵"
 
-        # Criando um layout visual com emojis e blocos de código
         layout_visual = (
             f"```py\n"
             f"航 {header} 航\n"
@@ -114,12 +111,11 @@ class EventosGlobais(commands.Cog):
     @commands.command(name="forcar_airdrop")
     @commands.has_permissions(administrator=True)
     async def forcar_airdrop(self, ctx):
-        # Utiliza o mesmo sistema de probabilidades para forçar o drop
         sorteio = random.random()
-        if sorteio <= 0.02: caixa = "Relíquia Ancestral"
+        if sorteio <= 0.02:   caixa = "Relíquia Ancestral"
         elif sorteio <= 0.12: caixa = "Baú do Caçador"
-        else: caixa = "Caixote de Madeira"
-        
+        else:                 caixa = "Caixote de Madeira"
+
         view = AirdropView(caixa)
         await ctx.send(f"⚠️ **ADMIN:** Forçando queda de **{caixa}**!", view=view)
 

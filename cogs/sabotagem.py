@@ -7,7 +7,7 @@ import time
 class Sabotagem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.amaldicoados = {}  # {user_id: timestamp_fim}
+        self.amaldicoados = {}  # {user_id: timestamp de quando a maldiçao expira}
 
     @commands.command()
     async def impostor(self, ctx, alvo: disnake.Member = None, *, mensagem: str = None):
@@ -79,7 +79,7 @@ class Sabotagem(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        # Ignora bots e comandos para não interferir com o funcionamento normal do bot
+        # ignora bots e comandos pra não interferir no funcionamento normal
         if message.author.bot or message.content.startswith('!'):
             return
 

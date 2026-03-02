@@ -16,6 +16,7 @@ class Profiles(commands.Cog):
             await ctx.send(f"⚠️ {ctx.author.mention}, use este comando no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
+    # emoji e cor do embed pra cada cargo
     _CARGO_INFO = {
         "Lêmure":      ("🐭", 0x7b7b7b),
         "Macaquinho":  ("🐒", 0x8B5E3C),
@@ -27,6 +28,7 @@ class Profiles(commands.Cog):
         "Rei Símio":   ("👑", 0xFFD700),
     }
 
+    # mapeamento de slug -> nome exibido no perfil
     _MAPA_CONQUISTAS = {
         "palhaco":           "🤡 Palhaço",
         "filho_da_sorte":    "🍀 Sortudo",
@@ -106,7 +108,7 @@ class Profiles(commands.Cog):
             await ctx.send(f"⏳ Tente novamente em {error.retry_after:.1f}s.", delete_after=3)
 
     @commands.command(aliases=["p", "status"])
-    @commands.cooldown(1, 6, commands.BucketType.user) # 1 vez a cada 6 segundos
+    @commands.cooldown(1, 6, commands.BucketType.user)
     async def perfil(self, ctx, membro: disnake.Member = None):
         membro  = membro or ctx.author
         user_id = str(membro.id)
@@ -153,6 +155,7 @@ class Profiles(commands.Cog):
             if cargo == "Rei Símio":       emblemas.append("👑 Rei da Selva")
             if "Pé de Cabra" in inv_list:  emblemas.append("🕵️ Invasor")
 
+            # busca posição no rank (pode ser lento, mas só acontece no !perfil)
             try:
                 all_rows = db.sheet.get_all_values()
                 if len(all_rows) > 1:
@@ -206,8 +209,7 @@ class Profiles(commands.Cog):
             embed.add_field(name="🔨  Trabalho",     value=st_work,   inline=True)
             embed.add_field(name="🔫  Roubo",        value=st_roubo,  inline=True)
             embed.add_field(name="🏛️  Investimento", value=st_invest, inline=True)
-
-            embed.add_field(name="🎒  Inventário", value=inv_val, inline=False)
+            embed.add_field(name="🎒  Inventário",   value=inv_val,   inline=False)
 
             if emblemas:
                 linhas = []
@@ -237,7 +239,7 @@ class Profiles(commands.Cog):
             await ctx.send(f"⏳ Não faça spam, macaco! Tente novamente em {error.retry_after:.1f}s.", delete_after=5)
 
     @commands.command(aliases=["top", "ricos", "placar"])
-    @commands.cooldown(1, 10, commands.BucketType.guild) # 1 vez a cada 10s no SERVIDOR (evita bloqueio no Google Sheets)
+    @commands.cooldown(1, 10, commands.BucketType.guild)  # cooldown por servidor pra não travar o sheets
     async def rank(self, ctx):
         try:
             try:

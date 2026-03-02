@@ -9,7 +9,6 @@ class Patchnotes(commands.Cog):
 
     @commands.command()
     async def patchnotes(self, ctx):
-        """Publica as notas de atualização v7.9 no canal oficial."""
         try:
             await ctx.message.delete()
         except:
@@ -18,7 +17,7 @@ class Patchnotes(commands.Cog):
         if ctx.author.id != OWNER_ID:
             return
 
-        canal_id = 1475606959247065118
+        canal_id         = 1475606959247065118
         canal_patchnotes = self.bot.get_channel(canal_id)
 
         if not canal_patchnotes:
