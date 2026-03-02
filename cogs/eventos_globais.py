@@ -5,17 +5,15 @@ import random
 import asyncio
 
 # Configuração: IDs dos canais onde o Airdrop pode cair
-# Recomendo colocar o ID do canal '🐒・conguitos' ou '🎰・akbet'
-CANAIS_AIRDROP = [1474153029690200105] # Substitua pelos IDs reais dos seus canais
+CANAIS_AIRDROP = [1474153029690200105] 
 
 class AirdropView(disnake.ui.View):
-    """Botão para saquear o airdrop."""
     def __init__(self, caixa_nome: str):
-        super().__init__(timeout=300) # O airdrop fica disponível por 5 minutos
+        super().__init__(timeout=300)
         self.caixa_nome = caixa_nome
         self.reivindicado = False
 
-    @disnake.ui.button(label="📦 SAQUEAR", style=disnake.ButtonStyle.success, emoji="🥷")
+    @disnake.ui.button(label="SAQUEAR", style=disnake.ButtonStyle.success, emoji="🥷")
     async def saquear(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         if self.reivindicado:
             return await inter.response.send_message("❌ Tarde demais! Outro macaco já levou esse suprimento.", ephemeral=True)
@@ -24,23 +22,23 @@ class AirdropView(disnake.ui.View):
         user = db.get_user_data(user_id)
         
         if not user:
-            return await inter.response.send_message("❌ Você precisa de uma conta para saquear! Use `!trabalhar` primeiro.", ephemeral=True)
+            return await inter.response.send_message("❌ Você precisa de uma conta! Use `!trabalhar`.", ephemeral=True)
 
         self.reivindicado = True
         self.stop()
 
-        # Adiciona a caixa ao inventário
         inv_str = str(user['data'][5]) if len(user['data']) > 5 else ""
         inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
         inv_list.append(self.caixa_nome)
         db.update_value(user['row'], 6, ", ".join(inv_list))
 
-        # Atualiza a mensagem original
         embed = inter.message.embeds[0]
-        embed.title = "📦 AIRDROP SAQUEADO!"
-        embed.description = f"🥷 **{inter.author.mention}** foi o mais rápido da selva e capturou o **{self.caixa_nome}**!"
+        embed.title = "🏁 AIRDROP REIVINDICADO"
+        embed.description = (
+            f"```fix\nCARGA CAPTURADA COM SUCESSO\n```\n"
+            f"🥷 **{inter.author.mention}** interceptou o suprimento e guardou o **{self.caixa_nome}** no inventário!"
+        )
         embed.color = disnake.Color.dark_grey()
-        embed.set_footer(text="Fique atento, outro avião pode passar a qualquer momento...")
         
         button.disabled = True
         button.label = "SAQUEADO"
@@ -51,51 +49,53 @@ class AirdropView(disnake.ui.View):
 class EventosGlobais(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.airdrop_loop.start() # Inicia o loop ao carregar o bot
+        self.airdrop_loop.start()
 
     def cog_unload(self):
-        self.airdrop_loop.cancel() # Para o loop se o cog for descarregado
+        self.airdrop_loop.cancel()
 
-    @tasks.loop(minutes=30.0) # Verifica a cada 30 minutos
+    @tasks.loop(minutes=30.0)
     async def airdrop_loop(self):
-        """Task que decide aleatoriamente se um airdrop vai cair."""
-        # Chance de 25% de ocorrer um airdrop a cada 30 minutos
-        if random.random() > 0.25:
+        if random.random() > 0.25: # Chance de 25% configurada por você
             return
 
-        # Escolhe um canal aleatório da lista
-        canal_id = random.choice(CANAIS_AIRDROP)
-        canal = self.bot.get_channel(canal_id)
-        if not canal:
-            return
+        canal = self.bot.get_channel(random.choice(CANAIS_AIRDROP))
+        if not canal: return
 
-        # Define qual caixa vai cair (mesma raridade do sistema anterior)
         sorteio = random.random()
-        if sorteio <= 0.05: # 5% Relíquia
+        if sorteio <= 0.05: 
             caixa = "Relíquia Ancestral"
             cor = disnake.Color.gold()
-            msg_hura = "🚨 UM TESOURO LENDÁRIO ESTÁ CAINDO DO CÉU!"
-        elif sorteio <= 0.20: # 20% Baú
+            header = "⭐ [ LENDÁRIO ] ⭐"
+            visual = "✨ 🏺 ✨"
+        elif sorteio <= 0.20:
             caixa = "Baú do Caçador"
             cor = disnake.Color.blue()
-            msg_hura = "✈️ Um carregamento tático foi avistado!"
-        else: # 80% Caixote
+            header = "🔷 [ RARO ] 🔷"
+            visual = "⛓️ 🪙 ⛓️"
+        else: 
             caixa = "Caixote de Madeira"
             cor = disnake.Color.from_rgb(139, 69, 19)
-            msg_hura = "📦 Um caixote de suprimentos caiu na mata!"
+            header = "📦 [ COMUM ] 📦"
+            visual = "🪵 📦 🪵"
 
-        embed = disnake.Embed(
-            title="✈️ AIRDROP DE CONTRABANDO!",
-            description=(
-                f"{msg_hura}\n\n"
-                f"Item: **{caixa}**\n"
-                "Status: **Aguardando Saque**\n\n"
-                "O primeiro macaco a clicar no botão abaixo leva o prêmio para o inventário!"
-            ),
-            color=cor
+        # Criando um layout visual com emojis e blocos de código
+        layout_visual = (
+            f"```py\n"
+            f"航 {header} 航\n"
+            f"STATUS: CARGA EM QUEDA\n"
+            f"```\n"
+            f"☁️ ☁️ ☁️ ☁️ ☁️ ☁️ ☁️\n"
+            f"ㅤㅤㅤㅤ✈️\n"
+            f"ㅤㅤㅤ 🪂\n"
+            f"ㅤㅤ  {visual}\n"
+            f"‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\n\n"
+            f"📍 **Item Detectado:** `{caixa}`\n"
+            f"👉 O primeiro a clicar no botão leva o loot!"
         )
-        embed.set_image(url="https://i.imgur.com/vHq0A6S.png") # Sugestão: Uma imagem de paraquedas/caixa
-        embed.set_footer(text="Ação rápida é a lei da selva.")
+
+        embed = disnake.Embed(title="✈️ INTERCEPÇÃO DE CARGA", description=layout_visual, color=cor)
+        embed.set_footer(text="Radar Símio: Suprimentos detectados no setor.")
 
         view = AirdropView(caixa)
         await canal.send(embed=embed, view=view)
@@ -103,26 +103,14 @@ class EventosGlobais(commands.Cog):
     @airdrop_loop.before_loop
     async def before_airdrop(self):
         await self.bot.wait_until_ready()
-        # Espera um tempo aleatório inicial para não dropar logo que o bot liga
-        await asyncio.sleep(random.randint(60, 600))
+        await asyncio.sleep(random.randint(30, 120))
 
     @commands.command(name="forcar_airdrop")
     @commands.has_permissions(administrator=True)
     async def forcar_airdrop(self, ctx):
-        """[ADMIN] Força a queda de um airdrop imediato para testes."""
-        # Reutiliza a lógica do sorteio
-        sorteio = random.random()
-        if sorteio <= 0.10: caixa = "Relíquia Ancestral"
-        elif sorteio <= 0.40: caixa = "Baú do Caçador"
-        else: caixa = "Caixote de Madeira"
-        
+        caixa = random.choice(["Relíquia Ancestral", "Baú do Caçador", "Caixote de Madeira"])
         view = AirdropView(caixa)
-        embed = disnake.Embed(
-            title="✈️ AIRDROP FORÇADO PELO ADM!",
-            description=f"Um carregamento de **{caixa}** caiu! Corram!",
-            color=disnake.Color.red()
-        )
-        await ctx.send(embed=embed, view=view)
+        await ctx.send(f"⚠️ **ADMIN:** Forçando queda de **{caixa}**!", view=view)
 
 def setup(bot):
     bot.add_cog(EventosGlobais(bot))

@@ -116,7 +116,7 @@ class Lootbox(commands.Cog):
                 texto_premio = f"1x **{premio['nome']}**"
 
             embed = disnake.Embed(
-                title=f"🎉 {emoji_caixa} LOUT OBTIDO!",
+                title=f"🎉 {emoji_caixa} LOOT OBTIDO!",
                 description=f"O {caixa_alvo} abriu e dentro dele você encontrou:\n\n{premio['emoji']} {texto_premio}",
                 color=cor_final
             )
