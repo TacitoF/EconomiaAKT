@@ -38,8 +38,6 @@ CATALOGO_SABOTAGEM = {
     "item:imposto":    (1500.0, "Imposto do Gorila", "🦍", "Rouba 25% dos próximos 5 trabalhos"),
     "item:troca_nick": (3000.0, "Troca de Nick",     "🪄", "Altera o apelido do alvo por 30min"),
     "item:c4":         (2000.0, "Carga de C4",       "🧨", "Destrói o Escudo de qualquer alvo"),
-    "item:energetico": (1500.0, "Energético Símio",  "🧪", "Zera o cooldown do !trabalhar"),
-    "item:fumaca":     (1500.0, "Bomba de Fumaça",   "💨", "Zera o cooldown do !roubar"),
 }
 
 COSMETICOS_LOJA = {
