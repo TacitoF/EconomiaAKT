@@ -37,7 +37,6 @@ CATALOGO_SABOTAGEM = {
     "item:casca":      (300.0,  "Casca de Banana",  "🍌", "Atrasa o próximo trabalho do alvo"),
     "item:imposto":    (1500.0, "Imposto do Gorila", "🦍", "Rouba 25% dos próximos 5 trabalhos"),
     "item:troca_nick": (3000.0, "Troca de Nick",     "🪄", "Altera o apelido do alvo por 30min"),
-    "item:c4":         (2000.0, "Carga de C4",       "🧨", "Destrói o Escudo de qualquer alvo"),
 }
 
 COSMETICOS_LOJA = {
