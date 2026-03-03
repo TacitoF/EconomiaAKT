@@ -75,7 +75,7 @@ class ModalValorAposta(disnake.ui.Modal):
         if valor <= 0:
             return await inter.edit_original_response(content="❌ O valor deve ser maior que zero!")
 
-        # ── Verificar status do jogo antes de aceitar a aposta ──────────────
+        # ── 1. Verificar status do jogo na API ──────────────
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -100,16 +100,20 @@ class ModalValorAposta(disnake.ui.Modal):
                                 content=f"{status_msg}\nNão é possível apostar nesta partida."
                             )
         except asyncio.TimeoutError:
-            return await inter.edit_original_response(
-                content="⚠️ Não foi possível verificar o status do jogo. Tente novamente."
-            )
+            return await inter.edit_original_response(content="⚠️ Não foi possível verificar o status do jogo. Tente novamente.")
         except Exception as e:
             print(f"⚠️ Erro ao verificar status do jogo {self.match_id}: {e}")
-            return await inter.edit_original_response(
-                content="⚠️ Erro ao verificar o jogo. Tente novamente em instantes."
-            )
-        # ────────────────────────────────────────────────────────────────────
+            return await inter.edit_original_response(content="⚠️ Erro ao verificar o jogo. Tente novamente em instantes.")
 
+        # ── 2. Verificar Trava de 1 Aposta por Jogo ──────────────
+        pendentes = db.obter_apostas_pendentes()
+        ja_apostou = any(str(a["user_id"]) == str(inter.author.id) and str(a["match_id"]) == str(self.match_id) for a in pendentes)
+        if ja_apostou:
+            return await inter.edit_original_response(
+                content="🚫 **Aposta bloqueada!**\nVocê já tem um palpite registrado para este jogo. A selva só permite **1 aposta por partida**.\n*(Use `!pule` se quiser cancelar a aposta anterior e refazer).*"
+            )
+
+        # ── 3. Verificar Saldo e Limites ──────────────
         user = db.get_user_data(str(inter.author.id))
         if not user:
             return await inter.edit_original_response(content="❌ Conta não encontrada!")
@@ -147,7 +151,7 @@ class ModalValorAposta(disnake.ui.Modal):
         embed.add_field(name=f"{EMOJI.get(self.palpite,'🎯')} Palpite", value=f"**{LABELS.get(self.palpite, self.palpite)}**", inline=True)
         embed.add_field(name="💸 Apostado", value=f"`{formatar_moeda(valor)} MC`",           inline=True)
         embed.add_field(name="💰 Retorno",  value=f"`{formatar_moeda(ganho_potencial)} MC` (Odd: {self.odd_fixa}x)", inline=True)
-        embed.set_footer(text="Pagamento automático ao fim da partida • !pule para ver seus bilhetes")
+        embed.set_footer(text="Pagamento automático ao fim da partida • !pule para gerenciar seus bilhetes")
         await inter.edit_original_response(content=None, embed=embed)
 
 
@@ -163,13 +167,12 @@ class ViewPalpiteJogo(disnake.ui.View):
         self.api_url     = api_url
         self.api_headers = api_headers or {}
         
-        # Botões com as odds dinâmicas
         self.btn_casa.label = f"🏠 Casa ({odds['casa']}x)"
         self.btn_empate.label = f"🤝 Empate ({odds['empate']}x)"
         self.btn_fora.label = f"✈️ Fora ({odds['fora']}x)"
 
     async def _abrir_modal(self, inter, palpite):
-        odd_escolhida = self.odds.get(palpite, 1.85)
+        odd_escolhida = self.odds.get(palpite, 2.0)
         await inter.response.send_modal(ModalValorAposta(
             match_id=self.match_id, palpite=palpite, odd_fixa=odd_escolhida,
             time_casa=self.time_casa, time_fora=self.time_fora,
@@ -207,84 +210,32 @@ class SelectJogo(disnake.ui.StringSelect):
                 value       = str(j["id"]),
                 emoji       = LIGAS_EMOJI.get(liga_code, "🏆"),
             ))
-        super().__init__(placeholder="⚽ Selecione um jogo para analisar as odds...", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="⚽ Selecione um jogo para apostar...", options=options, min_values=1, max_values=1)
 
     async def callback(self, inter):
         await inter.response.defer(ephemeral=True)
         mid       = self.values[0]
         jogo      = self.jogos_map[mid]
         
-        home_id   = str(jogo["homeTeam"]["id"])
-        away_id   = str(jogo["awayTeam"]["id"])
         time_casa = jogo["homeTeam"]["name"]
         time_fora = jogo["awayTeam"]["name"]
         liga_code = jogo.get("competition", {}).get("code", "")
         liga_nome = jogo.get("competition", {}).get("name", liga_code)
         horario   = hora_br(jogo["utcDate"])
         
-        # Odds base (já com taxa da casa de 10%)
-        odds = {"casa": 1.85, "empate": 2.80, "fora": 1.85}
-        nota_analise = "⚠️ Sem dados de classificação. Odds base aplicadas."
-
-        # Ignorar copas para odds dinâmicas
-        if liga_code and liga_code not in ("CL", "BSA_CUP", "CLI"): 
-            cache = getattr(self.bot, "cache_standings", {})
-            cache_time = getattr(self.bot, "cache_standings_time", {})
-            agora = datetime.now()
-            
-            # Atualiza cache a cada 24h por liga para poupar API
-            if liga_code not in cache or (agora - cache_time.get(liga_code, agora)).days >= 1:
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(f"{self.api_url}/competitions/{liga_code}/standings", headers=self.api_headers) as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                tabela = {}
-                                for standing in data.get("standings", []):
-                                    if standing.get("type") == "TOTAL":
-                                        for team in standing.get("table", []):
-                                            tabela[str(team["team"]["id"])] = team["position"]
-                                
-                                if not hasattr(self.bot, "cache_standings"):
-                                    self.bot.cache_standings = {}
-                                    self.bot.cache_standings_time = {}
-                                self.bot.cache_standings[liga_code] = tabela
-                                self.bot.cache_standings_time[liga_code] = agora
-                except Exception as e:
-                    print(f"⚠️ Erro ao buscar tabela da liga {liga_code}: {e}")
-            
-            tabela = getattr(self.bot, "cache_standings", {}).get(liga_code, {})
-            pos_casa = tabela.get(home_id)
-            pos_fora = tabela.get(away_id)
-            
-            # CÁLCULO DAS ODDS DINÂMICAS COM 10% DE TAXA DO CASSINO
-            if pos_casa and pos_fora:
-                # diff positiva = time da casa é favorito
-                diff = (pos_fora - pos_casa) + 2 # +2 pela vantagem de jogar em casa
-                
-                odd_c = 2.0 - (diff * 0.045)
-                odd_f = 2.0 + (diff * 0.065)
-                odd_e = 2.8 + (abs(diff) * 0.03)
-                
-                # Corta 10% do lucro para a casa (inflação natural)
-                odds["casa"]   = max(1.15, round(odd_c * 0.90, 2))
-                odds["fora"]   = max(1.15, round(odd_f * 0.90, 2))
-                odds["empate"] = max(1.50, round(odd_e * 0.90, 2))
-                
-                nota_analise = f"📊 **Análise da Tabela:** Casa (**{pos_casa}º**) vs Fora (**{pos_fora}º**)"
+        # Odds fixadas em 2.0x
+        odds = {"casa": 2.0, "empate": 2.0, "fora": 2.0}
+        nota_analise = "💰 **Odd fixa:** `2.0x` para qualquer resultado."
 
         embed = disnake.Embed(
             title=f"⚽ {time_casa} vs {time_fora}",
             description=f"{LIGAS_EMOJI.get(liga_code,'🏆')} **{liga_nome}** •  ⏰ {horario}\n\n{nota_analise}\n*Escolha o seu palpite clicando nos botões:*",
             color=disnake.Color.blue()
         )
-        
-        # Adicionando os campos de volta para deixar igual ao antigo!
         embed.add_field(name="🏠 Casa",   value=f"**{time_casa}**", inline=True)
         embed.add_field(name="🤝 Empate", value="**Empate**",       inline=True)
         embed.add_field(name="✈️ Fora",   value=f"**{time_fora}**", inline=True)
-        
-        embed.set_footer(text=f"ID: {mid}  •  Odds incluem a taxa da casa.")
+        embed.set_footer(text=f"ID: {mid}  •  Limite de 1 aposta por jogo.")
         
         view = ViewPalpiteJogo(int(mid), time_casa, time_fora, liga_nome, horario, odds, api_url=self.api_url, api_headers=self.api_headers)
         await inter.edit_original_response(embed=embed, view=view)
@@ -294,6 +245,101 @@ class ViewSelectJogos(disnake.ui.View):
     def __init__(self, jogos, bot, api_url=None, api_headers=None):
         super().__init__(timeout=None)
         self.add_item(SelectJogo(jogos, bot, api_url=api_url, api_headers=api_headers))
+
+
+# ── MENU DE CANCELAMENTO DE APOSTAS ──────────────────────────────────────────
+class SelectCancelarAposta(disnake.ui.StringSelect):
+    def __init__(self, apostas, info_jogos):
+        self.apostas_map = {str(a["row"]): a for a in apostas}
+        options = []
+        
+        for aposta in apostas[:25]: # Limite do Discord
+            row_str = str(aposta["row"])
+            m_id = str(aposta["match_id"])
+            info = info_jogos.get(m_id, {})
+            
+            tc = info.get("home", aposta.get("time_casa", "Casa"))
+            tf = info.get("away", aposta.get("time_fora", "Fora"))
+            
+            # Bloqueia cancelar se o jogo já começou ou acabou
+            game_started = False
+            if info and "utcDate" in info:
+                try:
+                    dt_game = datetime.strptime(info["utcDate"], "%Y-%m-%dT%H:%M:%SZ")
+                    if datetime.utcnow() >= dt_game or info.get("status") in ["IN_PLAY", "PAUSED", "FINISHED"]:
+                        game_started = True
+                except:
+                    pass
+            
+            if game_started:
+                continue
+                
+            palpite = aposta["palpite"].capitalize()
+            valor = aposta["valor"]
+            
+            options.append(disnake.SelectOption(
+                label=f"{tc} x {tf}"[:100],
+                description=f"Palpite: {palpite} | {formatar_moeda(valor)} MC",
+                value=row_str,
+                emoji="❌"
+            ))
+        
+        if not options:
+            options.append(disnake.SelectOption(label="Nenhuma aposta livre para cancelar", value="none"))
+            super().__init__(placeholder="🚫 Nenhuma aposta pode ser cancelada agora", options=options, disabled=True)
+        else:
+            super().__init__(placeholder="🚫 Selecione uma aposta para cancelar...", options=options)
+
+    async def callback(self, inter: disnake.MessageInteraction):
+        await inter.response.defer(ephemeral=True)
+        row_str = self.values[0]
+        if row_str == "none": return
+        
+        aposta = self.apostas_map.get(row_str)
+        if not aposta:
+            return await inter.edit_original_response(content="❌ Aposta não encontrada.")
+            
+        user_db = db.get_user_data(str(inter.author.id))
+        if not user_db:
+            return await inter.edit_original_response(content="❌ Conta não encontrada.")
+            
+        # Puxa tudo de novo para ter certeza de que ninguém já cancelou/liquidou
+        all_pendentes = db.obter_apostas_pendentes()
+        aposta_atualizada = next((a for a in all_pendentes if str(a["row"]) == row_str), None)
+        
+        if not aposta_atualizada or aposta_atualizada["status"] != "Pendente":
+            return await inter.edit_original_response(content="❌ Esta aposta já foi liquidada ou cancelada!")
+            
+        saldo_atual = db.parse_float(user_db["data"][2])
+        valor_reembolso = aposta_atualizada["valor"]
+        novo_saldo = round(saldo_atual + valor_reembolso, 2)
+        
+        # Devolve o dinheiro e bota status "Reembolso"
+        db.update_value(user_db["row"], 3, novo_saldo)
+        db.atualizar_status_aposta(aposta_atualizada["row"], "Reembolso")
+        
+        await inter.edit_original_response(content=f"✅ Aposta cancelada com sucesso! **{formatar_moeda(valor_reembolso)} MC** foram devolvidos ao seu saldo.\n*Use o comando `!pule` novamente para atualizar a sua lista visual.*")
+
+
+class ViewGerenciarBilhetes(disnake.ui.View):
+    def __init__(self, author_id, apostas, info_jogos):
+        super().__init__(timeout=120)
+        self.author_id = author_id
+        self.add_item(SelectCancelarAposta(apostas, info_jogos))
+
+    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
+        if inter.author.id != self.author_id:
+            await inter.response.send_message("❌ Estes bilhetes não são seus!", ephemeral=True)
+            return False
+        return True
+        
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        try:
+            await self.message.edit(view=self)
+        except:
+            pass
 
 
 class Esportes(commands.Cog):
@@ -341,7 +387,7 @@ class Esportes(commands.Cog):
                     jogos = data["matches"][:25]
                     embed = disnake.Embed(
                         title="⚽ BETS DA SELVA — PRÓXIMOS JOGOS",
-                        description="Selecione um jogo abaixo para **analisar as odds**!\n📊 Odds variam conforme a classificação · 📋 Bilhetes com `!pule`",
+                        description="Selecione um jogo abaixo para apostar!\n💰 Odd fixa **2.0x** · 📋 Bilhetes com `!pule`",
                         color=disnake.Color.blue()
                     )
                     ligas_vistas = {}
@@ -379,7 +425,8 @@ class Esportes(commands.Cog):
             minhas    = [a for a in pendentes if str(a["user_id"]) == str(ctx.author.id)]
             if not minhas:
                 return await msg.edit(content=f"⚽ {ctx.author.mention}, nenhum bilhete pendente!")
-            agora = datetime.now()
+            
+            agora = datetime.utcnow()
             info_jogos = {}
             async with aiohttp.ClientSession() as session:
                 params = {
@@ -395,7 +442,10 @@ class Esportes(commands.Cog):
                                 "hora": hora_br(match["utcDate"]),
                                 "liga": match.get("competition", {}).get("name", ""),
                                 "liga_code": match.get("competition", {}).get("code", ""),
+                                "utcDate": match["utcDate"],
+                                "status": match.get("status", "")
                             }
+            
             total_ap = sum(a["valor"] for a in minhas)
             total_rt = sum(round(a["valor"] * a["odd"], 2) for a in minhas)
             embed = disnake.Embed(
@@ -405,6 +455,7 @@ class Esportes(commands.Cog):
             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
             EMOJI_P = {"casa": "🏠", "fora": "✈️", "empate": "🤝"}
+            
             for aposta in minhas[:15]:
                 ganho = round(aposta["valor"] * aposta["odd"], 2)
                 m_id  = str(aposta["match_id"])
@@ -421,8 +472,11 @@ class Esportes(commands.Cog):
                     ),
                     inline=False
                 )
-            embed.set_footer(text="Os prêmios são pagos automaticamente ao fim de cada partida")
-            await msg.edit(content=None, embed=embed)
+            embed.set_footer(text="O Menu abaixo permite cancelar apostas em jogos que ainda NÃO começaram.")
+            
+            view = ViewGerenciarBilhetes(ctx.author.id, minhas, info_jogos)
+            await msg.edit(content=None, embed=embed, view=view)
+            
         except commands.CommandError:
             raise
         except Exception as e:
