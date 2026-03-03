@@ -7,6 +7,52 @@ import asyncio
 def formatar_moeda(valor: float) -> str:
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+# Cosméticos por raridade que podem sair nas lootboxes
+# Formato: (slug_inventário, label_exibição, emoji)
+COSM_COMUNS = [
+    ("cor:verde",   "🟢 Cor Verde Selva",      "🟢"),
+    ("cor:azul",    "🔵 Cor Azul Tropical",    "🔵"),
+    ("cor:cinza",   "⚫ Cor Cinza das Pedras", "⚫"),
+    ("titulo:O Intocável", "🏷️ Título: O Intocável", "🏷️"),
+]
+
+COSM_RAROS = [
+    ("cor:roxo",        "🟣 Cor Roxo Místico",      "🟣"),
+    ("cor:laranja",     "🟠 Cor Laranja Fogo",      "🟠"),
+    ("cor:ciano",       "🩵 Cor Ciano Glacial",     "🩵"),
+    ("moldura:💀",      "💀 Moldura Caveira",       "💀"),
+    ("moldura:🔥",      "🔥 Moldura Chamas",        "🔥"),
+    ("moldura:⚡",      "⚡ Moldura Relâmpago",     "⚡"),
+    ("titulo:Fantasma", "🏷️ Título: Fantasma",      "🏷️"),
+    ("titulo:Mão de Ferro", "🏷️ Título: Mão de Ferro", "🏷️"),
+    ("titulo:Caçador de Sombras", "🏷️ Título: Caçador de Sombras", "🏷️"),
+]
+
+COSM_EPICOS = [
+    ("cor:gold",        "🟡 Cor Dourado Real",       "🟡"),
+    ("cor:vermelho",    "🔴 Cor Vermelho Sangue",    "🔴"),
+    ("cor:rosa",        "🌸 Cor Rosa Flamingo",      "🌸"),
+    ("moldura:🌙",      "🌙 Moldura Lua Negra",      "🌙"),
+    ("moldura:👑",      "👑 Moldura Coroa Dourada",  "👑"),
+    ("moldura:💎",      "💎 Moldura Diamante",       "💎"),
+    ("moldura:🐍",      "🐍 Moldura Cobra Real",     "🐍"),
+    ("titulo:Rei das Trevas",  "🏷️ Título: Rei das Trevas",  "🏷️"),
+    ("titulo:O Invicto",       "🏷️ Título: O Invicto",       "🏷️"),
+    ("titulo:Senhor do Caos",  "🏷️ Título: Senhor do Caos",  "🏷️"),
+]
+
+COSM_LENDARIOS = [
+    ("moldura:🌟",   "🌟 Moldura Estrela Cadente", "🌟"),
+    ("moldura:🏴‍☠️", "🏴‍☠️ Moldura Pirata",       "🏴‍☠️"),
+    ("titulo:Lenda da Selva", "🏷️ Título: Lenda da Selva", "🏷️"),
+]
+
+
+def _sortear_cosmetico(pool: list) -> dict:
+    slug, label, emoji = random.choice(pool)
+    return {"tipo": "cosmetico", "slug": slug, "nome": label, "emoji": emoji}
+
+
 class Lootbox(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -19,41 +65,70 @@ class Lootbox(commands.Cog):
             raise commands.CommandError("Canal incorreto.")
 
     def sortear_comum(self):
+        """
+        Caixote de Madeira — itens leves + cosméticos comuns.
+        Chance de cosmético: 15%
+        """
         chance = random.randint(1, 100)
-        if chance <= 40:
-            return {"tipo": "mc",   "valor": random.randint(500, 1100), "nome": "Macacoins",      "emoji": "💵"}
-        elif chance <= 65:
-            return {"tipo": "item", "nome": "Casca de Banana",          "emoji": "🍌"}
-        elif chance <= 90:
-            return {"tipo": "item", "nome": "Energético Símio",         "emoji": "🧪"}
+        if chance <= 38:
+            return {"tipo": "mc", "valor": random.randint(500, 1100), "nome": "Macacoins", "emoji": "💵"}
+        elif chance <= 58:
+            return {"tipo": "item", "nome": "Casca de Banana",  "emoji": "🍌"}
+        elif chance <= 78:
+            return {"tipo": "item", "nome": "Energético Símio", "emoji": "🧪"}
+        elif chance <= 85:
+            return {"tipo": "item", "nome": "Bomba de Fumaça",  "emoji": "💨"}
         else:
-            return {"tipo": "item", "nome": "Bomba de Fumaça",          "emoji": "💨"}
+            # 15% de cosmético comum
+            return _sortear_cosmetico(COSM_COMUNS)
 
     def sortear_raro(self):
+        """
+        Baú do Caçador — itens táticos + cosméticos comuns/raros.
+        Chance de cosmético: 30% (25% raro, 5% comum)
+        """
         chance = random.randint(1, 100)
-        if chance <= 35:
-            return {"tipo": "mc",   "valor": random.randint(2000, 4500), "nome": "Macacoins", "emoji": "💵"}
-        elif chance <= 55:
-            return {"tipo": "item", "nome": "Escudo",                    "emoji": "🛡️"}
-        elif chance <= 75:
-            return {"tipo": "item", "nome": "Pé de Cabra",               "emoji": "🕵️"}
-        elif chance <= 90:
-            return {"tipo": "item", "nome": "Carga de C4",               "emoji": "🧨"}
+        if chance <= 33:
+            return {"tipo": "mc", "valor": random.randint(2000, 4500), "nome": "Macacoins", "emoji": "💵"}
+        elif chance <= 50:
+            return {"tipo": "item", "nome": "Escudo",       "emoji": "🛡️"}
+        elif chance <= 67:
+            return {"tipo": "item", "nome": "Pé de Cabra",  "emoji": "🕵️"}
+        elif chance <= 77:
+            return {"tipo": "item", "nome": "Carga de C4",  "emoji": "🧨"}
+        elif chance <= 82:
+            return {"tipo": "item", "nome": "Seguro",       "emoji": "📄"}
+        elif chance <= 95:
+            # 13% cosmético raro
+            return _sortear_cosmetico(COSM_RAROS)
         else:
-            return {"tipo": "item", "nome": "Seguro",                    "emoji": "📄"}
+            # 5% cosmético comum (consolação)
+            return _sortear_cosmetico(COSM_COMUNS)
 
     def sortear_lendario(self):
+        """
+        Relíquia Ancestral — prêmios altos + cosméticos épicos/lendários.
+        Chance de cosmético: 55% (30% épico, 15% lendário, 10% raro)
+        """
         chance = random.randint(1, 100)
-        if chance <= 30:
-            return {"tipo": "mc",   "valor": random.randint(10000, 25000), "nome": "Macacoins Fortificados", "emoji": "💰"}
+        if chance <= 28:
+            return {"tipo": "mc", "valor": random.randint(10000, 25000), "nome": "Macacoins Fortificados", "emoji": "💰"}
+        elif chance <= 43:
+            return {"tipo": "item", "nome": "Estátua de Ouro",   "emoji": "🗿"}
         elif chance <= 55:
-            return {"tipo": "item", "nome": "Estátua de Ouro",             "emoji": "🗿"}
-        elif chance <= 75:
-            return {"tipo": "item", "nome": "Imposto do Gorila",           "emoji": "🦍"}
-        elif chance <= 90:
-            return {"tipo": "item", "nome": "Diamante Bruto",              "emoji": "💎"}
-        else:
-            return {"tipo": "item", "nome": "Troca de Nick",               "emoji": "🪄"}
+            return {"tipo": "item", "nome": "Imposto do Gorila", "emoji": "🦍"}
+        elif chance <= 65:
+            return {"tipo": "item", "nome": "Diamante Bruto",    "emoji": "💎"}
+        elif chance <= 70:
+            return {"tipo": "item", "nome": "Troca de Nick",     "emoji": "🪄"}
+        elif chance <= 85:
+            # 15% cosmético épico
+            return _sortear_cosmetico(COSM_EPICOS)
+        elif chance <= 100:
+            # 15% cosmético lendário
+            return _sortear_cosmetico(COSM_LENDARIOS)
+        # fallback (nunca alcançado)
+        return _sortear_cosmetico(COSM_EPICOS)
 
     @commands.command(aliases=["abrir"])
     @commands.cooldown(1, 10, commands.BucketType.user)
@@ -82,33 +157,67 @@ class Lootbox(commands.Cog):
 
         try:
             user = db.get_user_data(str(ctx.author.id))
-            if not user: return await ctx.send("❌ Você não tem conta!")
+            if not user:
+                return await ctx.send("❌ Você não tem conta!")
 
-            inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
-            inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
+            inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
 
             if caixa_alvo not in inv_list:
-                return await ctx.send(f"❌ Você não tem nenhum **{caixa_alvo}** no inventário!")
+                return await ctx.send(f"❌ Você não tem nenhum(a) **{caixa_alvo}** no inventário!")
 
             # remove a caixa antes de sortear pra evitar duplicação em caso de erro
             inv_list.remove(caixa_alvo)
-            db.update_value(user['row'], 6, ", ".join(inv_list))
+            db.update_value(user["row"], 6, ", ".join(inv_list))
 
             premio = sorteio_func()
 
-            msg = await ctx.send(f"🔓 {ctx.author.mention} está abrindo o(a) **{caixa_alvo}**... {emoji_caixa}")
+            msg = await ctx.send(f"🔓 {ctx.author.mention} está abrindo **{caixa_alvo}**... {emoji_caixa}")
             await asyncio.sleep(3.0)
 
             if premio["tipo"] == "mc":
-                saldo = db.parse_float(user['data'][2])
-                db.update_value(user['row'], 3, round(saldo + premio["valor"], 2))
+                saldo = db.parse_float(user["data"][2])
+                db.update_value(user["row"], 3, round(saldo + premio["valor"], 2))
                 texto_premio = f"`{formatar_moeda(premio['valor'])} MC`"
+                footer = "💵 Macacoins adicionados ao saldo!"
+
+            elif premio["tipo"] == "cosmetico":
+                # vai pro inventário como "cosmético:cor:roxo" etc.
+                user_atual = db.get_user_data(str(ctx.author.id))
+                inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip()]
+                chave_inv  = f"cosmético:{premio['slug']}"
+
+                # se já tiver o cosmético, dá MC de consolação no lugar
+                if chave_inv in inv_atual:
+                    consolacao = random.randint(300, 800)
+                    saldo = db.parse_float(user_atual["data"][2])
+                    db.update_value(user_atual["row"], 3, round(saldo + consolacao, 2))
+                    texto_premio = f"`{formatar_moeda(consolacao)} MC` *(cosmético duplicado — convertido em MC)*"
+                    footer = "Você já tinha esse cosmético! MC de consolação adicionados."
+                else:
+                    inv_atual.append(chave_inv)
+                    db.update_value(user_atual["row"], 6, ", ".join(inv_atual))
+                    texto_premio = f"**{premio['nome']}**"
+                    footer = f"✨ Use !visuais {premio['slug']} para equipar no seu perfil!"
+
             else:
                 user_atual = db.get_user_data(str(ctx.author.id))
-                inv_atual  = [i.strip() for i in str(user_atual['data'][5]).split(',') if i.strip()]
+                inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip()]
                 inv_atual.append(premio["nome"])
-                db.update_value(user_atual['row'], 6, ", ".join(inv_atual))
-                texto_premio = f"1x **{premio['nome']}**"
+                db.update_value(user_atual["row"], 6, ", ".join(inv_atual))
+                texto_premio = f"1× **{premio['nome']}**"
+                if premio["nome"] in ("Energético Símio", "Bomba de Fumaça", "Carga de C4"):
+                    footer = "Dica: Itens consumíveis são usados diretamente."
+                elif premio["nome"] in ("Estátua de Ouro", "Diamante Bruto"):
+                    footer = "Dica: Use !vender <nome> para trocar por Macacoins!"
+                else:
+                    footer = "Item adicionado ao inventário."
+
+            # cor especial para cosméticos lendários
+            if premio["tipo"] == "cosmetico" and premio["slug"] in [s for s, *_ in [
+                ("moldura:🌟",), ("moldura:🏴‍☠️",), ("titulo:Lenda da Selva",)
+            ]]:
+                cor_final = disnake.Color.from_rgb(255, 215, 0)
 
             embed = disnake.Embed(
                 title=f"🎉 {emoji_caixa} LOOT OBTIDO!",
@@ -116,11 +225,7 @@ class Lootbox(commands.Cog):
                 color=cor_final
             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-
-            if premio["nome"] in ["Energético Símio", "Bomba de Fumaça", "Carga de C4"]:
-                embed.set_footer(text="Dica: Itens consumíveis são usados diretamente. Ex: !energetico")
-            elif premio["nome"] in ["Estátua de Ouro", "Diamante Bruto"]:
-                embed.set_footer(text="Dica: Use !vender <nome> para trocar tesouros por Macacoins!")
+            embed.set_footer(text=footer)
 
             await msg.edit(content="", embed=embed)
 
@@ -128,12 +233,19 @@ class Lootbox(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !abrir de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro ao abrir a caixa. Seu item está seguro, tente novamente!")
+            await ctx.send(
+                f"⚠️ {ctx.author.mention}, ocorreu um erro ao abrir a caixa. "
+                "Seu item está seguro, tente novamente!"
+            )
 
     @abrir_caixa.error
     async def abrir_error(self, ctx, error):
         if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"⏳ Calma, macaco! Você está mexendo muito rápido. Tente novamente em {error.retry_after:.1f}s.", delete_after=5)
+            await ctx.send(
+                f"⏳ Calma, macaco! Você está mexendo muito rápido. "
+                f"Tente novamente em {error.retry_after:.1f}s.",
+                delete_after=5
+            )
 
 def setup(bot):
     bot.add_cog(Lootbox(bot))

@@ -8,16 +8,493 @@ ESCUDO_CARGAS = 3
 def formatar_moeda(valor: float) -> str:
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-LIMITES_CARGO = {
-    "Lêmure":      400,
-    "Macaquinho":  1500,
-    "Babuíno":     4500,
-    "Chimpanzé":   12000,
-    "Orangutango": 30000,
-    "Gorila":      80000,
-    "Ancestral":   250000,
-    "Rei Símio":   1500000,
+# ── Catálogos ─────────────────────────────────────────────────────────────────
+# Formato: slug -> (preco, label, emoji, descricao_ou_raridade)
+
+CATALOGO_CARGOS = {
+    "cargo:macaquinho":  (1200.0,   "Macaquinho",   "🐒", "Salário: 130–230 MC/h"),
+    "cargo:babuino":     (5500.0,   "Babuíno",      "🦍", "Salário: 320–530 MC/h"),
+    "cargo:chimpanze":   (14000.0,  "Chimpanzé",    "🐵", "Salário: 780–1.320 MC/h"),
+    "cargo:orangutango": (35000.0,  "Orangutango",  "🦧", "Salário: 1.900–3.200 MC/h"),
+    "cargo:gorila":      (85000.0,  "Gorila",       "🦍", "Salário: 4.700–7.800 MC/h"),
+    "cargo:ancestral":   (210000.0, "Ancestral",    "🗿", "Salário: 11.500–19.000 MC/h"),
+    "cargo:rei_simio":   (600000.0, "Rei Símio",    "👑", "Salário: 27.000–45.000 MC/h"),
 }
+
+CATALOGO_EQUIPAMENTOS = {
+    "item:escudo":      (1000.0, "Escudo",      "🛡️", "Bloqueia 3 roubos · limite 1/dia"),
+    "item:pe_de_cabra": (1200.0, "Pé de Cabra", "🕵️", "Chance de roubo 65% + fura Escudos"),
+    "item:seguro":      (950.0,  "Seguro",      "📄", "Reembolsa 60% se você for roubado"),
+}
+
+CATALOGO_LOOTBOXES = {
+    "item:caixote":  (800.0,   "Caixote de Madeira", "🪵", "Itens comuns + cosméticos básicos (15%)"),
+    "item:bau":      (3500.0,  "Baú do Caçador",     "🪙", "Itens táticos + cosméticos raros (30%)"),
+    "item:reliquia": (15000.0, "Relíquia Ancestral", "🏺", "Tesouros + cosméticos épicos/lendários (55%)"),
+}
+
+CATALOGO_SABOTAGEM = {
+    "item:casca":      (300.0,  "Casca de Banana",  "🍌", "Atrasa o próximo trabalho do alvo"),
+    "item:imposto":    (1500.0, "Imposto do Gorila", "🦍", "Rouba 25% dos próximos 5 trabalhos"),
+    "item:troca_nick": (3000.0, "Troca de Nick",     "🪄", "Altera o apelido do alvo por 30min"),
+    "item:c4":         (2000.0, "Carga de C4",       "🧨", "Destrói o Escudo de qualquer alvo"),
+    "item:energetico": (1500.0, "Energético Símio",  "🧪", "Zera o cooldown do !trabalhar"),
+    "item:fumaca":     (1500.0, "Bomba de Fumaça",   "💨", "Zera o cooldown do !roubar"),
+}
+
+COSMETICOS_LOJA = {
+    "cor:verde":                 (500,   "Cor Verde Selva",           "🟢", "Comum"),
+    "cor:azul":                  (500,   "Cor Azul Tropical",         "🔵", "Comum"),
+    "cor:cinza":                 (500,   "Cor Cinza das Pedras",      "⚫", "Comum"),
+    "titulo:O Intocável":        (1500,  "Título: O Intocável",       "🏷️", "Comum"),
+    "cor:roxo":                  (2000,  "Cor Roxo Místico",          "🟣", "Raro"),
+    "cor:laranja":               (2000,  "Cor Laranja Fogo",          "🟠", "Raro"),
+    "cor:ciano":                 (2000,  "Cor Ciano Glacial",         "🩵", "Raro"),
+    "moldura:💀":                (2500,  "Moldura Caveira",           "💀", "Raro"),
+    "moldura:🔥":                (2500,  "Moldura Chamas",            "🔥", "Raro"),
+    "moldura:⚡":                (2500,  "Moldura Relâmpago",         "⚡", "Raro"),
+    "titulo:Caçador de Sombras": (2500,  "Título: Caçador de Sombras","🏷️", "Raro"),
+    "titulo:Fantasma":           (2500,  "Título: Fantasma",          "🏷️", "Raro"),
+    "titulo:Mão de Ferro":       (2500,  "Título: Mão de Ferro",      "🏷️", "Raro"),
+    "cor:gold":                  (8000,  "Cor Dourado Real",          "🟡", "Épico"),
+    "cor:vermelho":              (8000,  "Cor Vermelho Sangue",       "🔴", "Épico"),
+    "cor:rosa":                  (8000,  "Cor Rosa Flamingo",         "🌸", "Épico"),
+    "moldura:🌙":                (6000,  "Moldura Lua Negra",         "🌙", "Épico"),
+    "moldura:👑":                (6000,  "Moldura Coroa Dourada",     "👑", "Épico"),
+    "moldura:💎":                (6000,  "Moldura Diamante",          "💎", "Épico"),
+    "moldura:🐍":                (6000,  "Moldura Cobra Real",        "🐍", "Épico"),
+    "titulo:Rei das Trevas":     (7000,  "Título: Rei das Trevas",    "🏷️", "Épico"),
+    "titulo:O Invicto":          (7000,  "Título: O Invicto",         "🏷️", "Épico"),
+    "titulo:Senhor do Caos":     (7000,  "Título: Senhor do Caos",    "🏷️", "Épico"),
+}
+
+# Nome real para adicionar ao inventário
+NOME_ITEM = {
+    "item:escudo":      "Escudo",
+    "item:pe_de_cabra": "Pé de Cabra",
+    "item:seguro":      "Seguro",
+    "item:caixote":     "Caixote de Madeira",
+    "item:bau":         "Baú do Caçador",
+    "item:reliquia":    "Relíquia Ancestral",
+    "item:casca":       "Casca de Banana",
+    "item:imposto":     "Imposto do Gorila",
+    "item:troca_nick":  "Troca de Nick",
+    "item:c4":          "Carga de C4",
+    "item:energetico":  "Energético Símio",
+    "item:fumaca":      "Bomba de Fumaça",
+}
+
+NOME_CARGO = {
+    "cargo:macaquinho":  "Macaquinho",
+    "cargo:babuino":     "Babuíno",
+    "cargo:chimpanze":   "Chimpanzé",
+    "cargo:orangutango": "Orangutango",
+    "cargo:gorila":      "Gorila",
+    "cargo:ancestral":   "Ancestral",
+    "cargo:rei_simio":   "Rei Símio",
+}
+
+DICA_ITEM = {
+    "item:caixote":     "Use `!abrir caixote` para abrir.",
+    "item:bau":         "Use `!abrir baú` para abrir.",
+    "item:reliquia":    "Use `!abrir relíquia` para abrir.",
+    "item:casca":       "Use `!casca @alvo` para jogar.",
+    "item:imposto":     "Use `!taxar @alvo` para cobrar.",
+    "item:troca_nick":  "Use `!apelidar @alvo <nick>` para renomear.",
+    "item:c4":          "Use `!c4 @alvo` para destruir o Escudo dele.",
+    "item:energetico":  "Use `!energetico` para zerar o CD de trabalho.",
+    "item:fumaca":      "Use `!fumaca` para zerar o CD de roubo.",
+    "item:pe_de_cabra": "Equipado automaticamente no `!roubar` — chance 65%.",
+    "item:seguro":      "Ativado automaticamente se você for roubado.",
+}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  LÓGICA DE COMPRA (centralizada)
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: dict, is_cosm: bool, quantidade: int = 1):
+    """Executa a compra de qualquer item e retorna a mensagem de resultado."""
+    dados = itens[slug]
+    preco, label, emoji = dados[0], dados[1], dados[2]
+    preco_total = preco * quantidade
+
+    user = db.get_user_data(str(inter.author.id))
+    if not user:
+        return "❌ Conta não encontrada!"
+
+    saldo = db.parse_float(user["data"][2])
+
+    if saldo < preco_total:
+        faltam = round(preco_total - saldo, 2)
+        qtd_str = f" (×{quantidade})" if quantidade > 1 else ""
+        return (f"❌ Saldo insuficiente!\n"
+                f"Precisa de **{formatar_moeda(preco_total)} MC**{qtd_str} (faltam **{formatar_moeda(faltam)} MC**).")
+
+    # ── CARGO ─────────────────────────────────────────────────────────────────
+    if slug.startswith("cargo:"):
+        nome_cargo = NOME_CARGO[slug]
+        db.update_value(user["row"], 3, round(saldo - preco, 2))
+        db.update_value(user["row"], 4, nome_cargo)
+        return (f"🎉 Você evoluiu para o cargo **{emoji} {nome_cargo}**!\n"
+                f"💸 **-{formatar_moeda(preco)} MC** debitados.")
+
+    # ── ESCUDO (limite: 1/dia) ────────────────────────────────────────────────
+    if slug == "item:escudo":
+        bot     = inter.bot
+        uid     = str(inter.author.id)
+        agora   = time.time()
+
+        if uid not in bot.escudos_ativos and len(user["data"]) > 11:
+            dado = str(user["data"][11]).strip()
+            if dado.isdigit() and int(dado) > 0:
+                bot.escudos_ativos[uid] = int(dado)
+
+        escudo_ativo = bot.escudos_ativos.get(uid, 0) > 0
+        inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
+        inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
+
+        if "Escudo" in inv_list or escudo_ativo:
+            return (f"❌ Você já tem um **Escudo** "
+                    f"{'ativo' if escudo_ativo else 'no inventário'}! Só pode ter 1 de cada vez.")
+
+        hist             = bot.escudo_compras.get(uid, (0, 0.0))
+        ultima_compra_ts = hist[1]
+        if agora - ultima_compra_ts < 86400:
+            libera_em = int(ultima_compra_ts + 86400)
+            return f"⏳ Você já comprou um **Escudo** hoje! Pode comprar outro <t:{libera_em}:R>."
+
+        bot.escudo_compras[uid] = (1, agora)
+        inv_list.append("Escudo")
+        db.update_value(user["row"], 3, round(saldo - preco, 2))
+        db.update_value(user["row"], 6, ", ".join(inv_list))
+        return (f"🛡️ **Escudo** comprado e guardado no inventário!\n"
+                f"💸 **-{formatar_moeda(preco)} MC** debitados.\n"
+                f"Use `!escudo` para ativar quando precisar.")
+
+    # ── COSMÉTICO ─────────────────────────────────────────────────────────────
+    if is_cosm:
+        inv_str   = str(user["data"][5]) if len(user["data"]) > 5 else ""
+        inv_list  = [i.strip() for i in inv_str.split(",") if i.strip()]
+        chave_inv = f"cosmético:{slug}"
+        if chave_inv in inv_list:
+            return (f"❌ Você já tem **{emoji} {label}** no inventário!\n"
+                    f"Use `!visuais` para equipá-lo.")
+        db.update_value(user["row"], 3, round(saldo - preco, 2))
+        inv_list.append(chave_inv)
+        db.update_value(user["row"], 6, ", ".join(inv_list))
+        return (f"✨ **{emoji} {label}** comprado com sucesso!\n"
+                f"💸 **-{formatar_moeda(preco)} MC** debitados.\n"
+                f"Use `!visuais` para equipar no seu perfil.")
+
+    # ── ITEM COMUM (suporta quantidade) ──────────────────────────────────────
+    nome_item = NOME_ITEM.get(slug, label)
+    inv_str   = str(user["data"][5]) if len(user["data"]) > 5 else ""
+    inv_list  = [i.strip() for i in inv_str.split(",") if i.strip()]
+    for _ in range(quantidade):
+        inv_list.append(nome_item)
+    db.update_value(user["row"], 3, round(saldo - preco_total, 2))
+    db.update_value(user["row"], 6, ", ".join(inv_list))
+    dica = DICA_ITEM.get(slug, "Item adicionado ao inventário.")
+    qtd_str = f"**×{quantidade}** " if quantidade > 1 else ""
+    return (f"{emoji} {qtd_str}**{nome_item}** comprado{'s' if quantidade > 1 else ''}!\n"
+            f"💸 **-{formatar_moeda(preco_total)} MC** debitados.\n"
+            f"💡 {dica}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SELETOR DE QUANTIDADE (lootboxes e sabotagem)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Slugs que suportam compra em múltiplos
+SLUGS_MULTIPLOS = set(CATALOGO_LOOTBOXES) | set(CATALOGO_SABOTAGEM)
+
+
+class _BotaoQtd(disnake.ui.Button):
+    def __init__(self, qtd: int, pode: bool):
+        super().__init__(
+            label     = f"×{qtd}",
+            style     = disnake.ButtonStyle.success if pode else disnake.ButtonStyle.secondary,
+            disabled  = not pode,
+            custom_id = f"qtd_{qtd}",
+            row       = 0,
+        )
+        self.qtd = qtd
+
+    async def callback(self, inter: disnake.MessageInteraction):
+        await inter.response.defer(ephemeral=True)
+        v: ViewQuantidade = self.view
+        msg = await processar_compra(inter, v.slug, v.itens, v.is_cosm, quantidade=self.qtd)
+        await inter.edit_original_response(content=msg, view=None)
+
+
+class ViewQuantidade(disnake.ui.View):
+    """Botões ×1 ×3 ×5 ×10 exibidos após selecionar item com compra múltipla."""
+
+    def __init__(self, author_id: int, slug: str, itens: dict, is_cosm: bool, saldo: float):
+        super().__init__(timeout=60)
+        self.author_id = author_id
+        self.slug      = slug
+        self.itens     = itens
+        self.is_cosm   = is_cosm
+        preco = itens[slug][0]
+        for qtd in [1, 3, 5, 10]:
+            self.add_item(_BotaoQtd(qtd, pode=saldo >= preco * qtd))
+
+    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
+        if inter.author.id != self.author_id:
+            await inter.response.send_message("❌ Esta loja é só sua!", ephemeral=True)
+            return False
+        return True
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SELECT: ITEM
+# ══════════════════════════════════════════════════════════════════════════════
+
+class SelectItem(disnake.ui.StringSelect):
+    def __init__(self, author_id: int, saldo: float, itens: dict, is_cosm: bool = False):
+        self.author_id = author_id
+        self.saldo     = saldo
+        self.itens     = itens
+        self.is_cosm   = is_cosm
+        options = []
+        for slug, dados in itens.items():
+            preco, label, emoji = dados[0], dados[1], dados[2]
+            pode = saldo >= preco
+            options.append(disnake.SelectOption(
+                label       = label[:100],
+                description = f"{formatar_moeda(preco)} MC — {'✅ Comprar' if pode else '❌ Saldo insuficiente'}",
+                value       = slug,
+                emoji       = emoji,
+            ))
+        super().__init__(placeholder="🛒 Selecione o item para comprar...", options=options[:25])
+
+    async def callback(self, inter: disnake.MessageInteraction):
+        slug  = self.values[0]
+        preco = self.itens[slug][0]
+        label = self.itens[slug][1]
+        emoji = self.itens[slug][2]
+
+        await inter.response.defer(ephemeral=True)
+
+        # Itens que suportam múltiplos → mostra botões de quantidade
+        if slug in SLUGS_MULTIPLOS and self.saldo >= preco:
+            view_qtd = ViewQuantidade(self.author_id, slug, self.itens, self.is_cosm, self.saldo)
+            await inter.edit_original_response(
+                content=(
+                    f"{emoji} **{label}** — `{formatar_moeda(preco)} MC` cada\n"
+                    f"💰 Seu saldo: `{formatar_moeda(self.saldo)} MC`\n\n"
+                    f"**Quantos deseja comprar?**"
+                ),
+                view=view_qtd
+            )
+        else:
+            # Compra simples: cargos, escudo, cosméticos, ou saldo insuficiente
+            msg = await processar_compra(inter, slug, self.itens, self.is_cosm)
+            await inter.edit_original_response(content=msg)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SELECT: CATEGORIA
+# ══════════════════════════════════════════════════════════════════════════════
+
+class SelectCategoria(disnake.ui.StringSelect):
+    def __init__(self, author_id: int, saldo: float):
+        self.author_id = author_id
+        self.saldo     = saldo
+        options = [
+            disnake.SelectOption(label="📈 Progressão (Cargos)",   value="cargos",       emoji="📈", description="Evolua o cargo e aumente o salário"),
+            disnake.SelectOption(label="🛡️ Equipamentos e Defesa",  value="equipamentos", emoji="🛡️", description="Escudo, Pé de Cabra, Seguro"),
+            disnake.SelectOption(label="📦 Lootboxes",              value="lootboxes",    emoji="📦", description="Caixas com itens e cosméticos aleatórios"),
+            disnake.SelectOption(label="😈 Sabotagem",              value="sabotagem",    emoji="😈", description="Itens para usar contra outros jogadores"),
+            disnake.SelectOption(label="✨ Cosméticos — Comuns",    value="cosm_comum",   emoji="⚪", description="Cores e títulos básicos (500–1.500 MC)"),
+            disnake.SelectOption(label="✨ Cosméticos — Raros",     value="cosm_raro",    emoji="🔵", description="Cores, molduras e títulos (2.000–2.500 MC)"),
+            disnake.SelectOption(label="✨ Cosméticos — Épicos",    value="cosm_epico",   emoji="🟣", description="Visuais premium (6.000–8.000 MC)"),
+        ]
+        super().__init__(placeholder="🛒 Escolha uma categoria...", options=options)
+
+    async def callback(self, inter: disnake.MessageInteraction):
+        cat = self.values[0]
+        embed, view = _build_categoria(self.author_id, self.saldo, cat)
+        await inter.response.edit_message(embed=embed, view=view)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  BUILDER DE CATEGORIAS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _build_categoria(author_id, saldo, cat):
+    if cat == "cargos":
+        itens = CATALOGO_CARGOS
+        embed = disnake.Embed(title="📈 PROGRESSÃO — CARGOS",
+                              description=f"💰 Saldo: **{formatar_moeda(saldo)} MC**\nSelecione o cargo desejado:",
+                              color=disnake.Color.gold())
+        for slug, (preco, label, emoji, desc) in itens.items():
+            ok = "✅" if saldo >= preco else "❌"
+            embed.add_field(name=f"{emoji} {label}", value=f"`{formatar_moeda(preco)} MC` {ok}\n*{desc}*", inline=True)
+        is_cosm = False
+
+    elif cat == "equipamentos":
+        itens = CATALOGO_EQUIPAMENTOS
+        embed = disnake.Embed(title="🛡️ EQUIPAMENTOS E DEFESA",
+                              description=f"💰 Saldo: **{formatar_moeda(saldo)} MC**\nSelecione o item desejado:",
+                              color=disnake.Color.blue())
+        for slug, (preco, label, emoji, desc) in itens.items():
+            ok = "✅" if saldo >= preco else "❌"
+            embed.add_field(name=f"{emoji} {label}", value=f"`{formatar_moeda(preco)} MC` {ok}\n*{desc}*", inline=True)
+        is_cosm = False
+
+    elif cat == "lootboxes":
+        itens = CATALOGO_LOOTBOXES
+        embed = disnake.Embed(title="📦 LOOTBOXES — CONTRABANDO",
+                              description=f"💰 Saldo: **{formatar_moeda(saldo)} MC**\nSelecione a caixa desejada:",
+                              color=disnake.Color.dark_orange())
+        for slug, (preco, label, emoji, desc) in itens.items():
+            ok = "✅" if saldo >= preco else "❌"
+            embed.add_field(name=f"{emoji} {label}", value=f"`{formatar_moeda(preco)} MC` {ok}\n*{desc}*", inline=False)
+        embed.set_footer(text="!abrir caixote / !abrir baú / !abrir relíquia para usar")
+        is_cosm = False
+
+    elif cat == "sabotagem":
+        itens = CATALOGO_SABOTAGEM
+        embed = disnake.Embed(title="😈 SABOTAGEM — CONSUMÍVEIS",
+                              description=f"💰 Saldo: **{formatar_moeda(saldo)} MC**\nSelecione o item desejado:",
+                              color=disnake.Color.red())
+        for slug, (preco, label, emoji, desc) in itens.items():
+            ok = "✅" if saldo >= preco else "❌"
+            embed.add_field(name=f"{emoji} {label}", value=f"`{formatar_moeda(preco)} MC` {ok}\n*{desc}*", inline=True)
+        is_cosm = False
+
+    else:
+        raridade_map = {"cosm_comum": "Comum", "cosm_raro": "Raro", "cosm_epico": "Épico"}
+        raridade = raridade_map.get(cat, "Comum")
+        itens    = {k: v for k, v in COSMETICOS_LOJA.items() if v[3] == raridade}
+        COR      = {"Comum": 0xAAAAAA, "Raro": 0x5B7FA6, "Épico": 0x9C27B0}
+        EMJ      = {"Comum": "⚪",     "Raro": "🔵",     "Épico": "🟣"}
+        embed = disnake.Embed(
+            title=f"{EMJ.get(raridade,'✨')} COSMÉTICOS — {raridade.upper()}S",
+            description=(f"💰 Saldo: **{formatar_moeda(saldo)} MC**\n"
+                         "Selecione o cosmético desejado:\n"
+                         "*Após comprar, use `!visuais` para equipar.*"),
+            color=COR.get(raridade, 0xFFD700)
+        )
+        for slug, (preco, label, emoji, _) in itens.items():
+            ok = "✅" if saldo >= preco else "❌"
+            embed.add_field(name=f"{emoji} {label}", value=f"`{formatar_moeda(preco)} MC` {ok}", inline=True)
+        embed.set_footer(text="🌟 Lendários só nas Relíquias Ancestrais!")
+        is_cosm = True
+
+    view = ViewItens(author_id, saldo, itens, cat, is_cosm=is_cosm)
+    return embed, view
+
+
+def _embed_inicio(saldo: float) -> disnake.Embed:
+    embed = disnake.Embed(
+        title="🛒 MERCADO NEGRO DA SELVA",
+        description=(
+            f"💰 Seu saldo: **{formatar_moeda(saldo)} MC**\n\n"
+            "Escolha uma **categoria** no menu abaixo!\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        color=disnake.Color.dark_theme()
+    )
+    embed.add_field(name="📈 Progressão",   value="Cargos que aumentam salário e limite de apostas",      inline=False)
+    embed.add_field(name="🛡️ Equipamentos", value="Escudo · Pé de Cabra · Seguro",                        inline=False)
+    embed.add_field(name="📦 Lootboxes",    value="Caixas com itens e cosméticos aleatórios",              inline=False)
+    embed.add_field(name="😈 Sabotagem",    value="Casca · Imposto · C4 · Energético · Fumaça · Nick",     inline=False)
+    embed.add_field(name="✨ Cosméticos",   value="Cores, molduras e títulos · ⚪ Comuns · 🔵 Raros · 🟣 Épicos", inline=False)
+    embed.set_footer(text="Selecione uma categoria para ver itens e preços  ·  !visuais para gerenciar cosméticos")
+    return embed
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PORTAL E VIEWS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ViewItens(disnake.ui.View):
+    def __init__(self, author_id: int, saldo: float, itens: dict, categoria: str, is_cosm: bool = False):
+        super().__init__(timeout=120)
+        self.author_id = author_id
+        self.saldo     = saldo
+        self.add_item(SelectItem(author_id, saldo, itens, is_cosm=is_cosm))
+
+    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
+        if inter.author.id != self.author_id:
+            await inter.response.send_message("❌ Esta loja é só sua! Use `!loja` para abrir a sua.", ephemeral=True)
+            return False
+        return True
+
+    @disnake.ui.button(label="↩️ Voltar", style=disnake.ButtonStyle.secondary, row=1)
+    async def btn_voltar(self, button, inter):
+        embed = _embed_inicio(self.saldo)
+        view  = ViewLoja(self.author_id, self.saldo)
+        await inter.response.edit_message(embed=embed, view=view)
+
+    @disnake.ui.button(label="❌ Fechar", style=disnake.ButtonStyle.danger, row=1)
+    async def btn_fechar(self, button, inter):
+        await inter.response.defer()
+        await inter.delete_original_response()
+
+
+class ViewLoja(disnake.ui.View):
+    def __init__(self, author_id: int, saldo: float):
+        super().__init__(timeout=120)
+        self.author_id = author_id
+        self.add_item(SelectCategoria(author_id, saldo))
+
+    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
+        if inter.author.id != self.author_id:
+            await inter.response.send_message("❌ Esta loja é só sua! Use `!loja` para abrir a sua.", ephemeral=True)
+            return False
+        return True
+
+    @disnake.ui.button(label="❌ Fechar", style=disnake.ButtonStyle.danger, row=1)
+    async def btn_fechar(self, button, inter):
+        await inter.response.defer()
+        await inter.delete_original_response()
+
+
+# Botão Portal Público
+class ViewPortalLoja(disnake.ui.View):
+    def __init__(self, author_id: int):
+        super().__init__(timeout=60)
+        self.author_id = author_id
+
+    @disnake.ui.button(label="🛒 Abrir Mercado", style=disnake.ButtonStyle.success)
+    async def btn_abrir(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        if inter.author.id != self.author_id:
+            return await inter.response.send_message("❌ Esta loja não é sua! Digite `!loja` para abrir a sua.", ephemeral=True)
+
+        user = db.get_user_data(str(inter.author.id))
+        if not user:
+            return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
+
+        saldo = db.parse_float(user["data"][2])
+        embed = _embed_inicio(saldo)
+        view = ViewLoja(inter.author.id, saldo)
+
+        # 1. Abre a loja apenas para o usuário (efêmera)
+        await inter.response.send_message(embed=embed, view=view, ephemeral=True)
+
+        # 2. Deleta o portal público para não poluir o chat
+        try:
+            await inter.message.delete()
+        except Exception:
+            pass
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        try:
+            await self.message.edit(content="⏳ O portal da loja fechou. Digite `!loja` novamente.", view=self)
+        except Exception:
+            pass
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  COG
+# ══════════════════════════════════════════════════════════════════════════════
 
 class Shop(commands.Cog):
     def __init__(self, bot):
@@ -30,190 +507,34 @@ class Shop(commands.Cog):
             await ctx.send(f"⚠️ {ctx.author.mention}, use a loja no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
-    @commands.command(aliases=["shop", "mercado"])
+    @commands.command(aliases=["shop", "mercado", "comprar", "cosmeticos"])
     async def loja(self, ctx):
-        embed = disnake.Embed(
-            title="🛒 MERCADO NEGRO DA SELVA",
-            description=(
-                "Bem-vindo à loja! Para adquirir algo, use o comando:\n"
-                "`!comprar <nome do item>` (Ex: `!comprar Pé de Cabra`)"
-            ),
-            color=disnake.Color.dark_theme()
-        )
-
-        embed.add_field(
-            name="📈 PROGRESSÃO (Cargos)",
-            value=(
-                "Suba de cargo para aumentar seu salário e limite de apostas!\n\n"
-                "🐒 **Macaquinho** ─ `1.200 MC`\n"
-                "🐵 **Babuíno** ─ `5.500 MC`\n"
-                "🌴 **Chimpanzé** ─ `14.000 MC`\n"
-                "🦧 **Orangutango** ─ `35.000 MC`\n"
-                "🦍 **Gorila** ─ `85.000 MC`\n"
-                "🗿 **Ancestral** ─ `210.000 MC`\n"
-                "👑 **Rei Símio** ─ `600.000 MC`"
-            ), inline=True
-        )
-
-        embed.add_field(name="\u200B", value="\u200B", inline=True)  # espaçador pra alinhar os campos
-
-        embed.add_field(
-            name="🛡️ EQUIPAMENTOS E DEFESA",
-            value=(
-                "🛡️ **Escudo** ─ `1.000 MC`\n"
-                "└ *Bloqueia 3 tentativas de roubo (Limite: 1 compra/dia).*\n\n"
-                "🕵️ **Pé de Cabra** ─ `1.200 MC`\n"
-                "└ *Eleva a chance de roubo a 65% e fura Escudos.*\n\n"
-                "📄 **Seguro** ─ `950 MC`\n"
-                "└ *Garante reembolso de 60% se você for roubado.*"
-            ), inline=False
-        )
-
-        embed.add_field(
-            name="📦 LOOTBOXES (Contrabando)",
-            value=(
-                "🪵 **Caixote de Madeira** ─ `800 MC`\n"
-                "└ *Contém itens de utilidade leve. (Use `!abrir caixote`)*\n\n"
-                "🪙 **Baú do Caçador** ─ `3.500 MC`\n"
-                "└ *Itens táticos e prêmios maiores. (Use `!abrir baú`)*\n\n"
-                "🏺 **Relíquia Ancestral** ─ `15.000 MC`\n"
-                "└ *Pura riqueza e tesouros de alto valor. (Use `!abrir relíquia`)*"
-            ), inline=False
-        )
-
-        embed.add_field(
-            name="😈 SABOTAGEM (Consumíveis)",
-            value=(
-                "🍌 **Casca de Banana** ─ `300 MC`\n"
-                "└ *Atrasa a vítima no trabalho. (Use `!casca @user`)*\n\n"
-                "🦍 **Imposto do Gorila** ─ `1.500 MC`\n"
-                "└ *Rouba 25% do próximo trabalho do alvo. (Use `!taxar @user`)*\n\n"
-                "🪄 **Troca de Nick** ─ `3.000 MC`\n"
-                "└ *Altera o apelido do alvo no server. (Use `!apelidar @user <nick>`)*"
-            ), inline=False
-        )
-
-        embed.add_field(
-            name="⚡ SERVIÇOS DIRETOS",
-            value=(
-                "*Esses serviços não vão para o inventário, são cobrados e usados na hora!*\n\n"
-                "🙊 **Maldição Símia** ─ `500 MC`\n"
-                "└ *Uso direto:* `!amaldicoar @user`\n\n"
-                "🎭 **Impostor** ─ `500 MC`\n"
-                "└ *Uso direto:* `!impostor @user <mensagem>`"
-            ), inline=False
-        )
-
-        embed.set_footer(text="🐒 Os itens consumíveis também podem ser encontrados nas lootboxes!")
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def comprar(self, ctx, *, item: str = None):
-        if item is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!comprar <nome do item>`")
-
+        """Abre o portal para o mercado negro."""
         try:
-            user_id = str(ctx.author.id)
-            user = db.get_user_data(user_id)
+            user = db.get_user_data(str(ctx.author.id))
             if not user:
                 return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
-            loja = {
-                "macaquinho":         {"nome": "Macaquinho",        "preco": 1200.0,   "tipo": "cargo"},
-                "babuíno":            {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
-                "babuino":            {"nome": "Babuíno",           "preco": 5500.0,   "tipo": "cargo"},
-                "chimpanzé":          {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
-                "chimpanze":          {"nome": "Chimpanzé",         "preco": 14000.0,  "tipo": "cargo"},
-                "orangutango":        {"nome": "Orangutango",       "preco": 35000.0,  "tipo": "cargo"},
-                "gorila":             {"nome": "Gorila",            "preco": 85000.0,  "tipo": "cargo"},
-                "ancestral":          {"nome": "Ancestral",         "preco": 210000.0, "tipo": "cargo"},
-                "rei símio":          {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
-                "rei simio":          {"nome": "Rei Símio",         "preco": 600000.0, "tipo": "cargo"},
-                "escudo":             {"nome": "Escudo",            "preco": 1000.0,   "tipo": "item"},
-                "pé de cabra":        {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
-                "pe de cabra":        {"nome": "Pé de Cabra",       "preco": 1200.0,   "tipo": "item"},
-                "seguro":             {"nome": "Seguro",            "preco": 950.0,    "tipo": "item"},
-                "casca de banana":    {"nome": "Casca de Banana",   "preco": 300.0,    "tipo": "item"},
-                "imposto do gorila":  {"nome": "Imposto do Gorila", "preco": 1500.0,   "tipo": "item"},
-                "troca de nick":      {"nome": "Troca de Nick",     "preco": 3000.0,   "tipo": "item"},
-                "caixote de madeira": {"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
-                "caixote":            {"nome": "Caixote de Madeira","preco": 800.0,    "tipo": "item"},
-                "baú do caçador":     {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
-                "bau do cacador":     {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
-                "baú":                {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
-                "bau":                {"nome": "Baú do Caçador",   "preco": 3500.0,   "tipo": "item"},
-                "relíquia ancestral": {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
-                "reliquia ancestral": {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
-                "relíquia":           {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
-                "reliquia":           {"nome": "Relíquia Ancestral","preco": 15000.0,  "tipo": "item"},
-            }
+            view = ViewPortalLoja(ctx.author.id)
 
-            escolha = item.lower()
-            if escolha not in loja:
-                return await ctx.send("❌ Item inválido! Digite exatamente como está na `!loja`.")
+            # Tenta apagar o comando "!loja" do usuário
+            try:
+                await ctx.message.delete()
+            except (disnake.Forbidden, disnake.NotFound):
+                pass
 
-            item_data = loja[escolha]
-            saldo = db.parse_float(user['data'][2])
-
-            if saldo < item_data["preco"]:
-                faltam = round(item_data["preco"] - saldo, 2)
-                return await ctx.send(
-                    f"❌ Saldo insuficiente! Você precisa de **{formatar_moeda(item_data['preco'])} MC** "
-                    f"(faltam **{formatar_moeda(faltam)} MC**)."
-                )
-
-            db.update_value(user['row'], 3, round(saldo - item_data["preco"], 2))
-
-            if item_data["tipo"] == "cargo":
-                db.update_value(user['row'], 4, item_data["nome"])
-                await ctx.send(f"✅ {ctx.author.mention} evoluiu para o cargo **{item_data['nome']}**! 🎉")
-
-            else:
-                inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
-                inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
-
-                if item_data["nome"] == "Escudo":
-                    agora = time.time()
-                    
-                    # --- SINCRONIZAÇÃO DO ESCUDO (COLUNA L) ---
-                    if user_id not in self.bot.escudos_ativos and len(user['data']) > 11:
-                        dado_escudo = str(user['data'][11]).strip()
-                        if dado_escudo.isdigit() and int(dado_escudo) > 0:
-                            self.bot.escudos_ativos[user_id] = int(dado_escudo)
-                    # ------------------------------------------
-
-                    escudo_ativo = hasattr(self.bot, 'escudos_ativos') and \
-                                   self.bot.escudos_ativos.get(user_id, 0) > 0
-                    if "Escudo" in inv_list or escudo_ativo:
-                        db.update_value(user['row'], 3, round(saldo, 2))  # estorna o valor
-                        return await ctx.send(
-                            f"❌ {ctx.author.mention}, você já tem um **Escudo** "
-                            f"{'ativo' if escudo_ativo else 'no inventário'}! "
-                            f"Só pode ter 1 de cada vez."
-                        )
-
-                    historico        = self.bot.escudo_compras.get(user_id, (0, 0.0))
-                    ultima_compra_ts = historico[1]
-
-                    if agora - ultima_compra_ts < 86400:
-                        libera_em = int(ultima_compra_ts + 86400)
-                        db.update_value(user['row'], 3, round(saldo, 2))  # estorna o valor
-                        return await ctx.send(
-                            f"⏳ {ctx.author.mention}, você já comprou um **Escudo** hoje! "
-                            f"Pode comprar outro <t:{libera_em}:R>."
-                        )
-
-                    self.bot.escudo_compras[user_id] = (1, agora)
-
-                inv_list.append(item_data["nome"])
-                db.update_value(user['row'], 6, ", ".join(inv_list))
-                await ctx.send(f"🛍️ {ctx.author.mention} comprou **{item_data['nome']}** e guardou no inventário!")
+            # Envia o botão Portal (Mensagem pequena)
+            view.message = await ctx.send(
+                content=f"🛒 {ctx.author.mention}, o Mercado Negro está pronto.\nClique no botão abaixo para abrir a sua loja.",
+                view=view
+            )
 
         except commands.CommandError:
             raise
         except Exception as e:
-            print(f"❌ Erro no !comprar de {ctx.author}: {e}")
+            print(f"❌ Erro no !loja de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
 
 def setup(bot):
     bot.add_cog(Shop(bot))

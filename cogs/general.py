@@ -27,7 +27,7 @@ class General(commands.Cog):
         embed.add_field(name="💵 BÁSICO E ECONOMIA", inline=False, value=(
             "💰 **`!trabalhar`**\n"
             "└ *Trabalhe a cada 1h para lucrar e ter chance de achar caixas.*\n"
-            "👤 **`!perfil [@user]`** ─ *Verifica saldo, cargo e inventário.*\n"
+            "👤 **`!perfil [@user]`** ─ *Verifica saldo, cargo, inventário e cosméticos equipados.*\n"
             "🏆 **`!rank`** ─ *Top 10* | 🏅 **`!conquistas`** ─ *Emblemas.*\n"
             "💵 **`!salarios`** ─ *Tabela de ganhos e custos de cada cargo.*\n"
             "💸 **`!pagar @user <valor>`** ─ *Transfira MC para outro macaco.*"
@@ -35,8 +35,8 @@ class General(commands.Cog):
 
         embed.add_field(name="📦 MERCADO E CONTRABANDO", inline=False, value=(
             "🛒 **`!loja`**\n"
-            "└ *Acesse o mercado negro para comprar cargos e itens.*\n"
-            "💳 **`!comprar <item>`** ─ *Ex: `!comprar Pé de Cabra`.*\n"
+            "└ *Acesse o mercado negro para comprar cargos, itens e cosméticos.*\n"
+            "💳 **`!comprar <item>`** ─ *Ex: `!comprar Pé de Cabra` ou `!comprar Cor Roxo Místico`.*\n"
             "💎 **`!vender <item>`** ─ *Venda tesouros ganhos nas caixas por MC.*\n"
             "🔓 **`!abrir <caixa>`**\n"
             "└ *Abra Caixote, Baú ou Relíquia do seu inventário.*\n"
@@ -68,6 +68,23 @@ class General(commands.Cog):
             "🎮 **Multiplayer:** `!21` | `!roleta` | `!mentira` | `!torneio` | `!coco` \n"
             "⚽ **Futebol:** `!futebol` *(apostar)* | `!pule` *(ver bilhetes)*\n"
             "└ *Use `!jogos` lá no canal de apostas para ver como cada um funciona!*"
+        ))
+
+        embed.add_field(name="✨ COSMÉTICOS E PERFIL", inline=False, value=(
+            "🎨 **`!visuais`**\n"
+            "└ *Veja seus cosméticos no inventário e o que está equipado.*\n"
+            "🖼️ **`!visuais <slug>`** ─ *Equipa um cosmético. Ex: `!visuais cor:roxo`*\n"
+            "└ *O perfil muda de cor, exibe moldura e título automaticamente.*\n"
+            "💬 **`!bio <texto>`** ─ *Define uma frase no perfil (máx. 60 chars). Grátis!*\n"
+            "└ *Use `!bio` sem texto para remover.*\n\n"
+            "**Raridades disponíveis:**\n"
+            "⚫ **Comuns** ─ Cores e títulos básicos (`500–1.500 MC` na `!loja`)\n"
+            "🟣 **Raros** ─ Cores, molduras e títulos táticos (`2.000–2.500 MC` na `!loja`)\n"
+            "🟡 **Épicos** ─ Cores vibrantes, molduras e títulos premium (`6.000–8.000 MC` na `!loja`)\n"
+            "🌟 **Lendários** ─ *Moldura Estrela Cadente, Lenda da Selva e mais — só nas Relíquias!*\n\n"
+            "📦 *Cosméticos também saem nas lootboxes:*\n"
+            "└ 🪵 Caixote: **15%** comum | 🪙 Baú: **30%** raro | 🏺 Relíquia: **55%** épico/lendário\n"
+            "└ *Cosmético duplicado vira MC de consolação automaticamente.*"
         ))
 
         embed.add_field(name="🤐 CASTIGOS DE VOZ", inline=False, value=(

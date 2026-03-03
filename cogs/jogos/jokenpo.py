@@ -18,20 +18,16 @@ def get_limite(cargo):
     return LIMITES_CARGO.get(cargo, 400)
 
 def formatar_moeda(valor: float) -> str:
-    """Formata um float para o padrão brasileiro de moeda. Ex: 1234.56 -> 1.234,56"""
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 class JokenpoGameView(disnake.ui.View):
-    """View onde o jogo realmente acontece (botões de escolha)."""
     def __init__(self, p1: disnake.Member, p2: disnake.Member, aposta: float, msg_game: disnake.Message):
         super().__init__(timeout=45)
         self.p1 = p1
         self.p2 = p2
         self.aposta = aposta
         self.msg_game = msg_game
-        
-        # Armazena as escolhas: None, "gorila", "cacador" ou "casca"
         self.choices = {p1.id: None, p2.id: None}
         self.finalizado = False
 
@@ -45,7 +41,6 @@ class JokenpoGameView(disnake.ui.View):
         self.choices[inter.author.id] = escolha
         await inter.response.send_message(f"Você escolheu secretamente: {emoji} **{escolha.capitalize()}**!", ephemeral=True)
 
-        # Se ambos escolheram, resolvemos o jogo
         if all(c is not None for c in self.choices.values()):
             self.finalizado = True
             self.stop()
@@ -67,7 +62,6 @@ class JokenpoGameView(disnake.ui.View):
         if self.finalizado:
             return
 
-        # Se o tempo acabar e alguém não jogou, devolvemos o dinheiro para ser justo
         for item in self.children:
             item.disabled = True
             
@@ -80,7 +74,7 @@ class JokenpoGameView(disnake.ui.View):
             
             embed = disnake.Embed(
                 title="⏱️ DUELO CANCELADO",
-                description="O tempo esgotou antes que ambos escolhessem. O dinheiro foi devolvido.",
+                description="O tempo esgotou antes que ambos escolhessem.\n💸 O dinheiro foi devolvido.",
                 color=disnake.Color.dark_grey()
             )
             await self.msg_game.edit(embed=embed, view=self)
@@ -129,29 +123,28 @@ class JokenpoGameView(disnake.ui.View):
             s2 = db.parse_float(u2_db['data'][2])
 
             if vencedor == "empate":
-                # Devolve o dinheiro
                 db.update_value(u1_db['row'], 3, round(s1 + self.aposta, 2))
                 db.update_value(u2_db['row'], 3, round(s2 + self.aposta, 2))
                 
                 embed = disnake.Embed(title="🤝 EMPATE!", description=motivo, color=disnake.Color.yellow())
                 embed.add_field(name=self.p1.display_name, value=f"{emojis[c1]} {c1.capitalize()}", inline=True)
+                embed.add_field(name="⚔️", value="vs", inline=True)
                 embed.add_field(name=self.p2.display_name, value=f"{emojis[c2]} {c2.capitalize()}", inline=True)
-                embed.set_footer(text="As apostas foram devolvidas.")
+                embed.set_footer(text="💸 As apostas foram devolvidas.")
                 
             else:
-                perdedor = self.p2 if vencedor == self.p1 else self.p1
                 v_db = u1_db if vencedor == self.p1 else u2_db
-                p_db = u2_db if vencedor == self.p1 else u1_db
-                
                 s_v = db.parse_float(v_db['data'][2])
                 premio = round(self.aposta * 2, 2)
-                
-                # O perdedor já teve o dinheiro descontado no convite. Só pagamos o vencedor.
                 db.update_value(v_db['row'], 3, round(s_v + premio, 2))
                 
-                embed = disnake.Embed(title=f"🏆 {vencedor.display_name} VENCEU!", description=motivo, color=disnake.Color.green())
+                embed = disnake.Embed(
+                    title=f"🏆 {vencedor.display_name} VENCEU!",
+                    description=motivo,
+                    color=disnake.Color.green()
+                )
                 embed.add_field(name=self.p1.display_name, value=f"{emojis[c1]} {c1.capitalize()}", inline=True)
-                embed.add_field(name="vs", value="⚔️", inline=True)
+                embed.add_field(name="⚔️", value="vs", inline=True)
                 embed.add_field(name=self.p2.display_name, value=f"{emojis[c2]} {c2.capitalize()}", inline=True)
                 embed.add_field(name="💰 Prêmio", value=f"**{formatar_moeda(premio)} MC**", inline=False)
                 
@@ -163,7 +156,6 @@ class JokenpoGameView(disnake.ui.View):
 
 
 class JokenpoInviteView(disnake.ui.View):
-    """View para o adversário aceitar ou recusar o desafio."""
     def __init__(self, ctx, p1: disnake.Member, p2: disnake.Member, aposta: float):
         super().__init__(timeout=60)
         self.ctx = ctx
@@ -188,31 +180,32 @@ class JokenpoInviteView(disnake.ui.View):
             s1 = db.parse_float(u1_db['data'][2])
             s2 = db.parse_float(u2_db['data'][2])
 
-            # Re-checagem de saldo do P1 e P2 para evitar fraudes entre o convite e o aceite
+            # re-checa saldo de ambos para evitar fraude entre o convite e o aceite
             if s1 < self.aposta:
                 return await inter.response.send_message(f"O saldo de {self.p1.display_name} já não é mais suficiente!", ephemeral=True)
             if s2 < self.aposta:
                 return await inter.response.send_message(f"Você não tem {formatar_moeda(self.aposta)} MC para cobrir a aposta!", ephemeral=True)
 
-            # Debita a aposta de AMBOS e o pote vai para o limbo (bot) temporariamente
             db.update_value(u1_db['row'], 3, round(s1 - self.aposta, 2))
             db.update_value(u2_db['row'], 3, round(s2 - self.aposta, 2))
 
             self.aceito = True
             for item in self.children:
                 item.disabled = True
-            await inter.response.edit_message(content=f"🔥 Duelo aceito! O pote tem **{formatar_moeda(self.aposta * 2)} MC**.", view=self)
+            await inter.response.edit_message(
+                content=f"🔥 Duelo aceito! O pote tem **{formatar_moeda(self.aposta * 2)} MC**.",
+                view=self
+            )
             self.stop()
 
-            # Inicia o jogo
             embed_game = disnake.Embed(
                 title="⚔️ DUELO NA SELVA: GORILA, CAÇADOR OU CASCA?",
                 description=(
                     f"{self.p1.mention} vs {self.p2.mention}\n\n"
                     "**REGRAS:**\n"
-                    "🦍 **Gorila** amassa o 🤠 **Caçador**.\n"
-                    "🤠 **Caçador** atira na 🍌 **Casca**.\n"
-                    "🍌 **Casca** derruba o 🦍 **Gorila**.\n\n"
+                    "🦍 **Gorila** amassa o 🤠 **Caçador**\n"
+                    "🤠 **Caçador** atira na 🍌 **Casca**\n"
+                    "🍌 **Casca** derruba o 🦍 **Gorila**\n\n"
                     "*Façam suas escolhas nos botões abaixo! O outro jogador não verá sua escolha.*"
                 ),
                 color=disnake.Color.orange()
@@ -258,10 +251,9 @@ class Jokenpo(commands.Cog):
 
     @commands.command(aliases=["jokenpo", "jkp"])
     async def duelo(self, ctx, oponente: disnake.Member = None, aposta: float = None):
-        """Desafia um jogador para o Jokenpô da Selva (Gorila, Caçador, Casca)."""
         if oponente is None or aposta is None:
             embed = disnake.Embed(
-                title="⚔️ JOKENPÔ DA SELVA — Como funciona",
+                title="🦍🤠🍌 JOKENPÔ DA SELVA — Como funciona",
                 description=(
                     "Dois jogadores escolhem em segredo entre **Gorila**, **Caçador** ou **Casca**.\n"
                     "As escolhas são reveladas ao mesmo tempo. Quem ganhar leva o pote!\n\n"
@@ -276,6 +268,7 @@ class Jokenpo(commands.Cog):
                 color=disnake.Color.blue()
             )
             return await ctx.send(embed=embed)
+
         if oponente.id == ctx.author.id:
             return await ctx.send(f"🤡 {ctx.author.mention}, você não pode duelar contra si mesmo!")
         if oponente.bot:
@@ -307,15 +300,14 @@ class Jokenpo(commands.Cog):
                 return await ctx.send(f"😬 {oponente.display_name} não tem dinheiro suficiente para cobrir essa aposta.")
 
             embed = disnake.Embed(
-                title="⚔️ DESAFIO DE JOKENPÔ DA SELVA!",
+                title="🦍🤠🍌 DESAFIO DE JOKENPÔ DA SELVA!",
                 description=(
                     f"**{ctx.author.mention}** desafiou **{oponente.mention}** para um duelo!\n\n"
-                    f"💰 **Aposta:** `{formatar_moeda(aposta)} MC` (Pote: `{formatar_moeda(aposta * 2)} MC`)\n"
-                    f"O desafiado tem 60 segundos para aceitar."
+                    f"💰 **Aposta:** `{formatar_moeda(aposta)} MC` — Pote: `{formatar_moeda(aposta * 2)} MC`\n"
+                    f"⏱️ O desafiado tem **60 segundos** para aceitar."
                 ),
                 color=disnake.Color.blue()
             )
-            embed.set_thumbnail(url="https://i.imgur.com/02a5A3g.png")
 
             view = JokenpoInviteView(ctx, ctx.author, oponente, aposta)
             msg = await ctx.send(content=oponente.mention, embed=embed, view=view)

@@ -4,6 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from disnake.ext import commands
 from dotenv import load_dotenv
 
+# Carrega as variáveis de ambiente (para garantir leitura local do .env)
 load_dotenv()
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -65,12 +66,11 @@ def create_user(user_id, name):
       6  - inventario
       7  - timestamp_roubo
       8  - timestamp_investimento_fixo
-      9  - cripto_usos
+      9  - cripto_usos  (FIX BUG 4: antes vazia, agora persiste usos diários de cripto)
       10 - conquistas
-      11 - imposto_gorila  (formato: "cobrador_id|cargas_restantes")
     """
     try:
-        sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", ""])
+        sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", ""])
     except Exception as e:
         handle_db_error(e)
 
@@ -85,10 +85,15 @@ def wipe_database():
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  CRIPTO — persistência de usos diários (coluna 9 / data[8])
-#  Formato: "quantidade|timestamp_primeiro_uso"
+#  Formato armazenado: "quantidade|timestamp_primeiro_uso"
+#  Ex: "3|1718000000.0"
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_cripto_usos(user_data: dict) -> tuple[int, float]:
+    """
+    Lê e retorna (quantidade_usos, timestamp_primeiro_uso) da coluna 9.
+    Retorna (0, 0.0) se estiver vazio ou corrompido.
+    """
     raw = str(user_data['data'][8]) if len(user_data['data']) > 8 else ""
     raw = raw.strip()
     if not raw:
@@ -100,63 +105,24 @@ def get_cripto_usos(user_data: dict) -> tuple[int, float]:
         return 0, 0.0
 
 def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
+    """Salva (quantidade_usos|timestamp_primeiro_uso) na coluna 9."""
     try:
         valor = f"{quantidade}|{timestamp_inicio}"
         sheet.update_cell(row, 9, valor)
     except Exception as e:
         handle_db_error(e)
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-#  IMPOSTO DO GORILA — persistência (coluna 11 / data[10])
-#  Formato: "cobrador_id|cargas_restantes"
-# ──────────────────────────────────────────────────────────────────────────────
-
-def get_imposto(user_data: dict) -> tuple[str | None, int]:
-    raw = str(user_data['data'][10]) if len(user_data['data']) > 10 else ""
-    raw = raw.strip()
-    if not raw:
-        return None, 0
-    try:
-        partes      = raw.split("|")
-        cobrador_id = partes[0]
-        cargas      = int(partes[1])
-        if cargas <= 0:
-            return None, 0
-        return cobrador_id, cargas
-    except (IndexError, ValueError):
-        return None, 0
-
-def set_imposto(row: int, cobrador_id: str, cargas: int):
-    try:
-        valor = f"{cobrador_id}|{cargas}" if cargas > 0 else ""
-        sheet.update_cell(row, 11, valor)
-    except Exception as e:
-        handle_db_error(e)
-
-def clear_imposto(row: int):
-    try:
-        sheet.update_cell(row, 11, "")
-    except Exception as e:
-        handle_db_error(e)
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
-#  Colunas da aba Apostas_Esportivas:
-#    1-user_id  2-match_id  3-palpite  4-valor  5-odd  6-status
-#    7-time_casa  8-time_fora  9-liga  10-horario
 # ──────────────────────────────────────────────────────────────────────────────
 
-def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
-                               time_casa: str = "", time_fora: str = "", liga: str = "", horario: str = ""):
+def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd):
+    """Salva um novo palpite na aba Apostas_Esportivas."""
     try:
         valor_str = str(valor).replace('.', ',')
-        odd_str   = str(odd).replace('.', ',')
-        sheet_apostas.append_row([
-            str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente",
-            time_casa, time_fora, liga, horario,
-        ])
+        odd_str = str(odd).replace('.', ',')
+
+        sheet_apostas.append_row([str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente"])
     except Exception as e:
         handle_db_error(e)
 
@@ -171,17 +137,13 @@ def obter_apostas_pendentes():
 
             if len(row) >= 6 and row[5] == "Pendente":
                 apostas.append({
-                    "row":       i + 1,
-                    "user_id":   row[0],
-                    "match_id":  int(row[1]),
-                    "palpite":   row[2],
-                    "valor":     parse_float(row[3]),
-                    "odd":       parse_float(row[4]),
-                    "status":    row[5],
-                    "time_casa": row[6]  if len(row) > 6  else "",
-                    "time_fora": row[7]  if len(row) > 7  else "",
-                    "liga":      row[8]  if len(row) > 8  else "",
-                    "horario":   row[9]  if len(row) > 9  else "",
+                    "row": i + 1,
+                    "user_id": row[0],
+                    "match_id": int(row[1]),
+                    "palpite": row[2],
+                    "valor": parse_float(row[3]),
+                    "odd": parse_float(row[4]),
+                    "status": row[5]
                 })
         return apostas
     except Exception as e:
@@ -189,43 +151,81 @@ def obter_apostas_pendentes():
         return []
 
 def atualizar_status_aposta(row, status):
+    """Atualiza o status (Venceu/Perdeu) de uma aposta específica na planilha."""
     try:
         sheet_apostas.update_cell(row, 6, status)
     except Exception as e:
         handle_db_error(e)
 
-def limpar_apostas_finalizadas() -> int:
+# ──────────────────────────────────────────────────────────────────────────────
+#  COSMÉTICOS — personalização do perfil (coluna 12 / data[11])
+#  Formato: "cor:gold|moldura:💀|titulo:O Intocável|bio:texto livre"
+#  Campos opcionais — ausente = padrão do cargo
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Cosméticos disponíveis: slug -> (emoji, label, raridade)
+COSMETICOS_CATALOGO = {
+    # ── CORES ──────────────────────────────────────────────────────────────
+    "cor:verde":       (0x4CAF50, "🟢 Verde Selva",      "comum"),
+    "cor:azul":        (0x5B7FA6, "🔵 Azul Tropical",    "comum"),
+    "cor:cinza":       (0x7b7b7b, "⚫ Cinza das Pedras", "comum"),
+    "cor:roxo":        (0x9C27B0, "🟣 Roxo Místico",     "raro"),
+    "cor:laranja":     (0xFF8C00, "🟠 Laranja Fogo",     "raro"),
+    "cor:ciano":       (0x00BCD4, "🩵 Ciano Glacial",    "raro"),
+    "cor:gold":        (0xFFD700, "🟡 Dourado Real",     "epico"),
+    "cor:vermelho":    (0xE53935, "🔴 Vermelho Sangue",  "epico"),
+    "cor:rosa":        (0xFF69B4, "🌸 Rosa Flamingo",    "epico"),
+    # ── MOLDURAS (emoji que aparece no título do perfil) ───────────────────
+    "moldura:💀":      ("💀", "💀 Caveira",             "raro"),
+    "moldura:🔥":      ("🔥", "🔥 Chamas",              "raro"),
+    "moldura:⚡":      ("⚡", "⚡ Relâmpago",           "raro"),
+    "moldura:🌙":      ("🌙", "🌙 Lua Negra",           "epico"),
+    "moldura:👑":      ("👑", "👑 Coroa Dourada",       "epico"),
+    "moldura:💎":      ("💎", "💎 Diamante",            "epico"),
+    "moldura:🐍":      ("🐍", "🐍 Cobra Real",          "epico"),
+    "moldura:🌟":      ("🌟", "🌟 Estrela Cadente",     "lendario"),
+    "moldura:🏴‍☠️":  ("🏴‍☠️", "🏴‍☠️ Pirata",       "lendario"),
+    # ── TÍTULOS PRÉ-DEFINIDOS ──────────────────────────────────────────────
+    "titulo:O Intocável":       ("O Intocável",       "comum"),
+    "titulo:Caçador de Sombras":("Caçador de Sombras","raro"),
+    "titulo:Rei das Trevas":    ("Rei das Trevas",    "epico"),
+    "titulo:Lenda da Selva":    ("Lenda da Selva",    "lendario"),
+    "titulo:Fantasma":          ("Fantasma",          "raro"),
+    "titulo:O Invicto":         ("O Invicto",         "epico"),
+    "titulo:Mão de Ferro":      ("Mão de Ferro",      "raro"),
+    "titulo:Senhor do Caos":    ("Senhor do Caos",    "epico"),
+}
+
+def get_cosmeticos(user_data: dict) -> dict:
     """
-    Remove da planilha todas as linhas com status Venceu, Perdeu ou Reembolso.
-    Estratégia de 2 requests apenas:
-      1. get_all_values() — lê tudo
-      2. clear() + update() — apaga e sobrescreve só com as linhas a manter
-    Evita o erro 429 causado por delete_rows individual em loop.
+    Lê e retorna os cosméticos como dict.
+    Ex: {"cor": "gold", "moldura": "💀", "titulo": "O Intocável", "bio": "rei aqui"}
     """
+    raw = str(user_data["data"][11]) if len(user_data["data"]) > 11 else ""
+    raw = raw.strip()
+    result = {}
+    if not raw:
+        return result
+    for parte in raw.split("|"):
+        parte = parte.strip()
+        if ":" in parte:
+            chave, _, valor = parte.partition(":")
+            result[chave.strip()] = valor.strip()
+    return result
+
+def set_cosmetico(row: int, user_data: dict, chave: str, valor: str):
+    """Atualiza um campo cosmético sem apagar os outros."""
+    cosm = get_cosmeticos(user_data)
+    if valor:
+        cosm[chave] = valor
+    else:
+        cosm.pop(chave, None)
+    serializado = "|".join(f"{k}:{v}" for k, v in cosm.items())
     try:
-        rows = sheet_apostas.get_all_values()
-
-        if not rows:
-            return 0
-
-        status_finalizados = {"Venceu", "Perdeu", "Reembolso"}
-
-        cabecalho  = rows[0]
-        corpo      = rows[1:]
-        manter     = [row for row in corpo if not (len(row) >= 6 and row[5] in status_finalizados)]
-        removidas  = len(corpo) - len(manter)
-
-        if removidas == 0:
-            return 0
-
-        # Limpa a aba inteira e reescreve cabeçalho + linhas pendentes de uma vez
-        sheet_apostas.clear()
-        if manter:
-            sheet_apostas.update([cabecalho] + manter, value_input_option="RAW")
-        else:
-            sheet_apostas.update([cabecalho], value_input_option="RAW")
-
-        return removidas
+        sheet.update_cell(row, 12, serializado)
     except Exception as e:
         handle_db_error(e)
-        return 0
+
+def clear_cosmetico(row: int, user_data: dict, chave: str):
+    """Remove um campo cosmético específico."""
+    set_cosmetico(row, user_data, chave, "")
