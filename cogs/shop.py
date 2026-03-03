@@ -68,7 +68,6 @@ COSMETICOS_LOJA = {
     "titulo:Senhor do Caos":     (7000,  "Título: Senhor do Caos",    "🏷️", "Épico"),
 }
 
-# Nome real para adicionar ao inventário
 NOME_ITEM = {
     "item:escudo":      "Escudo",
     "item:pe_de_cabra": "Pé de Cabra",
@@ -108,13 +107,37 @@ DICA_ITEM = {
     "item:seguro":      "Ativado automaticamente se você for roubado.",
 }
 
+# Slugs que suportam compra em múltiplos
+SLUGS_MULTIPLOS = set(CATALOGO_LOOTBOXES) | set(CATALOGO_SABOTAGEM)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  HELPER: 1 batch_update por compra (saldo + inventário + opcional)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _batch_compra(row: int, novo_saldo: float, nova_inv: list,
+                  col_extra: str = None, val_extra=None):
+    """
+    Grava saldo (col C) + inventário (col F) em 1 única requisição HTTP.
+    col_extra/val_extra: coluna extra opcional, ex: ("D", "Gorila") para cargo.
+    """
+    inv_str = ", ".join(nova_inv) if nova_inv else "Nenhum"
+    updates = [
+        {"range": f"C{row}", "values": [[str(round(novo_saldo, 2))]]},
+        {"range": f"F{row}", "values": [[inv_str]]},
+    ]
+    if col_extra:
+        updates.append({"range": f"{col_extra}{row}", "values": [[str(val_extra)]]})
+    db.sheet.batch_update(updates)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  LÓGICA DE COMPRA (centralizada)
 # ══════════════════════════════════════════════════════════════════════════════
 
-async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: dict, is_cosm: bool, quantidade: int = 1):
-    """Executa a compra de qualquer item e retorna a mensagem de resultado."""
+async def processar_compra(inter: disnake.MessageInteraction, slug: str,
+                           itens: dict, is_cosm: bool, quantidade: int = 1):
+    """Executa a compra — máximo 1 chamada ao Sheets por transação."""
     dados = itens[slug]
     preco, label, emoji = dados[0], dados[1], dados[2]
     preco_total = preco * quantidade
@@ -123,27 +146,31 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: 
     if not user:
         return "❌ Conta não encontrada!"
 
-    saldo = db.parse_float(user["data"][2])
+    saldo    = db.parse_float(user["data"][2])
+    row      = user["row"]
+    inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
+    inv_list = [i.strip() for i in inv_str.split(",")
+                if i.strip() and i.strip().lower() != "nenhum"]
 
     if saldo < preco_total:
-        faltam = round(preco_total - saldo, 2)
+        faltam  = round(preco_total - saldo, 2)
         qtd_str = f" (×{quantidade})" if quantidade > 1 else ""
         return (f"❌ Saldo insuficiente!\n"
-                f"Precisa de **{formatar_moeda(preco_total)} MC**{qtd_str} (faltam **{formatar_moeda(faltam)} MC**).")
+                f"Precisa de **{formatar_moeda(preco_total)} MC**{qtd_str} "
+                f"(faltam **{formatar_moeda(faltam)} MC**).")
 
-    # ── CARGO ─────────────────────────────────────────────────────────────────
+    # ── CARGO — 1 batch: C (saldo) + D (cargo) ───────────────────────────────
     if slug.startswith("cargo:"):
         nome_cargo = NOME_CARGO[slug]
-        db.update_value(user["row"], 3, round(saldo - preco, 2))
-        db.update_value(user["row"], 4, nome_cargo)
+        _batch_compra(row, saldo - preco, inv_list, col_extra="D", val_extra=nome_cargo)
         return (f"🎉 Você evoluiu para o cargo **{emoji} {nome_cargo}**!\n"
                 f"💸 **-{formatar_moeda(preco)} MC** debitados.")
 
-    # ── ESCUDO (limite: 1/dia) ────────────────────────────────────────────────
+    # ── ESCUDO (limite 1/dia) — 1 batch: C + F ───────────────────────────────
     if slug == "item:escudo":
-        bot     = inter.bot
-        uid     = str(inter.author.id)
-        agora   = time.time()
+        bot   = inter.bot
+        uid   = str(inter.author.id)
+        agora = time.time()
 
         if uid not in bot.escudos_ativos and len(user["data"]) > 11:
             dado = str(user["data"][11]).strip()
@@ -151,51 +178,40 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: 
                 bot.escudos_ativos[uid] = int(dado)
 
         escudo_ativo = bot.escudos_ativos.get(uid, 0) > 0
-        inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
-        inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
-
         if "Escudo" in inv_list or escudo_ativo:
             return (f"❌ Você já tem um **Escudo** "
-                    f"{'ativo' if escudo_ativo else 'no inventário'}! Só pode ter 1 de cada vez.")
+                    f"{'ativo' if escudo_ativo else 'no inventário'}! "
+                    f"Só pode ter 1 de cada vez.")
 
-        hist             = bot.escudo_compras.get(uid, (0, 0.0))
-        ultima_compra_ts = hist[1]
-        if agora - ultima_compra_ts < 86400:
-            libera_em = int(ultima_compra_ts + 86400)
-            return f"⏳ Você já comprou um **Escudo** hoje! Pode comprar outro <t:{libera_em}:R>."
+        hist = bot.escudo_compras.get(uid, (0, 0.0))
+        if agora - hist[1] < 86400:
+            return (f"⏳ Você já comprou um **Escudo** hoje! "
+                    f"Pode comprar outro <t:{int(hist[1] + 86400)}:R>.")
 
         bot.escudo_compras[uid] = (1, agora)
         inv_list.append("Escudo")
-        db.update_value(user["row"], 3, round(saldo - preco, 2))
-        db.update_value(user["row"], 6, ", ".join(inv_list))
+        _batch_compra(row, saldo - preco, inv_list)
         return (f"🛡️ **Escudo** comprado e guardado no inventário!\n"
                 f"💸 **-{formatar_moeda(preco)} MC** debitados.\n"
                 f"Use `!escudo` para ativar quando precisar.")
 
-    # ── COSMÉTICO ─────────────────────────────────────────────────────────────
+    # ── COSMÉTICO — 1 batch: C + F ───────────────────────────────────────────
     if is_cosm:
-        inv_str   = str(user["data"][5]) if len(user["data"]) > 5 else ""
-        inv_list  = [i.strip() for i in inv_str.split(",") if i.strip()]
         chave_inv = f"cosmético:{slug}"
         if chave_inv in inv_list:
             return (f"❌ Você já tem **{emoji} {label}** no inventário!\n"
                     f"Use `!visuais` para equipá-lo.")
-        db.update_value(user["row"], 3, round(saldo - preco, 2))
         inv_list.append(chave_inv)
-        db.update_value(user["row"], 6, ", ".join(inv_list))
+        _batch_compra(row, saldo - preco, inv_list)
         return (f"✨ **{emoji} {label}** comprado com sucesso!\n"
                 f"💸 **-{formatar_moeda(preco)} MC** debitados.\n"
                 f"Use `!visuais` para equipar no seu perfil.")
 
-    # ── ITEM COMUM (suporta quantidade) ──────────────────────────────────────
+    # ── ITEM COMUM (suporta quantidade) — 1 batch: C + F ─────────────────────
     nome_item = NOME_ITEM.get(slug, label)
-    inv_str   = str(user["data"][5]) if len(user["data"]) > 5 else ""
-    inv_list  = [i.strip() for i in inv_str.split(",") if i.strip()]
-    for _ in range(quantidade):
-        inv_list.append(nome_item)
-    db.update_value(user["row"], 3, round(saldo - preco_total, 2))
-    db.update_value(user["row"], 6, ", ".join(inv_list))
-    dica = DICA_ITEM.get(slug, "Item adicionado ao inventário.")
+    inv_list.extend([nome_item] * quantidade)
+    _batch_compra(row, saldo - preco_total, inv_list)
+    dica    = DICA_ITEM.get(slug, "Item adicionado ao inventário.")
     qtd_str = f"**×{quantidade}** " if quantidade > 1 else ""
     return (f"{emoji} {qtd_str}**{nome_item}** comprado{'s' if quantidade > 1 else ''}!\n"
             f"💸 **-{formatar_moeda(preco_total)} MC** debitados.\n"
@@ -205,10 +221,6 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SELETOR DE QUANTIDADE (lootboxes e sabotagem)
 # ══════════════════════════════════════════════════════════════════════════════
-
-# Slugs que suportam compra em múltiplos
-SLUGS_MULTIPLOS = set(CATALOGO_LOOTBOXES) | set(CATALOGO_SABOTAGEM)
-
 
 class _BotaoQtd(disnake.ui.Button):
     def __init__(self, qtd: int, pode: bool):
@@ -278,7 +290,7 @@ class SelectItem(disnake.ui.StringSelect):
 
         await inter.response.defer(ephemeral=True)
 
-        # Itens que suportam múltiplos → mostra botões de quantidade
+        # Itens que suportam múltiplos → mostra botões de quantidade (sem Sheets)
         if slug in SLUGS_MULTIPLOS and self.saldo >= preco:
             view_qtd = ViewQuantidade(self.author_id, slug, self.itens, self.is_cosm, self.saldo)
             await inter.edit_original_response(
@@ -290,7 +302,7 @@ class SelectItem(disnake.ui.StringSelect):
                 view=view_qtd
             )
         else:
-            # Compra simples: cargos, escudo, cosméticos, ou saldo insuficiente
+            # Compra direta — 1 get_user_data + 1 batch_update
             msg = await processar_compra(inter, slug, self.itens, self.is_cosm)
             await inter.edit_original_response(content=msg)
 
@@ -321,7 +333,7 @@ class SelectCategoria(disnake.ui.StringSelect):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  BUILDER DE CATEGORIAS
+#  BUILDER DE CATEGORIAS (puro — zero chamadas ao Sheets)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _build_categoria(author_id, saldo, cat):
@@ -399,10 +411,10 @@ def _embed_inicio(saldo: float) -> disnake.Embed:
         ),
         color=disnake.Color.dark_theme()
     )
-    embed.add_field(name="📈 Progressão",   value="Cargos que aumentam salário e limite de apostas",      inline=False)
-    embed.add_field(name="🛡️ Equipamentos", value="Escudo · Pé de Cabra · Seguro",                        inline=False)
-    embed.add_field(name="📦 Lootboxes",    value="Caixas com itens e cosméticos aleatórios",              inline=False)
-    embed.add_field(name="😈 Sabotagem",    value="Casca · Imposto · C4 · Energético · Fumaça · Nick",     inline=False)
+    embed.add_field(name="📈 Progressão",   value="Cargos que aumentam salário e limite de apostas",           inline=False)
+    embed.add_field(name="🛡️ Equipamentos", value="Escudo · Pé de Cabra · Seguro",                             inline=False)
+    embed.add_field(name="📦 Lootboxes",    value="Caixas com itens e cosméticos aleatórios",                   inline=False)
+    embed.add_field(name="😈 Sabotagem",    value="Casca · Imposto · C4 · Energético · Fumaça · Nick",          inline=False)
     embed.add_field(name="✨ Cosméticos",   value="Cores, molduras e títulos · ⚪ Comuns · 🔵 Raros · 🟣 Épicos", inline=False)
     embed.set_footer(text="Selecione uma categoria para ver itens e preços  ·  !visuais para gerenciar cosméticos")
     return embed
@@ -455,29 +467,26 @@ class ViewLoja(disnake.ui.View):
         await inter.delete_original_response()
 
 
-# Botão Portal Público
 class ViewPortalLoja(disnake.ui.View):
-    def __init__(self, author_id: int):
+    """
+    Portal público que abre a loja.
+    Recebe o saldo já lido no !loja — elimina o get_user_data extra ao clicar.
+    """
+    def __init__(self, author_id: int, saldo: float):
         super().__init__(timeout=60)
         self.author_id = author_id
+        self.saldo     = saldo
 
     @disnake.ui.button(label="🛒 Abrir Mercado", style=disnake.ButtonStyle.success)
     async def btn_abrir(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         if inter.author.id != self.author_id:
-            return await inter.response.send_message("❌ Esta loja não é sua! Digite `!loja` para abrir a sua.", ephemeral=True)
-
-        user = db.get_user_data(str(inter.author.id))
-        if not user:
-            return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
-
-        saldo = db.parse_float(user["data"][2])
-        embed = _embed_inicio(saldo)
-        view = ViewLoja(inter.author.id, saldo)
-
-        # 1. Abre a loja apenas para o usuário (efêmera)
+            return await inter.response.send_message(
+                "❌ Esta loja não é sua! Digite `!loja` para abrir a sua.", ephemeral=True
+            )
+        # Saldo já em memória — zero chamadas ao Sheets aqui
+        embed = _embed_inicio(self.saldo)
+        view  = ViewLoja(inter.author.id, self.saldo)
         await inter.response.send_message(embed=embed, view=view, ephemeral=True)
-
-        # 2. Deleta o portal público para não poluir o chat
         try:
             await inter.message.delete()
         except Exception:
@@ -487,7 +496,9 @@ class ViewPortalLoja(disnake.ui.View):
         for item in self.children:
             item.disabled = True
         try:
-            await self.message.edit(content="⏳ O portal da loja fechou. Digite `!loja` novamente.", view=self)
+            await self.message.edit(
+                content="⏳ O portal da loja fechou. Digite `!loja` novamente.", view=self
+            )
         except Exception:
             pass
 
@@ -502,7 +513,7 @@ class Shop(commands.Cog):
 
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
-            canal = disnake.utils.get(ctx.guild.channels, name='🐒・conguitos')
+            canal  = disnake.utils.get(ctx.guild.channels, name='🐒・conguitos')
             mencao = canal.mention if canal else "#🐒・conguitos"
             await ctx.send(f"⚠️ {ctx.author.mention}, use a loja no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
@@ -515,17 +526,18 @@ class Shop(commands.Cog):
             if not user:
                 return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
-            view = ViewPortalLoja(ctx.author.id)
+            # Lê saldo aqui e passa para o portal — sem releitura ao clicar no botão
+            saldo = db.parse_float(user["data"][2])
+            view  = ViewPortalLoja(ctx.author.id, saldo)
 
-            # Tenta apagar o comando "!loja" do usuário
             try:
                 await ctx.message.delete()
             except (disnake.Forbidden, disnake.NotFound):
                 pass
 
-            # Envia o botão Portal (Mensagem pequena)
             view.message = await ctx.send(
-                content=f"🛒 {ctx.author.mention}, o Mercado Negro está pronto.\nClique no botão abaixo para abrir a sua loja.",
+                content=(f"🛒 {ctx.author.mention}, o Mercado Negro está pronto.\n"
+                         f"Clique no botão abaixo para abrir a sua loja."),
                 view=view
             )
 

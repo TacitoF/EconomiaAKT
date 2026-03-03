@@ -116,18 +116,26 @@ def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
 # ──────────────────────────────────────────────────────────────────────────────
 
-def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd):
-    """Salva um novo palpite na aba Apostas_Esportivas."""
+def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
+                               time_casa="", time_fora="", liga="", horario=""):
+    """Salva um novo palpite na aba Apostas_Esportivas.
+    Colunas: user_id | match_id | palpite | valor | odd | status | time_casa | time_fora | liga | horario
+    """
     try:
         valor_str = str(valor).replace('.', ',')
         odd_str = str(odd).replace('.', ',')
 
-        sheet_apostas.append_row([str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente"])
+        sheet_apostas.append_row([
+            str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente",
+            str(time_casa), str(time_fora), str(liga), str(horario)
+        ])
     except Exception as e:
         handle_db_error(e)
 
 def obter_apostas_pendentes():
-    """Lê a planilha e retorna apenas as apostas que ainda não finalizaram."""
+    """Le a planilha e retorna apenas as apostas que ainda nao finalizaram.
+    Colunas: user_id | match_id | palpite | valor | odd | status | time_casa | time_fora | liga | horario
+    """
     try:
         rows = sheet_apostas.get_all_values()
         apostas = []
@@ -143,7 +151,11 @@ def obter_apostas_pendentes():
                     "palpite": row[2],
                     "valor": parse_float(row[3]),
                     "odd": parse_float(row[4]),
-                    "status": row[5]
+                    "status": row[5],
+                    "time_casa": row[6] if len(row) > 6 else "",
+                    "time_fora": row[7] if len(row) > 7 else "",
+                    "liga": row[8] if len(row) > 8 else "",
+                    "horario": row[9] if len(row) > 9 else "",
                 })
         return apostas
     except Exception as e:

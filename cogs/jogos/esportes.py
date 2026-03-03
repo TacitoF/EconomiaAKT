@@ -236,6 +236,9 @@ class Esportes(commands.Cog):
         self.rotina_limpeza_apostas.start()
 
     async def cog_before_invoke(self, ctx):
+        # DMChannel nao tem .name nem .guild — rejeita silenciosamente
+        if not ctx.guild or not hasattr(ctx.channel, "name"):
+            raise commands.CommandError("Canal incorreto.")
         if ctx.channel.name != "🎰・akbet":
             canal  = disnake.utils.get(ctx.guild.channels, name="🎰・akbet")
             mencao = canal.mention if canal else "#🎰・akbet"
