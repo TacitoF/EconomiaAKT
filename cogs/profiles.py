@@ -545,8 +545,11 @@ class Profiles(commands.Cog):
         pos_rank = "—"
         try:
             all_rows = db.sheet.get_all_values()
-            if len(all_rows) > 1:
-                dados_sorted = sorted(all_rows[1:], key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
+            if len(all_rows) > 0:
+                primeira = all_rows[0]
+                tem_cabecalho = any(c.lower() in ("nome", "saldo", "cargo", "user_id") for c in primeira)
+                dados = all_rows[1:] if tem_cabecalho else all_rows
+                dados_sorted = sorted(dados, key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
                 for i, row in enumerate(dados_sorted):
                     if str(row[0]) == user_id:
                         pos_rank = f"#{i+1} de {len(dados_sorted)}"
@@ -613,8 +616,11 @@ class Profiles(commands.Cog):
         pos_rank = "—"
         try:
             all_rows = db.sheet.get_all_values()
-            if len(all_rows) > 1:
-                dados_sorted = sorted(all_rows[1:], key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
+            if len(all_rows) > 0:
+                primeira = all_rows[0]
+                tem_cabecalho = any(c.lower() in ("nome", "saldo", "cargo", "user_id") for c in primeira)
+                dados = all_rows[1:] if tem_cabecalho else all_rows
+                dados_sorted = sorted(dados, key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
                 for i, row in enumerate(dados_sorted):
                     if str(row[0]) == user_id:
                         pos_rank = f"#{i+1} de {len(dados_sorted)}"
