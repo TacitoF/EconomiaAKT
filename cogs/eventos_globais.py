@@ -10,8 +10,9 @@ CANAIS_AIRDROP = [1474153029690200105]
 class AirdropView(disnake.ui.View):
     def __init__(self, caixa_nome: str):
         super().__init__(timeout=300)
-        self.caixa_nome  = caixa_nome
+        self.caixa_nome   = caixa_nome
         self.reivindicado = False
+        self.message: disnake.Message = None  # preenchido após o envio
 
     @disnake.ui.button(label="SAQUEAR", style=disnake.ButtonStyle.success, emoji="🥷")
     async def saquear(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
@@ -48,6 +49,31 @@ class AirdropView(disnake.ui.View):
         button.style    = disnake.ButtonStyle.secondary
 
         await inter.response.edit_message(embed=embed, view=self)
+
+    async def on_timeout(self):
+        """Expira visualmente o airdrop quando ninguém saqueou no tempo."""
+        if self.reivindicado:
+            return  # já foi saqueado, não precisa fazer nada
+
+        for child in self.children:
+            child.disabled = True
+            child.label    = "EXPIRADO"
+            child.style    = disnake.ButtonStyle.danger
+            child.emoji    = None
+
+        try:
+            if self.message:
+                embed = self.message.embeds[0]
+                embed.title       = "💨 AIRDROP PERDIDO"
+                embed.description = (
+                    "```diff\n- CARGA NÃO REIVINDICADA\n```\n"
+                    "☁️ O suprimento se perdeu na selva — nenhum macaco foi rápido o suficiente.\n\n"
+                    "*Fique ligado no próximo airdrop!*"
+                )
+                embed.color = disnake.Color.dark_red()
+                await self.message.edit(embed=embed, view=self)
+        except Exception:
+            pass
 
 class EventosGlobais(commands.Cog):
     def __init__(self, bot):
@@ -100,8 +126,8 @@ class EventosGlobais(commands.Cog):
         embed = disnake.Embed(title="✈️ INTERCEPÇÃO DE CARGA", description=layout_visual, color=cor)
         embed.set_footer(text="Radar Símio: Suprimentos detectados no setor.")
 
-        view = AirdropView(caixa)
-        await canal.send(embed=embed, view=view)
+        view         = AirdropView(caixa)
+        view.message = await canal.send(embed=embed, view=view)
 
     @airdrop_loop.before_loop
     async def before_airdrop(self):
@@ -116,8 +142,8 @@ class EventosGlobais(commands.Cog):
         elif sorteio <= 0.12: caixa = "Baú do Caçador"
         else:                 caixa = "Caixote de Madeira"
 
-        view = AirdropView(caixa)
-        await ctx.send(f"⚠️ **ADMIN:** Forçando queda de **{caixa}**!", view=view)
+        view         = AirdropView(caixa)
+        view.message = await ctx.send(f"⚠️ **ADMIN:** Forçando queda de **{caixa}**!", view=view)
 
 def setup(bot):
     bot.add_cog(EventosGlobais(bot))
