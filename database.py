@@ -20,11 +20,16 @@ sheet = client.open_by_key(sheet_id).sheet1
 sheet_apostas = client.open_by_key(sheet_id).worksheet("Apostas_Esportivas")
 
 def parse_float(valor, padrao=0.0):
-    """Converte qualquer valor da planilha para float com segurança."""
+    """Converte qualquer valor da planilha para float com segurança.
+    Suporta formato brasileiro (1.234.567,89) e simples (1234567.89).
+    """
     try:
         if valor is None or str(valor).strip() == "":
             return padrao
-        return float(str(valor).replace(',', '.').strip())
+        s = str(valor).strip()
+        if ',' in s:
+            s = s.replace('.', '').replace(',', '.')
+        return float(s)
     except (ValueError, TypeError):
         return padrao
 
@@ -66,11 +71,14 @@ def create_user(user_id, name):
       6  - inventario
       7  - timestamp_roubo
       8  - timestamp_investimento_fixo
-      9  - cripto_usos  (FIX BUG 4: antes vazia, agora persiste usos diários de cripto)
+      9  - cripto_usos
       10 - conquistas
+      11 - imposto
+      12 - escudo
+      13 - cosmeticos
     """
     try:
-        sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", ""])
+        sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", ""])
     except Exception as e:
         handle_db_error(e)
 
@@ -83,17 +91,45 @@ def wipe_database():
     except Exception as e:
         handle_db_error(e)
 
+
 # ──────────────────────────────────────────────────────────────────────────────
-#  CRIPTO — persistência de usos diários (coluna 9 / data[8])
-#  Formato armazenado: "quantidade|timestamp_primeiro_uso"
-#  Ex: "3|1718000000.0"
+#  IMPOSTO DO GORILA — persistência (Coluna 11 / data[10])
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_imposto(user_data: dict) -> tuple:
+    raw = str(user_data['data'][10]) if len(user_data['data']) > 10 else ""
+    raw = raw.strip()
+    if not raw:
+        return None, 0
+    try:
+        partes      = raw.split("|")
+        cobrador_id = partes[0]
+        cargas      = int(partes[1])
+        if cargas <= 0:
+            return None, 0
+        return cobrador_id, cargas
+    except (IndexError, ValueError):
+        return None, 0
+
+def set_imposto(row: int, cobrador_id: str, cargas: int):
+    try:
+        valor = f"{cobrador_id}|{cargas}" if cargas > 0 else ""
+        sheet.update_cell(row, 11, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+def clear_imposto(row: int):
+    try:
+        sheet.update_cell(row, 11, "")
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  CRIPTO — persistência de usos diários (Coluna 9 / data[8])
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_cripto_usos(user_data: dict) -> tuple[int, float]:
-    """
-    Lê e retorna (quantidade_usos, timestamp_primeiro_uso) da coluna 9.
-    Retorna (0, 0.0) se estiver vazio ou corrompido.
-    """
     raw = str(user_data['data'][8]) if len(user_data['data']) > 8 else ""
     raw = raw.strip()
     if not raw:
@@ -105,12 +141,46 @@ def get_cripto_usos(user_data: dict) -> tuple[int, float]:
         return 0, 0.0
 
 def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
-    """Salva (quantidade_usos|timestamp_primeiro_uso) na coluna 9."""
     try:
         valor = f"{quantidade}|{timestamp_inicio}"
         sheet.update_cell(row, 9, valor)
     except Exception as e:
         handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  COSMÉTICOS — personalização do perfil (Coluna 13 / data[12])
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_cosmeticos(user_data: dict) -> dict:
+    raw = str(user_data["data"][12]) if len(user_data["data"]) > 12 else ""
+    raw = raw.strip()
+    result = {}
+    if not raw:
+        return result
+    for parte in raw.split("|"):
+        parte = parte.strip()
+        if ":" in parte:
+            chave, _, valor = parte.partition(":")
+            result[chave.strip()] = valor.strip()
+    return result
+
+def set_cosmetico(row: int, user_data: dict, chave: str, valor: str):
+    cosm = get_cosmeticos(user_data)
+    if valor:
+        cosm[chave] = valor
+    else:
+        cosm.pop(chave, None)
+    serializado = "|".join(f"{k}:{v}" for k, v in cosm.items())
+    try:
+        # Mudamos para a Coluna 13 (M) para não dar conflito com o Escudo na 12 (L)
+        sheet.update_cell(row, 13, serializado)
+    except Exception as e:
+        handle_db_error(e)
+
+def clear_cosmetico(row: int, user_data: dict, chave: str):
+    set_cosmetico(row, user_data, chave, "")
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
@@ -118,9 +188,6 @@ def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
 
 def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
                                time_casa="", time_fora="", liga="", horario=""):
-    """Salva um novo palpite na aba Apostas_Esportivas.
-    Colunas: user_id | match_id | palpite | valor | odd | status | time_casa | time_fora | liga | horario
-    """
     try:
         valor_str = str(valor).replace('.', ',')
         odd_str = str(odd).replace('.', ',')
@@ -133,9 +200,6 @@ def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
         handle_db_error(e)
 
 def obter_apostas_pendentes():
-    """Le a planilha e retorna apenas as apostas que ainda nao finalizaram.
-    Colunas: user_id | match_id | palpite | valor | odd | status | time_casa | time_fora | liga | horario
-    """
     try:
         rows = sheet_apostas.get_all_values()
         apostas = []
@@ -163,81 +227,30 @@ def obter_apostas_pendentes():
         return []
 
 def atualizar_status_aposta(row, status):
-    """Atualiza o status (Venceu/Perdeu) de uma aposta específica na planilha."""
     try:
         sheet_apostas.update_cell(row, 6, status)
     except Exception as e:
         handle_db_error(e)
 
-# ──────────────────────────────────────────────────────────────────────────────
-#  COSMÉTICOS — personalização do perfil (coluna 12 / data[11])
-#  Formato: "cor:gold|moldura:💀|titulo:O Intocável|bio:texto livre"
-#  Campos opcionais — ausente = padrão do cargo
-# ──────────────────────────────────────────────────────────────────────────────
-
-# Cosméticos disponíveis: slug -> (emoji, label, raridade)
-COSMETICOS_CATALOGO = {
-    # ── CORES ──────────────────────────────────────────────────────────────
-    "cor:verde":       (0x4CAF50, "🟢 Verde Selva",      "comum"),
-    "cor:azul":        (0x5B7FA6, "🔵 Azul Tropical",    "comum"),
-    "cor:cinza":       (0x7b7b7b, "⚫ Cinza das Pedras", "comum"),
-    "cor:roxo":        (0x9C27B0, "🟣 Roxo Místico",     "raro"),
-    "cor:laranja":     (0xFF8C00, "🟠 Laranja Fogo",     "raro"),
-    "cor:ciano":       (0x00BCD4, "🩵 Ciano Glacial",    "raro"),
-    "cor:gold":        (0xFFD700, "🟡 Dourado Real",     "epico"),
-    "cor:vermelho":    (0xE53935, "🔴 Vermelho Sangue",  "epico"),
-    "cor:rosa":        (0xFF69B4, "🌸 Rosa Flamingo",    "epico"),
-    # ── MOLDURAS (emoji que aparece no título do perfil) ───────────────────
-    "moldura:💀":      ("💀", "💀 Caveira",             "raro"),
-    "moldura:🔥":      ("🔥", "🔥 Chamas",              "raro"),
-    "moldura:⚡":      ("⚡", "⚡ Relâmpago",           "raro"),
-    "moldura:🌙":      ("🌙", "🌙 Lua Negra",           "epico"),
-    "moldura:👑":      ("👑", "👑 Coroa Dourada",       "epico"),
-    "moldura:💎":      ("💎", "💎 Diamante",            "epico"),
-    "moldura:🐍":      ("🐍", "🐍 Cobra Real",          "epico"),
-    "moldura:🌟":      ("🌟", "🌟 Estrela Cadente",     "lendario"),
-    "moldura:🏴‍☠️":  ("🏴‍☠️", "🏴‍☠️ Pirata",       "lendario"),
-    # ── TÍTULOS PRÉ-DEFINIDOS ──────────────────────────────────────────────
-    "titulo:O Intocável":       ("O Intocável",       "comum"),
-    "titulo:Caçador de Sombras":("Caçador de Sombras","raro"),
-    "titulo:Rei das Trevas":    ("Rei das Trevas",    "epico"),
-    "titulo:Lenda da Selva":    ("Lenda da Selva",    "lendario"),
-    "titulo:Fantasma":          ("Fantasma",          "raro"),
-    "titulo:O Invicto":         ("O Invicto",         "epico"),
-    "titulo:Mão de Ferro":      ("Mão de Ferro",      "raro"),
-    "titulo:Senhor do Caos":    ("Senhor do Caos",    "epico"),
-}
-
-def get_cosmeticos(user_data: dict) -> dict:
-    """
-    Lê e retorna os cosméticos como dict.
-    Ex: {"cor": "gold", "moldura": "💀", "titulo": "O Intocável", "bio": "rei aqui"}
-    """
-    raw = str(user_data["data"][11]) if len(user_data["data"]) > 11 else ""
-    raw = raw.strip()
-    result = {}
-    if not raw:
-        return result
-    for parte in raw.split("|"):
-        parte = parte.strip()
-        if ":" in parte:
-            chave, _, valor = parte.partition(":")
-            result[chave.strip()] = valor.strip()
-    return result
-
-def set_cosmetico(row: int, user_data: dict, chave: str, valor: str):
-    """Atualiza um campo cosmético sem apagar os outros."""
-    cosm = get_cosmeticos(user_data)
-    if valor:
-        cosm[chave] = valor
-    else:
-        cosm.pop(chave, None)
-    serializado = "|".join(f"{k}:{v}" for k, v in cosm.items())
+def limpar_apostas_finalizadas() -> int:
+    """Filtra os dados na memória e sobrescreve a planilha uma única vez para evitar erro 429."""
     try:
-        sheet.update_cell(row, 12, serializado)
+        all_rows = sheet_apostas.get_all_values()
+        if len(all_rows) <= 1:
+            return 0
+            
+        header = all_rows[0]
+        data_rows = all_rows[1:]
+        status_finalizados = {"Venceu", "Perdeu", "Reembolso"}
+        
+        rows_to_keep = [row for row in data_rows if len(row) < 6 or row[5] not in status_finalizados]
+        deleted_count = len(data_rows) - len(rows_to_keep)
+        
+        if deleted_count > 0:
+            sheet_apostas.clear()
+            sheet_apostas.update('A1', [header] + rows_to_keep)
+            
+        return deleted_count
     except Exception as e:
         handle_db_error(e)
-
-def clear_cosmetico(row: int, user_data: dict, chave: str):
-    """Remove um campo cosmético específico."""
-    set_cosmetico(row, user_data, chave, "")
+        return 0
