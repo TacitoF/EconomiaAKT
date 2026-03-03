@@ -6,7 +6,6 @@ import database as db
 from datetime import datetime, timedelta
 import asyncio
 
-
 LIMITES_CARGO = {
     "Lêmure":      400,
     "Macaquinho":  1500,
@@ -40,20 +39,23 @@ def formatar_moeda(valor: float) -> str:
 
 
 class ModalValorAposta(disnake.ui.Modal):
-    def __init__(self, match_id, palpite, time_casa, time_fora, liga, horario, api_url=None, api_headers=None):
+    def __init__(self, match_id, palpite, odd_fixa, time_casa, time_fora, liga, horario, api_url=None, api_headers=None):
         self.match_id    = match_id
         self.palpite     = palpite
+        self.odd_fixa    = odd_fixa
         self.time_casa   = time_casa
         self.time_fora   = time_fora
         self.liga        = liga
         self.horario     = horario
         self.api_url     = api_url or "https://api.football-data.org/v4"
         self.api_headers = api_headers or {}
+        
         EMOJI  = {"casa": "🏠", "empate": "🤝", "fora": "✈️"}
         LABELS = {"casa": time_casa, "empate": "Empate", "fora": time_fora}
+        
         components = [
             disnake.ui.TextInput(
-                label=f"{EMOJI.get(palpite,'🎯')} Apostando em: {LABELS.get(palpite, palpite)}",
+                label=f"{EMOJI.get(palpite,'🎯')} Aposta: {LABELS.get(palpite, palpite)} ({odd_fixa}x)",
                 placeholder="Digite o valor em MC (ex: 100)",
                 custom_id="valor_aposta",
                 style=disnake.TextInputStyle.short,
@@ -111,9 +113,11 @@ class ModalValorAposta(disnake.ui.Modal):
         user = db.get_user_data(str(inter.author.id))
         if not user:
             return await inter.edit_original_response(content="❌ Conta não encontrada!")
+        
         saldo  = db.parse_float(user["data"][2])
         cargo  = user["data"][3] if len(user["data"]) > 3 else "Lêmure"
         limite = get_limite(cargo)
+        
         if saldo < valor:
             return await inter.edit_original_response(
                 content=f"❌ Saldo insuficiente! Você tem **{formatar_moeda(saldo)} MC** e tentou apostar **{formatar_moeda(valor)} MC**."
@@ -122,14 +126,16 @@ class ModalValorAposta(disnake.ui.Modal):
             return await inter.edit_original_response(
                 content=f"🚫 Limite de aposta para **{cargo}** é de **{formatar_moeda(limite)} MC**!"
             )
-        odd_fixa        = 2.0
-        ganho_potencial = round(valor * odd_fixa, 2)
+            
+        ganho_potencial = round(valor * self.odd_fixa, 2)
         db.update_value(user["row"], 3, round(saldo - valor, 2))
+        
         db.registrar_aposta_esportiva(
-            inter.author.id, self.match_id, self.palpite, valor, odd_fixa,
+            inter.author.id, self.match_id, self.palpite, valor, self.odd_fixa,
             time_casa=self.time_casa, time_fora=self.time_fora,
             liga=self.liga, horario=self.horario,
         )
+        
         EMOJI  = {"casa": "🏠", "empate": "🤝", "fora": "✈️"}
         LABELS = {"casa": self.time_casa, "empate": "Empate", "fora": self.time_fora}
         embed = disnake.Embed(title="🎟️ BILHETE REGISTRADO!", color=disnake.Color.gold())
@@ -140,37 +146,44 @@ class ModalValorAposta(disnake.ui.Modal):
         embed.add_field(name="🆔 ID",       value=f"`{self.match_id}`",inline=True)
         embed.add_field(name=f"{EMOJI.get(self.palpite,'🎯')} Palpite", value=f"**{LABELS.get(self.palpite, self.palpite)}**", inline=True)
         embed.add_field(name="💸 Apostado", value=f"`{formatar_moeda(valor)} MC`",           inline=True)
-        embed.add_field(name="💰 Retorno",  value=f"`{formatar_moeda(ganho_potencial)} MC`", inline=True)
+        embed.add_field(name="💰 Retorno",  value=f"`{formatar_moeda(ganho_potencial)} MC` (Odd: {self.odd_fixa}x)", inline=True)
         embed.set_footer(text="Pagamento automático ao fim da partida • !pule para ver seus bilhetes")
         await inter.edit_original_response(content=None, embed=embed)
 
 
 class ViewPalpiteJogo(disnake.ui.View):
-    def __init__(self, match_id, time_casa, time_fora, liga, horario, api_url=None, api_headers=None):
+    def __init__(self, match_id, time_casa, time_fora, liga, horario, odds, api_url=None, api_headers=None):
         super().__init__(timeout=120)
         self.match_id    = match_id
         self.time_casa   = time_casa
         self.time_fora   = time_fora
         self.liga        = liga
         self.horario     = horario
+        self.odds        = odds
         self.api_url     = api_url
         self.api_headers = api_headers or {}
+        
+        # Botões com as odds dinâmicas
+        self.btn_casa.label = f"🏠 Casa ({odds['casa']}x)"
+        self.btn_empate.label = f"🤝 Empate ({odds['empate']}x)"
+        self.btn_fora.label = f"✈️ Fora ({odds['fora']}x)"
 
     async def _abrir_modal(self, inter, palpite):
+        odd_escolhida = self.odds.get(palpite, 1.85)
         await inter.response.send_modal(ModalValorAposta(
-            match_id=self.match_id, palpite=palpite,
+            match_id=self.match_id, palpite=palpite, odd_fixa=odd_escolhida,
             time_casa=self.time_casa, time_fora=self.time_fora,
             liga=self.liga, horario=self.horario,
             api_url=self.api_url, api_headers=self.api_headers,
         ))
 
-    @disnake.ui.button(label="🏠 Casa",   style=disnake.ButtonStyle.primary)
+    @disnake.ui.button(style=disnake.ButtonStyle.primary, custom_id="btn_casa")
     async def btn_casa(self, button, inter):   await self._abrir_modal(inter, "casa")
 
-    @disnake.ui.button(label="🤝 Empate", style=disnake.ButtonStyle.secondary)
+    @disnake.ui.button(style=disnake.ButtonStyle.secondary, custom_id="btn_empate")
     async def btn_empate(self, button, inter): await self._abrir_modal(inter, "empate")
 
-    @disnake.ui.button(label="✈️ Fora",   style=disnake.ButtonStyle.danger)
+    @disnake.ui.button(style=disnake.ButtonStyle.danger, custom_id="btn_fora")
     async def btn_fora(self, button, inter):   await self._abrir_modal(inter, "fora")
 
     @disnake.ui.button(label="↩️ Voltar", style=disnake.ButtonStyle.secondary, row=1)
@@ -180,7 +193,8 @@ class ViewPalpiteJogo(disnake.ui.View):
 
 
 class SelectJogo(disnake.ui.StringSelect):
-    def __init__(self, jogos, api_url=None, api_headers=None):
+    def __init__(self, jogos, bot, api_url=None, api_headers=None):
+        self.bot         = bot
         self.jogos_map   = {str(j["id"]): j for j in jogos}
         self.api_url     = api_url
         self.api_headers = api_headers or {}
@@ -193,33 +207,93 @@ class SelectJogo(disnake.ui.StringSelect):
                 value       = str(j["id"]),
                 emoji       = LIGAS_EMOJI.get(liga_code, "🏆"),
             ))
-        super().__init__(placeholder="⚽ Selecione um jogo para apostar...", options=options, min_values=1, max_values=1)
+        super().__init__(placeholder="⚽ Selecione um jogo para analisar as odds...", options=options, min_values=1, max_values=1)
 
     async def callback(self, inter):
+        await inter.response.defer(ephemeral=True)
         mid       = self.values[0]
         jogo      = self.jogos_map[mid]
+        
+        home_id   = str(jogo["homeTeam"]["id"])
+        away_id   = str(jogo["awayTeam"]["id"])
         time_casa = jogo["homeTeam"]["name"]
         time_fora = jogo["awayTeam"]["name"]
         liga_code = jogo.get("competition", {}).get("code", "")
         liga_nome = jogo.get("competition", {}).get("name", liga_code)
         horario   = hora_br(jogo["utcDate"])
+        
+        # Odds base (já com taxa da casa de 10%)
+        odds = {"casa": 1.85, "empate": 2.80, "fora": 1.85}
+        nota_analise = "⚠️ Sem dados de classificação. Odds base aplicadas."
+
+        # Ignorar copas para odds dinâmicas
+        if liga_code and liga_code not in ("CL", "BSA_CUP", "CLI"): 
+            cache = getattr(self.bot, "cache_standings", {})
+            cache_time = getattr(self.bot, "cache_standings_time", {})
+            agora = datetime.now()
+            
+            # Atualiza cache a cada 24h por liga para poupar API
+            if liga_code not in cache or (agora - cache_time.get(liga_code, agora)).days >= 1:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(f"{self.api_url}/competitions/{liga_code}/standings", headers=self.api_headers) as resp:
+                            if resp.status == 200:
+                                data = await resp.json()
+                                tabela = {}
+                                for standing in data.get("standings", []):
+                                    if standing.get("type") == "TOTAL":
+                                        for team in standing.get("table", []):
+                                            tabela[str(team["team"]["id"])] = team["position"]
+                                
+                                if not hasattr(self.bot, "cache_standings"):
+                                    self.bot.cache_standings = {}
+                                    self.bot.cache_standings_time = {}
+                                self.bot.cache_standings[liga_code] = tabela
+                                self.bot.cache_standings_time[liga_code] = agora
+                except Exception as e:
+                    print(f"⚠️ Erro ao buscar tabela da liga {liga_code}: {e}")
+            
+            tabela = getattr(self.bot, "cache_standings", {}).get(liga_code, {})
+            pos_casa = tabela.get(home_id)
+            pos_fora = tabela.get(away_id)
+            
+            # CÁLCULO DAS ODDS DINÂMICAS COM 10% DE TAXA DO CASSINO
+            if pos_casa and pos_fora:
+                # diff positiva = time da casa é favorito
+                diff = (pos_fora - pos_casa) + 2 # +2 pela vantagem de jogar em casa
+                
+                odd_c = 2.0 - (diff * 0.045)
+                odd_f = 2.0 + (diff * 0.065)
+                odd_e = 2.8 + (abs(diff) * 0.03)
+                
+                # Corta 10% do lucro para a casa (inflação natural)
+                odds["casa"]   = max(1.15, round(odd_c * 0.90, 2))
+                odds["fora"]   = max(1.15, round(odd_f * 0.90, 2))
+                odds["empate"] = max(1.50, round(odd_e * 0.90, 2))
+                
+                nota_analise = f"📊 **Análise da Tabela:** Casa (**{pos_casa}º**) vs Fora (**{pos_fora}º**)"
+
         embed = disnake.Embed(
             title=f"⚽ {time_casa} vs {time_fora}",
-            description=f"{LIGAS_EMOJI.get(liga_code,'🏆')} **{liga_nome}** •  ⏰ {horario}\n\nEscolha o seu palpite abaixo:",
+            description=f"{LIGAS_EMOJI.get(liga_code,'🏆')} **{liga_nome}** •  ⏰ {horario}\n\n{nota_analise}\n*Escolha o seu palpite clicando nos botões:*",
             color=disnake.Color.blue()
         )
-        embed.add_field(name="🏠 Casa",     value=time_casa, inline=True)
-        embed.add_field(name="🤝 Empate",   value="Empate",  inline=True)
-        embed.add_field(name="✈️ Fora",     value=time_fora, inline=True)
-        embed.add_field(name="💰 Odd fixa", value="**2.0x** para qualquer resultado", inline=False)
-        embed.set_footer(text=f"ID: {mid}")
-        await inter.response.send_message(embed=embed, view=ViewPalpiteJogo(int(mid), time_casa, time_fora, liga_nome, horario, api_url=self.api_url, api_headers=self.api_headers), ephemeral=True)
+        
+        # Adicionando os campos de volta para deixar igual ao antigo!
+        embed.add_field(name="🏠 Casa",   value=f"**{time_casa}**", inline=True)
+        embed.add_field(name="🤝 Empate", value="**Empate**",       inline=True)
+        embed.add_field(name="✈️ Fora",   value=f"**{time_fora}**", inline=True)
+        
+        embed.set_footer(text=f"ID: {mid}  •  Odds incluem a taxa da casa.")
+        
+        view = ViewPalpiteJogo(int(mid), time_casa, time_fora, liga_nome, horario, odds, api_url=self.api_url, api_headers=self.api_headers)
+        await inter.edit_original_response(embed=embed, view=view)
 
 
 class ViewSelectJogos(disnake.ui.View):
-    def __init__(self, jogos, api_url=None, api_headers=None):
+    def __init__(self, jogos, bot, api_url=None, api_headers=None):
         super().__init__(timeout=None)
-        self.add_item(SelectJogo(jogos, api_url=api_url, api_headers=api_headers))
+        self.add_item(SelectJogo(jogos, bot, api_url=api_url, api_headers=api_headers))
 
 
 class Esportes(commands.Cog):
@@ -231,14 +305,10 @@ class Esportes(commands.Cog):
         self.cache_jogos = None
         self.cache_time  = None
         
-        # Inicia as tarefas em loop
         self.checar_resultados.start()
         self.rotina_limpeza_apostas.start()
 
     async def cog_before_invoke(self, ctx):
-        # DMChannel nao tem .name nem .guild — rejeita silenciosamente
-        if not ctx.guild or not hasattr(ctx.channel, "name"):
-            raise commands.CommandError("Canal incorreto.")
         if ctx.channel.name != "🎰・akbet":
             canal  = disnake.utils.get(ctx.guild.channels, name="🎰・akbet")
             mencao = canal.mention if canal else "#🎰・akbet"
@@ -249,7 +319,8 @@ class Esportes(commands.Cog):
     async def futebol(self, ctx):
         agora = datetime.now()
         if self.cache_embed and self.cache_jogos and self.cache_time and (agora - self.cache_time) < timedelta(minutes=30):
-            return await ctx.send(embed=self.cache_embed, view=ViewSelectJogos(self.cache_jogos, api_url=self.api_url, api_headers=self.headers))
+            return await ctx.send(embed=self.cache_embed, view=ViewSelectJogos(self.cache_jogos, self.bot, api_url=self.api_url, api_headers=self.headers))
+        
         await ctx.send("🔎 Consultando o calendário... Aguarde!", delete_after=5)
         try:
             async with aiohttp.ClientSession() as session:
@@ -266,10 +337,11 @@ class Esportes(commands.Cog):
                         return await ctx.send("❌ Não consegui acessar os jogos no momento.")
                     if not data.get("matches"):
                         return await ctx.send("⚽ Nenhum jogo das grandes ligas nos próximos 3 dias.")
+                    
                     jogos = data["matches"][:25]
                     embed = disnake.Embed(
                         title="⚽ BETS DA SELVA — PRÓXIMOS JOGOS",
-                        description="Selecione um jogo no menu abaixo!\n💰 Odd fixa **2.0x** · 📋 Bilhetes com `!pule`",
+                        description="Selecione um jogo abaixo para **analisar as odds**!\n📊 Odds variam conforme a classificação · 📋 Bilhetes com `!pule`",
                         color=disnake.Color.blue()
                     )
                     ligas_vistas = {}
@@ -284,10 +356,11 @@ class Esportes(commands.Cog):
                     for ln, info in ligas_vistas.items():
                         embed.add_field(name=f"{info['emoji']} {ln}", value="\n".join(info["linhas"]), inline=False)
                     embed.set_footer(text=f"Atualizado às {agora.strftime('%H:%M')} • Cache de 30 min")
+                    
                     self.cache_embed = embed
                     self.cache_jogos = jogos
                     self.cache_time  = agora
-                    await ctx.send(embed=embed, view=ViewSelectJogos(jogos, api_url=self.api_url, api_headers=self.headers))
+                    await ctx.send(embed=embed, view=ViewSelectJogos(jogos, self.bot, api_url=self.api_url, api_headers=self.headers))
         except commands.CommandError:
             raise
         except Exception as e:
@@ -344,7 +417,7 @@ class Esportes(commands.Cog):
                     value = (
                         f"{LIGAS_EMOJI.get(info.get('liga_code',''),'🏆')} {info.get('liga','—')}  •  ⏰ {info.get('hora','—')}\n"
                         f"{EMOJI_P.get(p,'🎯')} **Palpite:** {tc if p=='casa' else (tf if p=='fora' else 'Empate')}\n"
-                        f"💸 `{formatar_moeda(aposta['valor'])} MC` → 💰 `{formatar_moeda(ganho)} MC`  🆔 `{m_id}`"
+                        f"💸 `{formatar_moeda(aposta['valor'])} MC` → 💰 `{formatar_moeda(ganho)} MC` (Odd: {aposta['odd']}x)  🆔 `{m_id}`"
                     ),
                     inline=False
                 )
@@ -399,7 +472,6 @@ class Esportes(commands.Cog):
         print(f"📋 {len(resultados_api)}/{len(match_ids_pendentes)} jogo(s) encontrado(s) na API.")
         processadas = 0
 
-        # --- AGRUPAMENTO POR PARTIDA ---
         for match_id, match_data in resultados_api.items():
             status = match_data.get("status")
             if status not in ("FINISHED", "AWARDED"):
@@ -445,7 +517,7 @@ class Esportes(commands.Cog):
                         saldo_atual = db.parse_float(user_db["data"][2])
                         premio      = round(aposta["valor"] * aposta["odd"], 2)
                         db.update_value(user_db["row"], 3, round(saldo_atual + premio, 2))
-                        lista_vencedores.append(f"<@{aposta['user_id']}>: `+{formatar_moeda(premio)} MC`")
+                        lista_vencedores.append(f"<@{aposta['user_id']}>: `+{formatar_moeda(premio)} MC` ({aposta['odd']}x)")
                 else:
                     db.atualizar_status_aposta(aposta["row"], "Perdeu")
                     lista_perdedores.append(f"<@{aposta['user_id']}>: `-{formatar_moeda(aposta['valor'])} MC`")
@@ -484,9 +556,6 @@ class Esportes(commands.Cog):
         await asyncio.sleep(10)
         print("✅ Bot pronto, iniciando loop de apostas esportivas.")
 
-    # -------------------------------------------------------------------------
-    # ROTINA DE LIMPEZA AUTOMÁTICA (FAXINA)
-    # -------------------------------------------------------------------------
     @tasks.loop(hours=24)
     async def rotina_limpeza_apostas(self):
         print("🧹 [Auto-Faxina] Iniciando limpeza diária de apostas finalizadas...")
@@ -502,14 +571,11 @@ class Esportes(commands.Cog):
     @rotina_limpeza_apostas.before_loop
     async def before_rotina_limpeza_apostas(self):
         await self.bot.wait_until_ready()
-        # Aguarda 5 segundos após o bot ligar para realizar a primeira faxina, 
-        # depois repetirá exatamente a cada 24 horas.
         await asyncio.sleep(5) 
 
     @commands.command(name="limpar_apostas")
     @commands.has_permissions(administrator=True)
     async def limpar_apostas_cmd(self, ctx):
-        """Limpa as apostas finalizadas (Venceu/Perdeu) da planilha manualmente."""
         msg = await ctx.send("🧹 Iniciando a faxina nas apostas esportivas... Isso pode levar alguns segundos!")
         try:
             apagadas = db.limpar_apostas_finalizadas()

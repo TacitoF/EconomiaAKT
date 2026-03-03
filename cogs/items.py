@@ -75,25 +75,34 @@ class Items(commands.Cog):
                 return await ctx.send("❌ Você não tem o item **Imposto do Gorila** no inventário!")
 
             vitima_id = str(vitima.id)
-            cd = self.bot.cooldown_imposto.get(vitima_id, 0)
-            if time.time() < cd:
+            vitima_db = db.get_user_data(vitima_id)
+            if not vitima_db:
+                return await ctx.send("❌ O alvo não tem conta registrada!")
+
+            # LER DO BANCO E SINCRONIZAR A MEMÓRIA
+            cobrador_id, cargas, cd_imposto = db.get_imposto(vitima_db)
+
+            # Se estiver em Cooldown
+            if cd_imposto > 0 and time.time() < cd_imposto:
                 return await ctx.send(
                     f"🛡️ {vitima.mention} está **imune** ao Imposto do Gorila! "
-                    f"A imunidade expira <t:{int(cd)}:R>."
+                    f"A imunidade expira <t:{int(cd_imposto)}:R>."
                 )
-            if vitima_id in self.bot.impostos and self.bot.impostos[vitima_id].get('cargas', 0) > 0:
-                cargas_restantes = self.bot.impostos[vitima_id]['cargas']
+            
+            # Se já estiver sob imposto de alguém
+            if cargas > 0:
                 return await ctx.send(
                     f"❌ {vitima.mention} já está sob imposto! "
-                    f"Restam **{cargas_restantes} trabalhos** taxados para ele."
+                    f"Restam **{cargas} trabalhos** taxados para ele."
                 )
 
+            # APLICA O IMPOSTO
             inv_list.remove("Imposto do Gorila")
             db.update_value(user['row'], 6, ", ".join(inv_list))
+            
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
-            vitima_db = db.get_user_data(vitima_id)
-            if vitima_db:
-                db.set_imposto(vitima_db['row'], str(ctx.author.id), 5)
+            db.set_imposto(vitima_db['row'], str(ctx.author.id), 5)
+            
             await ctx.send(
                 f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o **Imposto do Gorila** a {vitima.mention}!\n"
                 f"Durante os próximos **5 trabalhos** dele, **25%** do suor vai direto para você!"
@@ -159,7 +168,15 @@ class Items(commands.Cog):
             alvo = ctx.author
 
         alvo_id = str(alvo.id)
-        cargas  = self.bot.escudos_ativos.get(alvo_id, 0)
+        alvo_db = db.get_user_data(alvo_id)
+        
+        # Sincroniza memória com DB
+        cargas_db, _ = db.get_escudo_data(alvo_db) if alvo_db else (0, 0.0)
+        cargas_mem = self.bot.escudos_ativos.get(alvo_id, 0)
+        
+        cargas = max(cargas_db, cargas_mem) # Confia no maior valor
+        if cargas > 0:
+            self.bot.escudos_ativos[alvo_id] = cargas
 
         if cargas > 0:
             if alvo.id == ctx.author.id:
@@ -183,14 +200,11 @@ class Items(commands.Cog):
             inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
 
             if alvo.id == ctx.author.id and "Escudo" in inv_list:
-                if self.bot.escudos_ativos.get(alvo_id, 0) > 0:
-                    return await ctx.send(
-                        f"🛡️ {ctx.author.mention}, você já tem um Escudo **ativo**! "
-                        f"Aguarde ele quebrar antes de ativar outro."
-                    )
                 self.bot.escudos_ativos[alvo_id] = ESCUDO_CARGAS
                 inv_list.remove("Escudo")
                 db.update_value(user['row'], 6, ", ".join(inv_list))
+                db.set_escudo_data(user['row'], ESCUDO_CARGAS)
+                
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention} ativou o seu **Escudo**! "
                     f"Você está protegido contra **{ESCUDO_CARGAS} tentativas de roubo**.\n"
@@ -240,10 +254,9 @@ class Items(commands.Cog):
                     f"Guarde o Energético — use `!trabalhar` direto."
                 )
 
-            # Consome o item e zera o cooldown setando o último trabalho para bem no passado
             inv_list.remove("Energético Símio")
             db.update_value(user['row'], 6, ", ".join(inv_list))
-            db.update_value(user['row'], 5, 0)  # zera o timestamp de último trabalho
+            db.update_value(user['row'], 5, 0)
 
             minutos = int(cd_restante // 60)
             segundos = int(cd_restante % 60)
@@ -296,10 +309,9 @@ class Items(commands.Cog):
                     f"Guarde a Bomba — use `!roubar` direto."
                 )
 
-            # Consome o item e zera o cooldown de roubo
             inv_list.remove("Bomba de Fumaça")
             db.update_value(user['row'], 6, ", ".join(inv_list))
-            db.update_value(user['row'], 7, 0)  # zera o timestamp de último roubo
+            db.update_value(user['row'], 7, 0)
 
             horas   = int(cd_restante // 3600)
             minutos = int((cd_restante % 3600) // 60)
@@ -333,7 +345,7 @@ class Items(commands.Cog):
 
     @commands.command(aliases=["explodir", "bomb"])
     async def c4(self, ctx, vitima: disnake.Member = None):
-        """Usa uma Carga de C4 para destruir o Escudo de um alvo."""
+        """Usa uma Carga de C4 para destruir o Escudo de um alvo e ativa o cooldown de 24h nele."""
         if vitima is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!c4 @usuario`")
         if vitima.id == ctx.author.id:
@@ -354,17 +366,12 @@ class Items(commands.Cog):
                 )
 
             vitima_id = str(vitima.id)
+            alvo_db   = db.get_user_data(vitima_id)
 
-            # Sincroniza escudo da planilha se o bot reiniciou
-            alvo_db = db.get_user_data(vitima_id)
-            if vitima_id not in self.bot.escudos_ativos and alvo_db and len(alvo_db['data']) > 11:
-                dado_escudo = str(alvo_db['data'][11]).strip()
-                if dado_escudo.isdigit() and int(dado_escudo) > 0:
-                    self.bot.escudos_ativos[vitima_id] = int(dado_escudo)
+            cargas_db, _ = db.get_escudo_data(alvo_db) if alvo_db else (0, 0.0)
+            cargas_mem   = self.bot.escudos_ativos.get(vitima_id, 0)
+            cargas_escudo = max(cargas_db, cargas_mem)
 
-            cargas_escudo = self.bot.escudos_ativos.get(vitima_id, 0)
-
-            # Verifica se tem escudo no inventário ainda não ativado
             escudo_no_inv = False
             if alvo_db:
                 inv_alvo = [i.strip() for i in str(alvo_db['data'][5] if len(alvo_db['data']) > 5 else "").split(',') if i.strip()]
@@ -376,17 +383,21 @@ class Items(commands.Cog):
                     f"Use `!escudo {vitima.mention}` para verificar."
                 )
 
-            # Consome o C4
+            # Consome o C4 do ladrão
             inv_list.remove("Carga de C4")
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
-            # Destrói o escudo do alvo (tanto ativo quanto no inventário)
-            if cargas_escudo > 0:
-                del self.bot.escudos_ativos[vitima_id]
-                if alvo_db:
-                    db.update_value(alvo_db['row'], 12, "")  # limpa na planilha
+            agora = time.time()
 
-            if escudo_no_inv and alvo_db:
+            # Se o escudo estava ativo, quebra e inicia cooldown de 24h
+            if cargas_escudo > 0:
+                if vitima_id in self.bot.escudos_ativos:
+                    del self.bot.escudos_ativos[vitima_id]
+                if alvo_db:
+                    db.set_escudo_data(alvo_db['row'], 0, agora)
+
+            # Se o escudo estava só guardado no inventário, apenas remove (não dá cooldown)
+            elif escudo_no_inv and alvo_db:
                 inv_alvo.remove("Escudo")
                 db.update_value(alvo_db['row'], 6, ", ".join(inv_alvo))
 

@@ -18,7 +18,6 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
         if not hasattr(bot, 'escudos_ativos'): bot.escudos_ativos = {}
-        if not hasattr(bot, 'escudo_compras'): bot.escudo_compras = {}
         if not hasattr(bot, 'cooldown_imposto'): bot.cooldown_imposto = {}
 
     async def cog_before_invoke(self, ctx):
@@ -66,17 +65,14 @@ class Economy(commands.Cog):
             min_ganho, max_ganho = salarios.get(cargo, (40, 80))
             ganho = round(random.uniform(min_ganho, max_ganho), 2)
 
-            # --- SINCRONIZAÇÃO COM O BANCO DE DADOS (COLUNA K) ---
-            # Se o bot reiniciou e o usuário não está na memória, ele puxa da planilha!
-            if user_id not in self.bot.impostos and len(user['data']) > 10:
-                dado_imposto = str(user['data'][10]).strip()
-                if "|" in dado_imposto:
-                    cobrador_id, cargas_str = dado_imposto.split("|")
-                    self.bot.impostos[user_id] = {
-                        'cobrador_id': cobrador_id,
-                        'cargas': int(cargas_str)
-                    }
-            # -----------------------------------------------------
+            # --- SINCRONIZAÇÃO DO IMPOSTO (Lê usando as novas funções) ---
+            if user_id not in self.bot.impostos:
+                cobrador_id, cargas, cd_imposto = db.get_imposto(user)
+                if cobrador_id and cargas > 0:
+                    self.bot.impostos[user_id] = {'cobrador_id': cobrador_id, 'cargas': cargas}
+                elif cd_imposto > 0:
+                    self.bot.cooldown_imposto[user_id] = cd_imposto
+            # -------------------------------------------------------------
 
             imposto_msg = ""
             if user_id in self.bot.impostos:
@@ -96,16 +92,15 @@ class Economy(commands.Cog):
 
                 if cargas_restantes <= 0:
                     del self.bot.impostos[user_id]
-                    try:
-                        db.clear_imposto(user['row'])
-                    except AttributeError:
-                        db.update_value(user['row'], 11, "")
-                        
-                    libera_em = int(time.time() + 86400)
+                    libera_em = int(agora + 86400) # Cooldown de 24h exatas a partir de agora
+                    
+                    # Salva o cooldown no banco de dados para sobreviver a reinícios!
+                    db.set_imposto_cooldown(user['row'], libera_em)
                     self.bot.cooldown_imposto[user_id] = libera_em
+                    
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor!\n🕊️ *O Imposto acabou. Você está imune a novos impostos por **24h** (<t:{libera_em}:R>).*"
                 else:
-                    db.update_value(user['row'], 11, f"{imposto_data['cobrador_id']}|{cargas_restantes}")
+                    db.set_imposto(user['row'], imposto_data['cobrador_id'], cargas_restantes)
                     imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
 
             saldo_atual = db.parse_float(user['data'][2])
@@ -236,12 +231,12 @@ class Economy(commands.Cog):
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
-            # --- SINCRONIZAÇÃO DO ESCUDO (COLUNA L) ---
-            if vitima_id not in self.bot.escudos_ativos and len(alvo_data['data']) > 11:
-                dado_escudo = str(alvo_data['data'][11]).strip()
-                if dado_escudo.isdigit() and int(dado_escudo) > 0:
-                    self.bot.escudos_ativos[vitima_id] = int(dado_escudo)
-            # ------------------------------------------
+            # --- SINCRONIZAÇÃO DO ESCUDO ---
+            if vitima_id not in self.bot.escudos_ativos:
+                cargas_db, quebra_ts = db.get_escudo_data(alvo_data)
+                if cargas_db > 0:
+                    self.bot.escudos_ativos[vitima_id] = cargas_db
+            # -------------------------------
 
             cargas_atuais = self.bot.escudos_ativos.get(vitima_id, 0)
 
@@ -251,7 +246,7 @@ class Economy(commands.Cog):
                 self.bot.escudos_ativos[vitima_id] = cargas_atuais
                 inv_alvo.remove("Escudo")
                 db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
-                db.update_value(alvo_data['row'], 12, str(cargas_atuais)) # SALVA NA PLANILHA
+                db.set_escudo_data(alvo_data['row'], cargas_atuais)
 
             escudo_ativo = cargas_atuais > 0
             msg_escudo   = ""
@@ -262,11 +257,12 @@ class Economy(commands.Cog):
 
                 if cargas_atuais > 0:
                     self.bot.escudos_ativos[vitima_id] = cargas_atuais
-                    db.update_value(alvo_data['row'], 12, str(cargas_atuais)) # ATUALIZA PLANILHA
+                    db.set_escudo_data(alvo_data['row'], cargas_atuais)
                     texto_carga = f"*(Cargas restantes: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️)*"
                 else:
                     del self.bot.escudos_ativos[vitima_id]
-                    db.update_value(alvo_data['row'], 12, "") # LIMPA DA PLANILHA QUANDO QUEBRA
+                    # Grava o momento da QUEBRA na planilha para a loja ler depois!
+                    db.set_escudo_data(alvo_data['row'], 0, agora)
                     texto_carga = f"*(O escudo **QUEBROU** com o impacto! {vitima.mention} está desprotegido 💥)*"
 
                 if usou_pe_de_cabra:

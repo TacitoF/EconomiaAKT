@@ -20,9 +20,7 @@ sheet = client.open_by_key(sheet_id).sheet1
 sheet_apostas = client.open_by_key(sheet_id).worksheet("Apostas_Esportivas")
 
 def parse_float(valor, padrao=0.0):
-    """Converte qualquer valor da planilha para float com segurança.
-    Suporta formato brasileiro (1.234.567,89) e simples (1234567.89).
-    """
+    """Converte qualquer valor da planilha para float com segurança."""
     try:
         if valor is None or str(valor).strip() == "":
             return padrao
@@ -63,18 +61,9 @@ def update_value(row, col, value):
 def create_user(user_id, name):
     """
     Colunas:
-      1  - user_id
-      2  - name
-      3  - saldo
-      4  - cargo
-      5  - timestamp_trabalho
-      6  - inventario
-      7  - timestamp_roubo
-      8  - timestamp_investimento_fixo
-      9  - cripto_usos
-      10 - conquistas
-      11 - imposto
-      12 - escudo
+      1  - user_id       | 2  - name         | 3  - saldo      | 4  - cargo
+      5  - trab_ts       | 6  - inventario   | 7  - roubo_ts   | 8  - invest_ts
+      9  - cripto_usos   | 10 - conquistas   | 11 - imposto/CD | 12 - escudo/CD
       13 - cosmeticos
     """
     try:
@@ -83,7 +72,6 @@ def create_user(user_id, name):
         handle_db_error(e)
 
 def wipe_database():
-    """Apaga todas as linhas da planilha de economia preservando o cabeçalho."""
     try:
         rows = sheet.get_all_values()
         if len(rows) > 1:
@@ -93,23 +81,29 @@ def wipe_database():
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  IMPOSTO DO GORILA — persistência (Coluna 11 / data[10])
+#  IMPOSTO DO GORILA — persistência e Cooldown (Coluna 11 / data[10])
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_imposto(user_data: dict) -> tuple:
+    """Retorna: (cobrador_id, cargas_restantes, cooldown_timestamp)"""
     raw = str(user_data['data'][10]) if len(user_data['data']) > 10 else ""
     raw = raw.strip()
     if not raw:
-        return None, 0
+        return None, 0, 0.0
     try:
-        partes      = raw.split("|")
+        partes = raw.split("|")
+        # Se for uma marcação de cooldown: "cd|timestamp"
+        if partes[0] == "cd":
+            return None, 0, float(partes[1])
+        
+        # Se for um imposto ativo: "id_cobrador|cargas"
         cobrador_id = partes[0]
         cargas      = int(partes[1])
         if cargas <= 0:
-            return None, 0
-        return cobrador_id, cargas
+            return None, 0, 0.0
+        return cobrador_id, cargas, 0.0
     except (IndexError, ValueError):
-        return None, 0
+        return None, 0, 0.0
 
 def set_imposto(row: int, cobrador_id: str, cargas: int):
     try:
@@ -118,9 +112,48 @@ def set_imposto(row: int, cobrador_id: str, cargas: int):
     except Exception as e:
         handle_db_error(e)
 
+def set_imposto_cooldown(row: int, timestamp: float):
+    """Grava o momento em que o imposto acabou para calcular a imunidade de 24h."""
+    try:
+        sheet.update_cell(row, 11, f"cd|{timestamp}")
+    except Exception as e:
+        handle_db_error(e)
+
 def clear_imposto(row: int):
     try:
         sheet.update_cell(row, 11, "")
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  ESCUDO — persistência de cargas e Cooldown (Coluna 12 / data[11])
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_escudo_data(user_data: dict) -> tuple:
+    """Retorna: (cargas_restantes, quebra_timestamp)"""
+    raw = str(user_data['data'][11]) if len(user_data['data']) > 11 else ""
+    raw = raw.strip()
+    if not raw:
+        return 0, 0.0
+    try:
+        if "|" in raw:
+            partes = raw.split("|")
+            return int(partes[0]), float(partes[1])
+        else:
+            return int(raw), 0.0
+    except (IndexError, ValueError):
+        return 0, 0.0
+
+def set_escudo_data(row: int, cargas: int, quebra_ts: float = 0.0):
+    try:
+        if cargas > 0:
+            valor = str(cargas)
+        elif cargas == 0 and quebra_ts > 0:
+            valor = f"0|{quebra_ts}"
+        else:
+            valor = ""
+        sheet.update_cell(row, 12, valor)
     except Exception as e:
         handle_db_error(e)
 
@@ -173,7 +206,6 @@ def set_cosmetico(row: int, user_data: dict, chave: str, valor: str):
         cosm.pop(chave, None)
     serializado = "|".join(f"{k}:{v}" for k, v in cosm.items())
     try:
-        # Mudamos para a Coluna 13 (M) para não dar conflito com o Escudo na 12 (L)
         sheet.update_cell(row, 13, serializado)
     except Exception as e:
         handle_db_error(e)
@@ -203,10 +235,8 @@ def obter_apostas_pendentes():
     try:
         rows = sheet_apostas.get_all_values()
         apostas = []
-
         for i, row in enumerate(rows):
             if i == 0: continue
-
             if len(row) >= 6 and row[5] == "Pendente":
                 apostas.append({
                     "row": i + 1,
@@ -233,23 +263,18 @@ def atualizar_status_aposta(row, status):
         handle_db_error(e)
 
 def limpar_apostas_finalizadas() -> int:
-    """Filtra os dados na memória e sobrescreve a planilha uma única vez para evitar erro 429."""
     try:
         all_rows = sheet_apostas.get_all_values()
         if len(all_rows) <= 1:
             return 0
-            
         header = all_rows[0]
         data_rows = all_rows[1:]
         status_finalizados = {"Venceu", "Perdeu", "Reembolso"}
-        
         rows_to_keep = [row for row in data_rows if len(row) < 6 or row[5] not in status_finalizados]
         deleted_count = len(data_rows) - len(rows_to_keep)
-        
         if deleted_count > 0:
             sheet_apostas.clear()
             sheet_apostas.update('A1', [header] + rows_to_keep)
-            
         return deleted_count
     except Exception as e:
         handle_db_error(e)

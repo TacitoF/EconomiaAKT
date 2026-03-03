@@ -22,7 +22,7 @@ CATALOGO_CARGOS = {
 }
 
 CATALOGO_EQUIPAMENTOS = {
-    "item:escudo":      (1000.0, "Escudo",      "🛡️", "Bloqueia 3 roubos · limite 1/dia"),
+    "item:escudo":      (1000.0, "Escudo",      "🛡️", "Bloqueia 3 roubos · limite 1/dia após quebrar"),
     "item:pe_de_cabra": (1200.0, "Pé de Cabra", "🕵️", "Chance de roubo 65% + fura Escudos"),
     "item:seguro":      (950.0,  "Seguro",      "📄", "Reembolsa 60% se você for roubado"),
 }
@@ -166,16 +166,17 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str,
         return (f"🎉 Você evoluiu para o cargo **{emoji} {nome_cargo}**!\n"
                 f"💸 **-{formatar_moeda(preco)} MC** debitados.")
 
-    # ── ESCUDO (limite 1/dia) — 1 batch: C + F ───────────────────────────────
+    # ── ESCUDO (limite 1/dia) — Lógica reescrita para persistência db ────────
     if slug == "item:escudo":
         bot   = inter.bot
         uid   = str(inter.author.id)
         agora = time.time()
 
-        if uid not in bot.escudos_ativos and len(user["data"]) > 11:
-            dado = str(user["data"][11]).strip()
-            if dado.isdigit() and int(dado) > 0:
-                bot.escudos_ativos[uid] = int(dado)
+        # Lê do banco (sincroniza bot e db)
+        cargas_db, quebra_ts = db.get_escudo_data(user)
+        
+        if uid not in bot.escudos_ativos and cargas_db > 0:
+            bot.escudos_ativos[uid] = cargas_db
 
         escudo_ativo = bot.escudos_ativos.get(uid, 0) > 0
         if "Escudo" in inv_list or escudo_ativo:
@@ -183,14 +184,16 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str,
                     f"{'ativo' if escudo_ativo else 'no inventário'}! "
                     f"Só pode ter 1 de cada vez.")
 
-        hist = bot.escudo_compras.get(uid, (0, 0.0))
-        if agora - hist[1] < 86400:
-            return (f"⏳ Você já comprou um **Escudo** hoje! "
-                    f"Pode comprar outro <t:{int(hist[1] + 86400)}:R>.")
+        # Verifica o cooldown de 24h caso ele tenha sido quebrado!
+        if quebra_ts > 0 and (agora - quebra_ts < 86400):
+            libera_em = int(quebra_ts + 86400)
+            return (f"⏳ O seu último **Escudo** foi destruído recentemente! "
+                    f"Você só pode comprar outro <t:{libera_em}:R>.")
 
+        # Se passou na checagem, pode comprar e reseta a quebra no bd (se houver)
         bot.escudo_compras[uid] = (1, agora)
         inv_list.append("Escudo")
-        _batch_compra(row, saldo - preco, inv_list)
+        _batch_compra(row, saldo - preco, inv_list, col_extra="L", val_extra="")
         return (f"🛡️ **Escudo** comprado e guardado no inventário!\n"
                 f"💸 **-{formatar_moeda(preco)} MC** debitados.\n"
                 f"Use `!escudo` para ativar quando precisar.")
