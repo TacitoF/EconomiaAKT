@@ -38,6 +38,10 @@ def formatar_moeda(valor: float) -> str:
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  MODALS E SELECTS (INTERAÇÕES)
+# ══════════════════════════════════════════════════════════════════════════════
+
 class ModalValorAposta(disnake.ui.Modal):
     def __init__(self, match_id, palpite, odd_fixa, time_casa, time_fora, liga, horario, api_url=None, api_headers=None):
         self.match_id    = match_id
@@ -66,14 +70,17 @@ class ModalValorAposta(disnake.ui.Modal):
         super().__init__(title=f"💰 {time_casa} vs {time_fora}", components=components)
 
     async def callback(self, inter: disnake.ModalInteraction):
-        await inter.response.defer(ephemeral=True)
+        # Validação simples antes de processar no banco
         valor_raw = inter.text_values.get("valor_aposta", "").strip().replace(",", ".")
         try:
             valor = round(float(valor_raw), 2)
         except ValueError:
-            return await inter.edit_original_response(content="❌ Valor inválido!")
+            return await inter.response.send_message("❌ Valor inválido!", ephemeral=True)
         if valor <= 0:
-            return await inter.edit_original_response(content="❌ O valor deve ser maior que zero!")
+            return await inter.response.send_message("❌ O valor deve ser maior que zero!", ephemeral=True)
+
+        # DEFER EFÊMERO: Garante que a mensagem de bilhete registrado será invisível (só para o usuário)
+        await inter.response.defer(ephemeral=True)
 
         # ── 1. Verificar status do jogo na API ──────────────
         try:
@@ -142,6 +149,7 @@ class ModalValorAposta(disnake.ui.Modal):
         
         EMOJI  = {"casa": "🏠", "empate": "🤝", "fora": "✈️"}
         LABELS = {"casa": self.time_casa, "empate": "Empate", "fora": self.time_fora}
+        
         embed = disnake.Embed(title="🎟️ BILHETE REGISTRADO!", color=disnake.Color.gold())
         embed.set_author(name=inter.author.display_name, icon_url=inter.author.display_avatar.url)
         embed.add_field(name="⚽ Partida",  value=f"**{self.time_casa}** vs **{self.time_fora}**", inline=False)
@@ -152,7 +160,9 @@ class ModalValorAposta(disnake.ui.Modal):
         embed.add_field(name="💸 Apostado", value=f"`{formatar_moeda(valor)} MC`",           inline=True)
         embed.add_field(name="💰 Retorno",  value=f"`{formatar_moeda(ganho_potencial)} MC` (Odd: {self.odd_fixa}x)", inline=True)
         embed.set_footer(text="Pagamento automático ao fim da partida • !pule para gerenciar seus bilhetes")
-        await inter.edit_original_response(content=None, embed=embed)
+        
+        # Edita a resposta original (mantendo ela efêmera) com o bilhete
+        await inter.edit_original_response(content=None, embed=embed, view=None)
 
 
 class ViewPalpiteJogo(disnake.ui.View):
@@ -189,8 +199,8 @@ class ViewPalpiteJogo(disnake.ui.View):
     @disnake.ui.button(style=disnake.ButtonStyle.danger, custom_id="btn_fora")
     async def btn_fora(self, button, inter):   await self._abrir_modal(inter, "fora")
 
-    @disnake.ui.button(label="↩️ Voltar", style=disnake.ButtonStyle.secondary, row=1)
-    async def btn_voltar(self, button, inter):
+    @disnake.ui.button(label="❌ Fechar", style=disnake.ButtonStyle.secondary, row=1)
+    async def btn_fechar(self, button, inter):
         await inter.response.defer()
         await inter.delete_original_response()
 
@@ -238,7 +248,9 @@ class SelectJogo(disnake.ui.StringSelect):
         embed.set_footer(text=f"ID: {mid}  •  Limite de 1 aposta por jogo.")
         
         view = ViewPalpiteJogo(int(mid), time_casa, time_fora, liga_nome, horario, odds, api_url=self.api_url, api_headers=self.api_headers)
-        await inter.edit_original_response(embed=embed, view=view)
+        
+        # A mensagem com os botões é enviada de forma efêmera (só o usuário vê)
+        await inter.followup.send(embed=embed, view=view, ephemeral=True)
 
 
 class ViewSelectJogos(disnake.ui.View):
@@ -247,13 +259,12 @@ class ViewSelectJogos(disnake.ui.View):
         self.add_item(SelectJogo(jogos, bot, api_url=api_url, api_headers=api_headers))
 
 
-# ── MENU DE CANCELAMENTO DE APOSTAS ──────────────────────────────────────────
 class SelectCancelarAposta(disnake.ui.StringSelect):
     def __init__(self, apostas, info_jogos):
         self.apostas_map = {str(a["row"]): a for a in apostas}
         options = []
         
-        for aposta in apostas[:25]: # Limite do Discord
+        for aposta in apostas[:25]:
             row_str = str(aposta["row"])
             m_id = str(aposta["match_id"])
             info = info_jogos.get(m_id, {})
@@ -261,7 +272,6 @@ class SelectCancelarAposta(disnake.ui.StringSelect):
             tc = info.get("home", aposta.get("time_casa", "Casa"))
             tf = info.get("away", aposta.get("time_fora", "Fora"))
             
-            # Bloqueia cancelar se o jogo já começou ou acabou
             game_started = False
             if info and "utcDate" in info:
                 try:
@@ -303,7 +313,6 @@ class SelectCancelarAposta(disnake.ui.StringSelect):
         if not user_db:
             return await inter.edit_original_response(content="❌ Conta não encontrada.")
             
-        # Puxa tudo de novo para ter certeza de que ninguém já cancelou/liquidou
         all_pendentes = db.obter_apostas_pendentes()
         aposta_atualizada = next((a for a in all_pendentes if str(a["row"]) == row_str), None)
         
@@ -314,11 +323,12 @@ class SelectCancelarAposta(disnake.ui.StringSelect):
         valor_reembolso = aposta_atualizada["valor"]
         novo_saldo = round(saldo_atual + valor_reembolso, 2)
         
-        # Devolve o dinheiro e bota status "Reembolso"
         db.update_value(user_db["row"], 3, novo_saldo)
         db.atualizar_status_aposta(aposta_atualizada["row"], "Reembolso")
         
-        await inter.edit_original_response(content=f"✅ Aposta cancelada com sucesso! **{formatar_moeda(valor_reembolso)} MC** foram devolvidos ao seu saldo.\n*Use o comando `!pule` novamente para atualizar a sua lista visual.*")
+        await inter.edit_original_response(
+            content=f"✅ Aposta cancelada com sucesso! **{formatar_moeda(valor_reembolso)} MC** foram devolvidos ao seu saldo.\n*Use o comando `!pule` novamente para atualizar a sua lista visual.*"
+        )
 
 
 class ViewGerenciarBilhetes(disnake.ui.View):
@@ -342,6 +352,10 @@ class ViewGerenciarBilhetes(disnake.ui.View):
             pass
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  COG PRINCIPAL
+# ══════════════════════════════════════════════════════════════════════════════
+
 class Esportes(commands.Cog):
     def __init__(self, bot):
         self.bot         = bot
@@ -361,13 +375,11 @@ class Esportes(commands.Cog):
             await ctx.send(f"⚽ {ctx.author.mention}, as apostas esportivas ficam no {mencao}!", delete_after=10)
             raise commands.CommandError("Canal incorreto.")
 
-    @commands.command(aliases=["jogos_hoje"])
-    async def futebol(self, ctx):
+    async def _build_futebol_menu(self):
         agora = datetime.now()
         if self.cache_embed and self.cache_jogos and self.cache_time and (agora - self.cache_time) < timedelta(minutes=30):
-            return await ctx.send(embed=self.cache_embed, view=ViewSelectJogos(self.cache_jogos, self.bot, api_url=self.api_url, api_headers=self.headers))
+            return self.cache_embed, ViewSelectJogos(self.cache_jogos, self.bot, api_url=self.api_url, api_headers=self.headers), None
         
-        await ctx.send("🔎 Consultando o calendário... Aguarde!", delete_after=5)
         try:
             async with aiohttp.ClientSession() as session:
                 params = {
@@ -377,12 +389,11 @@ class Esportes(commands.Cog):
                     "dateTo": (agora + timedelta(days=3)).strftime("%Y-%m-%d"),
                 }
                 async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params) as resp:
-                    print(f"🔄 API Futebol restantes: {resp.headers.get('X-Requests-Available-Minute')}")
                     data = await resp.json()
                     if "errorCode" in data or resp.status != 200:
-                        return await ctx.send("❌ Não consegui acessar os jogos no momento.")
+                        return None, None, "❌ Não consegui acessar os jogos no momento."
                     if not data.get("matches"):
-                        return await ctx.send("⚽ Nenhum jogo das grandes ligas nos próximos 3 dias.")
+                        return None, None, "⚽ Nenhum jogo das grandes ligas nos próximos 3 dias."
                     
                     jogos = data["matches"][:25]
                     embed = disnake.Embed(
@@ -406,28 +417,36 @@ class Esportes(commands.Cog):
                     self.cache_embed = embed
                     self.cache_jogos = jogos
                     self.cache_time  = agora
-                    await ctx.send(embed=embed, view=ViewSelectJogos(jogos, self.bot, api_url=self.api_url, api_headers=self.headers))
-        except commands.CommandError:
-            raise
+                    return embed, ViewSelectJogos(jogos, self.bot, api_url=self.api_url, api_headers=self.headers), None
         except Exception as e:
-            print(f"❌ Erro no !futebol: {e}")
-            await ctx.send("⚠️ Ocorreu um erro ao buscar os jogos. Tente novamente!")
+            print(f"❌ Erro ao buscar jogos: {e}")
+            return None, None, "⚠️ Ocorreu um erro ao buscar os jogos. Tente novamente!"
+
+    @commands.command(aliases=["jogos_hoje"])
+    async def futebol(self, ctx):
+        # A mensagem do menu principal de jogos aparece PUBLICAMENTE no canal
+        msg = await ctx.send("🔎 Consultando o calendário... Aguarde!")
+        embed, view_jogos, err_msg = await self._build_futebol_menu()
+        
+        if err_msg:
+            return await msg.edit(content=err_msg)
+            
+        await msg.edit(content=None, embed=embed, view=view_jogos)
 
     @commands.command(aliases=["cupom", "cupoms", "cupons"])
     async def pule(self, ctx):
-        try:
-            await ctx.message.delete()
-        except Exception:
-            pass
+        # O painel de bilhetes com opção de cancelamento aparece PUBLICAMENTE no canal
         msg = await ctx.send(f"🔎 {ctx.author.mention}, buscando seus bilhetes...")
-        try:
-            pendentes = db.obter_apostas_pendentes()
-            minhas    = [a for a in pendentes if str(a["user_id"]) == str(ctx.author.id)]
-            if not minhas:
-                return await msg.edit(content=f"⚽ {ctx.author.mention}, nenhum bilhete pendente!")
+        
+        pendentes = db.obter_apostas_pendentes()
+        minhas    = [a for a in pendentes if str(a["user_id"]) == str(ctx.author.id)]
+        
+        if not minhas:
+            return await msg.edit(content=f"⚽ {ctx.author.mention}, você não tem nenhum bilhete pendente!")
             
-            agora = datetime.utcnow()
-            info_jogos = {}
+        agora = datetime.utcnow()
+        info_jogos = {}
+        try:
             async with aiohttp.ClientSession() as session:
                 params = {
                     "dateFrom": (agora - timedelta(days=3)).strftime("%Y-%m-%d"),
@@ -445,43 +464,39 @@ class Esportes(commands.Cog):
                                 "utcDate": match["utcDate"],
                                 "status": match.get("status", "")
                             }
-            
-            total_ap = sum(a["valor"] for a in minhas)
-            total_rt = sum(round(a["valor"] * a["odd"], 2) for a in minhas)
-            embed = disnake.Embed(
-                title="🎟️ SEUS BILHETES PENDENTES",
-                description=f"**{len(minhas)} bilhete(s)**\n💸 Apostado: `{formatar_moeda(total_ap)} MC`  •  💰 Retorno potencial: `{formatar_moeda(total_rt)} MC`",
-                color=disnake.Color.orange()
-            )
-            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-            EMOJI_P = {"casa": "🏠", "fora": "✈️", "empate": "🤝"}
-            
-            for aposta in minhas[:15]:
-                ganho = round(aposta["valor"] * aposta["odd"], 2)
-                m_id  = str(aposta["match_id"])
-                info  = info_jogos.get(m_id, {})
-                tc    = info.get("home", "Time da Casa")
-                tf    = info.get("away", "Time Visitante")
-                p     = aposta["palpite"].lower()
-                embed.add_field(
-                    name  = f"⚽ {tc} vs {tf}",
-                    value = (
-                        f"{LIGAS_EMOJI.get(info.get('liga_code',''),'🏆')} {info.get('liga','—')}  •  ⏰ {info.get('hora','—')}\n"
-                        f"{EMOJI_P.get(p,'🎯')} **Palpite:** {tc if p=='casa' else (tf if p=='fora' else 'Empate')}\n"
-                        f"💸 `{formatar_moeda(aposta['valor'])} MC` → 💰 `{formatar_moeda(ganho)} MC` (Odd: {aposta['odd']}x)  🆔 `{m_id}`"
-                    ),
-                    inline=False
-                )
-            embed.set_footer(text="O Menu abaixo permite cancelar apostas em jogos que ainda NÃO começaram.")
-            
-            view = ViewGerenciarBilhetes(ctx.author.id, minhas, info_jogos)
-            await msg.edit(content=None, embed=embed, view=view)
-            
-        except commands.CommandError:
-            raise
         except Exception as e:
-            print(f"❌ Erro no !pule de {ctx.author}: {e}")
-            await msg.edit(content=f"⚠️ {ctx.author.mention}, erro ao buscar bilhetes.")
+            print(f"❌ Erro no !pule: {e}")
+        
+        total_ap = sum(a["valor"] for a in minhas)
+        total_rt = sum(round(a["valor"] * a["odd"], 2) for a in minhas)
+        embed = disnake.Embed(
+            title="🎟️ SEUS BILHETES PENDENTES",
+            description=f"**{len(minhas)} bilhete(s)**\n💸 Apostado: `{formatar_moeda(total_ap)} MC`  •  💰 Retorno potencial: `{formatar_moeda(total_rt)} MC`",
+            color=disnake.Color.orange()
+        )
+        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+        EMOJI_P = {"casa": "🏠", "fora": "✈️", "empate": "🤝"}
+        
+        for aposta in minhas[:15]:
+            ganho = round(aposta["valor"] * aposta["odd"], 2)
+            m_id  = str(aposta["match_id"])
+            info  = info_jogos.get(m_id, {})
+            tc    = info.get("home", "Time da Casa")
+            tf    = info.get("away", "Time Visitante")
+            p     = aposta["palpite"].lower()
+            embed.add_field(
+                name  = f"⚽ {tc} vs {tf}",
+                value = (
+                    f"{LIGAS_EMOJI.get(info.get('liga_code',''),'🏆')} {info.get('liga','—')}  •  ⏰ {info.get('hora','—')}\n"
+                    f"{EMOJI_P.get(p,'🎯')} **Palpite:** {tc if p=='casa' else (tf if p=='fora' else 'Empate')}\n"
+                    f"💸 `{formatar_moeda(aposta['valor'])} MC` → 💰 `{formatar_moeda(ganho)} MC` (Odd: {aposta['odd']}x)  🆔 `{m_id}`"
+                ),
+                inline=False
+            )
+        embed.set_footer(text="O Menu abaixo permite cancelar apostas em jogos que ainda NÃO começaram.")
+        
+        view = ViewGerenciarBilhetes(ctx.author.id, minhas, info_jogos)
+        await msg.edit(content=None, embed=embed, view=view)
 
     @tasks.loop(minutes=15, reconnect=True)
     async def checar_resultados(self):

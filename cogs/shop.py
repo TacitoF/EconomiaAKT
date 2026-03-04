@@ -27,12 +27,6 @@ CATALOGO_EQUIPAMENTOS = {
     "item:seguro":      (950.0,  "Seguro",      "📄", "Reembolsa 60% se você for roubado"),
 }
 
-CATALOGO_LOOTBOXES = {
-    "item:caixote":  (800.0,   "Caixote de Madeira", "🪵", "Itens comuns + cosméticos básicos (15%)"),
-    "item:bau":      (3500.0,  "Baú do Caçador",     "🪙", "Itens táticos + cosméticos raros (30%)"),
-    "item:reliquia": (15000.0, "Relíquia Ancestral", "🏺", "Tesouros + cosméticos épicos/lendários (55%)"),
-}
-
 CATALOGO_SABOTAGEM = {
     "item:casca":      (300.0,  "Casca de Banana",  "🍌", "Atrasa o próximo trabalho do alvo"),
     "item:imposto":    (1500.0, "Imposto do Gorila", "🦍", "Rouba 25% dos próximos 5 trabalhos"),
@@ -69,15 +63,9 @@ NOME_ITEM = {
     "item:escudo":      "Escudo",
     "item:pe_de_cabra": "Pé de Cabra",
     "item:seguro":      "Seguro",
-    "item:caixote":     "Caixote de Madeira",
-    "item:bau":         "Baú do Caçador",
-    "item:reliquia":    "Relíquia Ancestral",
     "item:casca":       "Casca de Banana",
     "item:imposto":     "Imposto do Gorila",
     "item:troca_nick":  "Troca de Nick",
-    "item:c4":          "Carga de C4",
-    "item:energetico":  "Energético Símio",
-    "item:fumaca":      "Bomba de Fumaça",
 }
 
 NOME_CARGO = {
@@ -91,21 +79,15 @@ NOME_CARGO = {
 }
 
 DICA_ITEM = {
-    "item:caixote":     "Use `!abrir caixote` para abrir.",
-    "item:bau":         "Use `!abrir baú` para abrir.",
-    "item:reliquia":    "Use `!abrir relíquia` para abrir.",
     "item:casca":       "Use `!casca @alvo` para jogar.",
     "item:imposto":     "Use `!taxar @alvo` para cobrar.",
     "item:troca_nick":  "Use `!apelidar @alvo <nick>` para renomear.",
-    "item:c4":          "Use `!c4 @alvo` para destruir o Escudo dele.",
-    "item:energetico":  "Use `!energetico` para zerar o CD de trabalho.",
-    "item:fumaca":      "Use `!fumaca` para zerar o CD de roubo.",
     "item:pe_de_cabra": "Equipado automaticamente no `!roubar` — chance 65%.",
     "item:seguro":      "Ativado automaticamente se você for roubado.",
 }
 
-# Slugs que suportam compra em múltiplos
-SLUGS_MULTIPLOS = set(CATALOGO_LOOTBOXES) | set(CATALOGO_SABOTAGEM)
+# Slugs que suportam compra em múltiplos (apenas sabotagem agora, sem lootboxes)
+SLUGS_MULTIPLOS = set(CATALOGO_SABOTAGEM)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -219,7 +201,7 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str,
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  SELETOR DE QUANTIDADE (lootboxes e sabotagem)
+#  SELETOR DE QUANTIDADE (sabotagem)
 # ══════════════════════════════════════════════════════════════════════════════
 
 class _BotaoQtd(disnake.ui.Button):
@@ -290,7 +272,6 @@ class SelectItem(disnake.ui.StringSelect):
 
         await inter.response.defer(ephemeral=True)
 
-        # Itens que suportam múltiplos → mostra botões de quantidade (sem Sheets)
         if slug in SLUGS_MULTIPLOS and self.saldo >= preco:
             view_qtd = ViewQuantidade(self.author_id, slug, self.itens, self.is_cosm, self.saldo)
             await inter.edit_original_response(
@@ -302,7 +283,6 @@ class SelectItem(disnake.ui.StringSelect):
                 view=view_qtd
             )
         else:
-            # Compra direta — 1 get_user_data + 1 batch_update
             msg = await processar_compra(inter, slug, self.itens, self.is_cosm)
             await inter.edit_original_response(content=msg)
 
@@ -318,7 +298,6 @@ class SelectCategoria(disnake.ui.StringSelect):
         options = [
             disnake.SelectOption(label="📈 Progressão (Cargos)",   value="cargos",       emoji="📈", description="Evolua o cargo e aumente o salário"),
             disnake.SelectOption(label="🛡️ Equipamentos e Defesa",  value="equipamentos", emoji="🛡️", description="Escudo, Pé de Cabra, Seguro"),
-            disnake.SelectOption(label="📦 Lootboxes",              value="lootboxes",    emoji="📦", description="Caixas com itens e cosméticos aleatórios"),
             disnake.SelectOption(label="😈 Sabotagem",              value="sabotagem",    emoji="😈", description="Itens para usar contra outros jogadores"),
             disnake.SelectOption(label="✨ Cosméticos — Comuns",    value="cosm_comum",   emoji="⚪", description="Cores e títulos básicos (500–1.500 MC)"),
             disnake.SelectOption(label="✨ Cosméticos — Raros",     value="cosm_raro",    emoji="🔵", description="Cores, molduras e títulos (2.000–2.500 MC)"),
@@ -333,7 +312,7 @@ class SelectCategoria(disnake.ui.StringSelect):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  BUILDER DE CATEGORIAS (puro — zero chamadas ao Sheets)
+#  BUILDER DE CATEGORIAS
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _build_categoria(author_id, saldo, cat):
@@ -355,17 +334,6 @@ def _build_categoria(author_id, saldo, cat):
         for slug, (preco, label, emoji, desc) in itens.items():
             ok = "✅" if saldo >= preco else "❌"
             embed.add_field(name=f"{emoji} {label}", value=f"`{formatar_moeda(preco)} MC` {ok}\n*{desc}*", inline=True)
-        is_cosm = False
-
-    elif cat == "lootboxes":
-        itens = CATALOGO_LOOTBOXES
-        embed = disnake.Embed(title="📦 LOOTBOXES — CONTRABANDO",
-                              description=f"💰 Saldo: **{formatar_moeda(saldo)} MC**\nSelecione a caixa desejada:",
-                              color=disnake.Color.dark_orange())
-        for slug, (preco, label, emoji, desc) in itens.items():
-            ok = "✅" if saldo >= preco else "❌"
-            embed.add_field(name=f"{emoji} {label}", value=f"`{formatar_moeda(preco)} MC` {ok}\n*{desc}*", inline=False)
-        embed.set_footer(text="!abrir caixote / !abrir baú / !abrir relíquia para usar")
         is_cosm = False
 
     elif cat == "sabotagem":
@@ -413,8 +381,7 @@ def _embed_inicio(saldo: float) -> disnake.Embed:
     )
     embed.add_field(name="📈 Progressão",   value="Cargos que aumentam salário e limite de apostas",           inline=False)
     embed.add_field(name="🛡️ Equipamentos", value="Escudo · Pé de Cabra · Seguro",                             inline=False)
-    embed.add_field(name="📦 Lootboxes",    value="Caixas com itens e cosméticos aleatórios",                   inline=False)
-    embed.add_field(name="😈 Sabotagem",    value="Casca · Imposto · C4 · Energético · Fumaça · Nick",          inline=False)
+    embed.add_field(name="😈 Sabotagem",    value="Casca · Imposto · Troca de Nick",                           inline=False)
     embed.add_field(name="✨ Cosméticos",   value="Cores, molduras e títulos · ⚪ Comuns · 🔵 Raros · 🟣 Épicos", inline=False)
     embed.set_footer(text="Selecione uma categoria para ver itens e preços  ·  !visuais para gerenciar cosméticos")
     return embed
@@ -468,10 +435,6 @@ class ViewLoja(disnake.ui.View):
 
 
 class ViewPortalLoja(disnake.ui.View):
-    """
-    Portal público que abre a loja.
-    Recebe o saldo já lido no !loja — elimina o get_user_data extra ao clicar.
-    """
     def __init__(self, author_id: int, saldo: float):
         super().__init__(timeout=60)
         self.author_id = author_id
@@ -483,7 +446,6 @@ class ViewPortalLoja(disnake.ui.View):
             return await inter.response.send_message(
                 "❌ Esta loja não é sua! Digite `!loja` para abrir a sua.", ephemeral=True
             )
-        # Saldo já em memória — zero chamadas ao Sheets aqui
         embed = _embed_inicio(self.saldo)
         view  = ViewLoja(inter.author.id, self.saldo)
         await inter.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -502,10 +464,6 @@ class ViewPortalLoja(disnake.ui.View):
         except Exception:
             pass
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  COG
-# ══════════════════════════════════════════════════════════════════════════════
 
 class Shop(commands.Cog):
     def __init__(self, bot):
@@ -526,7 +484,6 @@ class Shop(commands.Cog):
             if not user:
                 return await ctx.send("❌ Use `!trabalhar` primeiro para se registrar!")
 
-            # Lê saldo aqui e passa para o portal — sem releitura ao clicar no botão
             saldo = db.parse_float(user["data"][2])
             view  = ViewPortalLoja(ctx.author.id, saldo)
 
