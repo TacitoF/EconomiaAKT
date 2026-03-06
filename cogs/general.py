@@ -25,61 +25,58 @@ class General(commands.Cog):
         )
 
         embed.add_field(name="💵 BÁSICO E ECONOMIA", inline=False, value=(
-            "💰 **`!trabalhar`**\n"
-            "└ *Trabalhe a cada 1h para lucrar e ter chance de achar caixas.*\n"
-            "👤 **`!perfil [@user]`** ─ *Verifica saldo, cargo, inventário e cosméticos.*\n"
-            "🏆 **`!rank`** ─ *Top 10* | 🏅 **`!conquistas`** ─ *Emblemas.*\n"
+            "💰 **`!trabalhar`** ─ *Trabalhe a cada 1h para lucrar e achar caixas.*\n"
+            "👤 **`!perfil [@user]`** ─ *Cartão público com cargo, estilo e conquistas.*\n"
+            "└ *No próprio perfil: botão para ver sua conta privada.*\n"
+            "└ *No perfil alheio: botão para comprar o dossiê completo (500 MC).*\n"
+            "🔒 **`!conta`** ─ *Seu saldo, cooldowns e inventário (some em 60s).*\n"
+            "🏆 **`!rank`** ─ *Top 10 da selva* | 🏅 **`!conquistas`** ─ *Emblemas.*\n"
             "💵 **`!salarios`** ─ *Tabela de ganhos e limites de aposta por cargo.*\n"
             "💸 **`!pagar @user <valor>`** ─ *Transfira MC para outro macaco.*"
         ))
 
         embed.add_field(name="📦 MERCADO E CONTRABANDO", inline=False, value=(
-            "🛒 **`!loja`**\n"
-            "└ *Acesse o mercado negro para comprar cargos, itens e cosméticos.*\n"
-            "🔓 **`!abrir <caixa>`**\n"
-            "└ *Abra Caixote, Baú ou Relíquia do seu inventário.*\n"
-            "📊 **`!caixas`** ─ *Veja as porcentagens e recompensas de cada lootbox.*\n"
-            "✈️ **Airdrops:** *Caem do nada no chat. O 1º a `SAQUEAR` leva a caixa!*"
+            "🛒 **`!loja`** ─ *Mercado negro: cargos, itens, lootboxes e cosméticos.*\n"
+            "🔓 **`!abrir <caixote/baú/relíquia>`** ─ *Abra caixas do inventário.*\n"
+            "📊 **`!caixas`** ─ *Porcentagens e recompensas de cada lootbox.*\n"
+            "✈️ **Airdrops** ─ *Caem do nada no chat. O 1º a `SAQUEAR` leva a caixa!*"
         ))
 
         embed.add_field(name="😈 ROUBOS E SABOTAGEM", inline=False, value=(
-            "🥷 **`!roubar @user`**\n"
-            "└ *Tente assaltar alguém para roubar MC (cooldown 2h).*\n"
+            "🥷 **`!roubar @user`** ─ *Assalte alguém para roubar MC (cooldown 2h).*\n"
             "🛡️ **`!escudo`** ─ *Checa defesa* | 🧨 **`!c4 @user`** ─ *Destrói escudo.*\n"
             "🚨 **`!recompensa @user <valor>`** ─ *Coloca a cabeça do alvo a prêmio.*\n"
-            "📜 **`!recompensas`** ─ *Mostra o mural de procurados da selva.*\n"
+            "📜 **`!recompensas`** ─ *Mural de procurados da selva.*\n"
             "🍌 **`!casca @user`** ─ *Atrasa o trabalho do alvo.*\n"
             "🦍 **`!taxar @user`** ─ *Rouba 25% do próximo trabalho.*\n"
-            "🪄 **`!apelidar @user <nick>`** ─ *Altera o nome de alguém no server.*\n"
+            "🪄 **`!apelidar @user <nick>`** ─ *Altera o apelido de alguém.*\n"
             "🧪 **`!energetico`** ─ *Zera CD trabalho* | 💨 **`!fumaca`** ─ *Zera CD roubo.*"
         ))
 
         embed.add_field(name="🏦 BANCO E INVESTIMENTO", inline=False, value=(
-            "🏛️ **`!investir fixo <valor>`**\n"
-            "└ *Retorno 100% seguro de +10% na hora (Limite 5.000 MC/dia).*\n"
-            "📈 **`!investir cripto <valor>`**\n"
-            "└ *Alto risco! Retorno entre -25% e +20% após 30 segundos.*"
+            "🏛️ **`!investir fixo <valor>`** ─ *+10% garantido na hora (limite 5.000 MC/dia).*\n"
+            "📈 **`!investir cripto <valor>`** ─ *Alto risco! -25% a +20% após 30s.*"
+        ))
+
+        embed.add_field(name="🃏 TRUCO (neste canal)", inline=False, value=(
+            "🎴 **`!truco 1v1 <aposta>`** ─ *Desafio individual. Ex: `!truco 1v1 500`*\n"
+            "🎴 **`!truco 2v2 <aposta>`** ─ *Duplas. Ex: `!truco 2v2 1000` (por jogador)*\n"
+            "└ *Truco Paulista completo: mão de 11, truco/seis/nove/doze, aposta livre.*\n"
+            "└ *Adversários clicam **Entrar** no lobby → cartas enviadas em privado.*"
         ))
 
         embed.add_field(name="🎲 JOGOS E APOSTAS (Canal #🎰・akbet)", inline=False, value=(
-            "🎰 **Solo:** `!crash` | `!cassino` | `!minas`| `!corrida` | `!bicho`\n"
+            "🎰 **Solo:** `!crash` | `!cassino` | `!minas` | `!corrida` | `!bicho`\n"
             "⚔️ **1x1:** `!duelo` | `!cipo` | `!bang` | `!briga` | `!carta` | `!explorar`\n"
-            "🎮 **Multiplayer:** `!21` | `!roleta` | `!mentira` | `!torneio` | `!coco` \n"
+            "🎮 **Multiplayer:** `!21` | `!roleta` | `!mentira` | `!torneio` | `!coco`\n"
             "⚽ **Futebol:** `!futebol` *(apostar)* | `!pule` *(ver bilhetes e cancelar)*\n"
-            "└ *Use `!jogos` lá no canal de apostas para ver como cada um funciona!*"
+            "└ *Use `!jogos` no canal de apostas para ver como cada um funciona!*"
         ))
 
         embed.add_field(name="✨ COSMÉTICOS E PERFIL", inline=False, value=(
-            "🎨 **`!visuais`**\n"
-            "└ *Abre o painel privado para equipar/remover seus cosméticos.*\n"
-            "💬 **`!bio <texto>`** ─ *Define uma frase no perfil (máx. 60 chars). Grátis!*\n"
-            "└ *Use `!bio` sem texto para remover.*\n\n"
-            "**Raridades disponíveis:**\n"
-            "⚫ **Comuns** ─ Cores e títulos básicos\n"
-            "🟣 **Raros** ─ Cores, molduras e títulos táticos\n"
-            "🟡 **Épicos** ─ Cores vibrantes, molduras e títulos premium\n"
-            "🌟 **Lendários** ─ *Moldura Estrela Cadente, Lenda da Selva — só nas Relíquias!*\n\n"
-            "└ *Cosmético duplicado vira MC de consolação automaticamente.*"
+            "🎨 **`!visuais`** ─ *Painel privado para equipar/remover cosméticos.*\n"
+            "💬 **`!bio <texto>`** ─ *Frase no perfil (máx. 60 chars). `!bio` para remover.*\n\n"
+            "**Raridades:** ⚫ Comuns · 🔵 Raros · 🟣 Épicos · 🌟 Lendários *(só nas Relíquias)*"
         ))
 
         embed.add_field(name="🤐 CASTIGOS DE VOZ", inline=False, value=(
