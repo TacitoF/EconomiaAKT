@@ -208,7 +208,10 @@ class ViewPortalPerfil(disnake.ui.View):
         if not user:
             return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
         embed = self.cog._build_embed_conta(inter.author, user, str(self.author_id))
-        await inter.response.send_message(embed=embed, ephemeral=True)
+        try:
+            await inter.response.send_message(embed=embed, ephemeral=True)
+        except disnake.InteractionResponded:
+            await inter.followup.send(embed=embed, ephemeral=True)
 
     @disnake.ui.button(label="❌ Fechar", style=disnake.ButtonStyle.secondary)
     async def btn_fechar(self, button, inter: disnake.MessageInteraction):
@@ -690,23 +693,17 @@ class Profiles(commands.Cog):
             await ctx.send(f"⏳ Não faça spam, macaco! Tente novamente em {error.retry_after:.1f}s.", delete_after=5)
 
     # ── !conta ────────────────────────────────────────────────────────────────
+    # Prefixo não suporta ephemeral — redireciona para o botão privado do !perfil
 
     @commands.command(aliases=["carteira", "saldo", "stats"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def conta(self, ctx):
-        try:
-            user = db.get_user_data(str(ctx.author.id))
-            if not user:
-                return await ctx.send("❌ Você não tem conta! Use `!trabalhar` primeiro.")
-            try: await ctx.message.delete()
-            except: pass
-            embed = self._build_embed_conta(ctx.author, user, str(ctx.author.id))
-            await ctx.send(embed=embed, delete_after=60)
-        except commands.CommandError:
-            raise
-        except Exception as e:
-            print(f"❌ Erro no !conta: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, erro ao carregar conta. Tente novamente!")
+        try: await ctx.message.delete()
+        except: pass
+        await ctx.send(
+            f"🔒 {ctx.author.mention}, seus dados são privados! Use `!perfil` e clique em 🔒 Ver minha conta — só você verá.",
+            delete_after=10
+        )
 
     @conta.error
     async def conta_error(self, ctx, error):
