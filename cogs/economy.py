@@ -65,14 +65,56 @@ class Economy(commands.Cog):
             min_ganho, max_ganho = salarios.get(cargo, (40, 80))
             ganho = round(random.uniform(min_ganho, max_ganho), 2)
 
-            # --- SINCRONIZAÇÃO DO IMPOSTO (Lê usando as novas funções) ---
+            # ── MASCOTE (Buff de Trabalho) ──
+            mascote_msg = ""
+            tipo_mascote, fome_mascote = db.get_mascote(user)
+            if tipo_mascote and fome_mascote > 0:
+                gasto_fome = 10
+                buff_ativado = False
+                
+                if tipo_mascote == "capivara":
+                    ganho = round(ganho * 1.10, 2)
+                    mascote_msg = "🦦 **Capivara:** +10% de lucro extra!\n"
+                    buff_ativado = True
+                elif tipo_mascote == "preguica":
+                    ganho = round(ganho * 1.15, 2)
+                    gasto_fome = 15
+                    mascote_msg = "🦥 **Bicho-Preguiça:** +15% de lucro extra!\n"
+                    buff_ativado = True
+                elif tipo_mascote == "sapo_boi":
+                    ganho = round(ganho * 1.08, 2)
+                    if random.random() <= 0.20:
+                        gasto_fome = 0
+                        mascote_msg = "🐸 **Sapo-Boi:** +8% de lucro *(Não gastou energia!)*\n"
+                    else:
+                        mascote_msg = "🐸 **Sapo-Boi:** +8% de lucro extra!\n"
+                    buff_ativado = True
+                elif tipo_mascote == "lobo_guara":
+                    ganho = round(ganho * 1.10, 2)
+                    mascote_msg = "🐺 **Lobo-Guará:** +10% de lucro extra!\n"
+                    buff_ativado = True
+                elif tipo_mascote == "onca":
+                    ganho = round(ganho * 1.15, 2)
+                    mascote_msg = "🐆 **Onça Pintada:** +15% de lucro extra!\n"
+                    buff_ativado = True
+                elif tipo_mascote == "gorila_prateado":
+                    ganho = round(ganho * 1.25, 2)
+                    mascote_msg = "🦍 **Gorila Costas-Prateadas:** +25% de lucro extra!\n"
+                    buff_ativado = True
+
+                if buff_ativado:
+                    nova_fome = max(0, fome_mascote - gasto_fome)
+                    db.set_mascote(user['row'], tipo_mascote, nova_fome)
+                    if nova_fome == 0: mascote_msg += "💤 *O seu mascote dormiu de fome! Compre Ração na Loja.*"
+                    elif gasto_fome > 0: mascote_msg += f"🍗 *Fome do mascote caiu para {nova_fome}%*"
+
+            # ── IMPOSTOS ──
             if user_id not in self.bot.impostos:
                 cobrador_id, cargas, cd_imposto = db.get_imposto(user)
                 if cobrador_id and cargas > 0:
                     self.bot.impostos[user_id] = {'cobrador_id': cobrador_id, 'cargas': cargas}
                 elif cd_imposto > 0:
                     self.bot.cooldown_imposto[user_id] = cd_imposto
-            # -------------------------------------------------------------
 
             imposto_msg = ""
             if user_id in self.bot.impostos:
@@ -81,8 +123,7 @@ class Economy(commands.Cog):
                 ganho = round(ganho - taxa, 2)
 
                 cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
-                if cobrador_db:
-                    db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
+                if cobrador_db: db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
 
                 cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
                 nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
@@ -92,43 +133,45 @@ class Economy(commands.Cog):
 
                 if cargas_restantes <= 0:
                     del self.bot.impostos[user_id]
-                    libera_em = int(agora + 86400) # Cooldown de 24h exatas a partir de agora
-                    
-                    # Salva o cooldown no banco de dados para sobreviver a reinícios!
+                    libera_em = int(agora + 86400)
                     db.set_imposto_cooldown(user['row'], libera_em)
                     self.bot.cooldown_imposto[user_id] = libera_em
-                    
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor!\n🕊️ *O Imposto acabou. Você está imune a novos impostos por **24h** (<t:{libera_em}:R>).*"
+                    imposto_msg = f"🦍 **IMPOSTO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC**!\n🕊️ *Você está imune a impostos por **24h**.*"
                 else:
                     db.set_imposto(user['row'], imposto_data['cobrador_id'], cargas_restantes)
-                    imposto_msg = f"\n🦍 **IMPOSTO ATIVO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC** do seu suor! *(Restam {cargas_restantes} trabalhos taxados)*"
+                    imposto_msg = f"🦍 **IMPOSTO:** {nome_c} confiscou **{formatar_moeda(taxa)} MC**! *(Restam {cargas_restantes} trabalhos taxados)*"
 
             saldo_atual = db.parse_float(user['data'][2])
             novo_saldo  = round(saldo_atual + ganho, 2)
             db.update_value(user['row'], 3, novo_saldo)
             db.update_value(user['row'], 5, agora)
 
-            drop_msg    = ""
-            chance_drop = random.random()
+            # ── DROPS INDEPENDENTES (Lootbox e Gaiolas) ──
+            drop_msg = ""
+            chance_caixa = random.random()
             caixa_ganha = None
             emoji_caixa = ""
 
-            if chance_drop <= 0.001:
-                caixa_ganha = "Relíquia Ancestral"
-                emoji_caixa = "🏺"
-            elif chance_drop <= 0.010:
-                caixa_ganha = "Baú do Caçador"
-                emoji_caixa = "🪙"
-            elif chance_drop <= 0.050:
-                caixa_ganha = "Caixote de Madeira"
-                emoji_caixa = "🪵"
+            if chance_caixa <= 0.001:   caixa_ganha, emoji_caixa = "Relíquia Ancestral", "🏺"
+            elif chance_caixa <= 0.010: caixa_ganha, emoji_caixa = "Baú do Caçador", "🪙"
+            elif chance_caixa <= 0.050: caixa_ganha, emoji_caixa = "Caixote de Madeira", "🪵"
 
-            if caixa_ganha:
+            chance_gaiola = random.random()
+            gaiola_ganha = chance_gaiola <= 0.015 # 1.5% de chance da gaiola
+
+            if caixa_ganha or gaiola_ganha:
                 inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
-                inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
-                inv_list.append(caixa_ganha)
+                inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != "nenhum"]
+                
+                if caixa_ganha:
+                    inv_list.append(caixa_ganha)
+                    drop_msg += f"{emoji_caixa} **SORTE GRANDE!** Você encontrou um(a) **{caixa_ganha}**!\n"
+                    
+                if gaiola_ganha:
+                    inv_list.append("Gaiola Misteriosa")
+                    drop_msg += f"🐾 **MISTÉRIO!** Você escutou um barulho e resgatou uma **Gaiola Misteriosa**!\n*(Use !abrir gaiola para descobrir o animal)*\n"
+                    
                 db.update_value(user['row'], 6, ", ".join(inv_list))
-                drop_msg = f"\n{emoji_caixa} **SORTE GRANDE!** Você escavou e encontrou um(a) **{caixa_ganha}**!\n*(Use `!abrir {caixa_ganha.split()[0]}` para ver o que tem dentro)*"
 
             tracker = self.bot.tracker_emblemas['trabalhos']
             if user_id not in tracker: tracker[user_id] = []
@@ -142,7 +185,7 @@ class Economy(commands.Cog):
                 if "proletario" not in lista_conquistas:
                     lista_conquistas.append("proletario")
                     db.update_value(user['row'], 10, ", ".join(lista_conquistas))
-                    conquista_msg = "\n🏆 Desbloqueou a conquista **Proletário Padrão**!"
+                    conquista_msg = "🏆 Desbloqueou a conquista **Proletário Padrão**!"
 
             proximo_cd = int(agora + 3600)
             CARGO_CORES = {
@@ -151,19 +194,16 @@ class Economy(commands.Cog):
                 "Gorila": 0x7B2D8B, "Ancestral": 0xA01020, "Rei Símio": 0xFFD700,
             }
             embed = disnake.Embed(color=CARGO_CORES.get(cargo, 0x2E8B57))
-            embed.set_author(
-                name     = f"{ctx.author.display_name} foi trabalhar",
-                icon_url = ctx.author.display_avatar.url,
-            )
+            embed.set_author(name=f"{ctx.author.display_name} foi trabalhar", icon_url=ctx.author.display_avatar.url)
             embed.add_field(name="💰 Ganho",         value=f"**+{formatar_moeda(ganho)} MC**",    inline=True)
             embed.add_field(name="🏦 Saldo atual",   value=f"`{formatar_moeda(novo_saldo)} MC`",  inline=True)
             embed.add_field(name="⏰ Próximo turno", value=f"<t:{proximo_cd}:R>",                 inline=True)
-            if imposto_msg:
-                embed.add_field(name="🦍 Imposto do Gorila", value=imposto_msg.strip().lstrip("\n"), inline=False)
-            if drop_msg:
-                embed.add_field(name="🎁 Loot Encontrado", value=drop_msg.strip().lstrip("\n"), inline=False)
-            if conquista_msg:
-                embed.add_field(name="🏆 Conquista!", value=conquista_msg.strip().lstrip("\n"), inline=False)
+            
+            if mascote_msg:   embed.add_field(name="🐾 Ajuda do Mascote", value=mascote_msg, inline=False)
+            if imposto_msg:   embed.add_field(name="🦍 Imposto do Gorila", value=imposto_msg, inline=False)
+            if drop_msg:      embed.add_field(name="🎁 Loot Encontrado", value=drop_msg, inline=False)
+            if conquista_msg: embed.add_field(name="🏆 Conquista!", value=conquista_msg, inline=False)
+            
             embed.set_footer(text=f"💼 Cargo: {cargo}  ·  !perfil para ver o seu progresso")
             await ctx.send(embed=embed)
 
@@ -231,16 +271,72 @@ class Economy(commands.Cog):
                 inv_ladrao.remove("Pé de Cabra")
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
-            # --- SINCRONIZAÇÃO DO ESCUDO ---
+            # ── MASCOTES (Buff de Combate/Roubo e Defesa) ──
+            msg_mascotes = ""
+            multa_multiplicador = 1.0
+            roubo_bonus = 0.0
+            
+            tipo_pet_vitima, fome_vitima = db.get_mascote(alvo_data)
+            if tipo_pet_vitima and fome_vitima > 0:
+                if tipo_pet_vitima == "papagaio":
+                    chance_sucesso -= 15
+                    msg_mascotes += f"🦜 **Papagaio** de {vitima.display_name} avisou do perigo (-15% chance)\n"
+                elif tipo_pet_vitima == "jiboia":
+                    chance_sucesso -= 10
+                    multa_multiplicador = 1.5
+                    msg_mascotes += f"🐍 **Jiboia** de {vitima.display_name} se enrolou em você (-10% chance, multa aumentada)\n"
+                elif tipo_pet_vitima == "gamba":
+                    chance_sucesso -= 20
+                    msg_mascotes += f"🦔 **Gambá** de {vitima.display_name} soltou um gás tóxico (-20% chance)\n"
+                    db.set_mascote(alvo_data['row'], tipo_pet_vitima, max(0, fome_vitima - 20))
+                elif tipo_pet_vitima == "onca":
+                    chance_sucesso -= 15
+                    msg_mascotes += f"🐆 **Onça Pintada** de {vitima.display_name} rosnou ferozmente (-15% chance)\n"
+                elif tipo_pet_vitima == "dragao_komodo":
+                    chance_sucesso -= 25
+                    msg_mascotes += f"🐉 **Dragão-de-Komodo** de {vitima.display_name} defendeu a área (-25% chance)\n"
+
+            tipo_pet_ladrao, fome_ladrao = db.get_mascote(ladrao_data)
+            if tipo_pet_ladrao and fome_ladrao > 0:
+                buff_ativado = False
+                if tipo_pet_ladrao == "macaco_prego":
+                    chance_sucesso += 15
+                    msg_mascotes += f"🐒 **Macaco-Prego** furtou por você (+15% chance)\n"
+                    buff_ativado = True
+                elif tipo_pet_ladrao == "harpia":
+                    chance_sucesso += 10
+                    roubo_bonus = 0.05
+                    msg_mascotes += f"🦅 **Harpia** atacou em rasante (+10% chance, bônus no roubo)\n"
+                    buff_ativado = True
+                elif tipo_pet_ladrao == "lobo_guara":
+                    chance_sucesso += 10
+                    msg_mascotes += f"🐺 **Lobo-Guará** distraiu a vítima (+10% chance)\n"
+                    buff_ativado = True
+                elif tipo_pet_ladrao == "onca":
+                    chance_sucesso += 15
+                    msg_mascotes += f"🐆 **Onça Pintada** emboscou com você (+15% chance)\n"
+                    buff_ativado = True
+                elif tipo_pet_ladrao == "gorila_prateado":
+                    chance_sucesso += 20
+                    msg_mascotes += f"🦍 **Gorila Costas-Prateadas** usou a força (+20% chance)\n"
+                    buff_ativado = True
+                elif tipo_pet_ladrao == "dragao_komodo":
+                    chance_sucesso += 25
+                    msg_mascotes += f"🐉 **Dragão-de-Komodo** imobilizou o alvo (+25% chance)\n"
+                    buff_ativado = True
+                    
+                if buff_ativado:
+                    nova_fome_l = max(0, fome_ladrao - 15)
+                    db.set_mascote(ladrao_data['row'], tipo_pet_ladrao, nova_fome_l)
+
+            # ── ESCUDO ──
             if vitima_id not in self.bot.escudos_ativos:
                 cargas_db, quebra_ts = db.get_escudo_data(alvo_data)
                 if cargas_db > 0:
                     self.bot.escudos_ativos[vitima_id] = cargas_db
-            # -------------------------------
 
             cargas_atuais = self.bot.escudos_ativos.get(vitima_id, 0)
 
-            # ativa o escudo do inventário na primeira tentativa de roubo
             if cargas_atuais == 0 and "Escudo" in inv_alvo:
                 cargas_atuais = ESCUDO_CARGAS
                 self.bot.escudos_ativos[vitima_id] = cargas_atuais
@@ -261,12 +357,11 @@ class Economy(commands.Cog):
                     texto_carga = f"*(Cargas restantes: **{cargas_atuais}/{ESCUDO_CARGAS}** 🛡️)*"
                 else:
                     del self.bot.escudos_ativos[vitima_id]
-                    # Grava o momento da QUEBRA na planilha para a loja ler depois!
                     db.set_escudo_data(alvo_data['row'], 0, agora)
                     texto_carga = f"*(O escudo **QUEBROU** com o impacto! {vitima.mention} está desprotegido 💥)*"
 
                 if usou_pe_de_cabra:
-                    msg_escudo = f"\n🛠️ O seu **Pé de Cabra** arrombou a porta e danificou o **Escudo** de {vitima.mention}! {texto_carga}"
+                    msg_escudo = f"🛠️ O seu **Pé de Cabra** arrombou a porta e danificou o **Escudo** de {vitima.mention}! {texto_carga}"
                 else:
                     conquistas_ladrao = str(ladrao_data['data'][9]) if len(ladrao_data['data']) > 9 else ""
                     lista_c = [c.strip() for c in conquistas_ladrao.split(',') if c.strip()]
@@ -274,23 +369,20 @@ class Economy(commands.Cog):
                         lista_c.append("casca_grossa")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_c))
 
-                    emb_b = disnake.Embed(
-                        title       = "🛡️ Ataque bloqueado!",
-                        description = f"{vitima.mention} defendeu-se com um **Escudo** e o seu ataque foi repelido.",
-                        color       = 0x3498DB,
-                    )
+                    emb_b = disnake.Embed(title="🛡️ Ataque bloqueado!", description=f"{vitima.mention} defendeu-se com um **Escudo** e o seu ataque foi repelido.", color=0x3498DB)
                     emb_b.add_field(name="🛡️ Status do Escudo", value=texto_carga, inline=False)
+                    if msg_mascotes: emb_b.add_field(name="🐾 Interferência", value=msg_mascotes.strip(), inline=False)
                     return await ctx.send(embed=emb_b)
 
             if random.randint(1, 100) <= chance_sucesso:
                 if saldo_alvo < 500:
-                    pct      = random.uniform(0.01, 0.05)
-                    is_pobre = True
+                    pct, is_pobre = random.uniform(0.01, 0.05), True
                 else:
-                    pct      = random.uniform(0.05, 0.10)
-                    is_pobre = False
+                    pct, is_pobre = random.uniform(0.05, 0.10), False
 
-                valor_roubado = min(round(saldo_alvo * pct, 2), 12000.0)
+                pct += roubo_bonus
+                limite_saque = 15000.0 if roubo_bonus > 0 else 12000.0
+                valor_roubado = min(round(saldo_alvo * pct, 2), limite_saque)
 
                 if valor_roubado < 5:
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco.")
@@ -303,7 +395,7 @@ class Economy(commands.Cog):
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado + recuperado, 2))
                     inv_alvo.remove("Seguro")
                     db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
-                    seguro_msg = f"\n📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{formatar_moeda(recuperado)} MC**!"
+                    seguro_msg = f"📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{formatar_moeda(recuperado)} MC**!"
                 else:
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado, 2))
 
@@ -326,51 +418,42 @@ class Economy(commands.Cog):
                     if "mestre_sombras" not in lista_conquistas:
                         lista_conquistas.append("mestre_sombras")
                         db.update_value(ladrao_data['row'], 10, ", ".join(lista_conquistas))
-                        conquista_msg = "\n🏆 Desbloqueou a conquista **Mestre das Sombras**!"
+                        conquista_msg = "🏆 Desbloqueou a conquista **Mestre das Sombras**!"
 
                 titulo_s = "🥷 SUCESSO (com pena)..." if is_pobre else "🥷 SUCESSO!"
-                desc_s   = (
-                    f"{vitima.mention} estava quase na miséria — só levou umas moedinhas."
-                    if is_pobre else
-                    f"Você saqueou **{vitima.mention}** e sumiu na escuridão."
-                )
+                desc_s   = f"{vitima.mention} estava quase na miséria." if is_pobre else f"Você saqueou **{vitima.mention}** e sumiu na escuridão."
                 emb_s = disnake.Embed(title=titulo_s, description=desc_s, color=0x2ECC71)
                 emb_s.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
                 emb_s.add_field(name="💸 Roubado",    value=f"**+{formatar_moeda(valor_roubado)} MC**", inline=True)
                 emb_s.add_field(name="🎯 Alvo",       value=vitima.mention,                             inline=True)
-                if usou_pe_de_cabra:
-                    emb_s.add_field(name="🕵️ Ferramenta", value="Usou **Pé de Cabra**", inline=True)
-                if bounty_ganho > 0:
-                    emb_s.add_field(name="🎯 Recompensa", value=f"**+{formatar_moeda(bounty_ganho)} MC**", inline=True)
-                if seguro_msg:
-                    emb_s.add_field(name="📄 Seguro", value=seguro_msg.strip().lstrip("\n"), inline=False)
-                if msg_escudo:
-                    emb_s.add_field(name="🛡️ Escudo", value=msg_escudo.strip().lstrip("\n"), inline=False)
-                if conquista_msg:
-                    emb_s.add_field(name="🏆 Conquista!", value=conquista_msg.strip().lstrip("\n"), inline=False)
-                emb_s.set_footer(text=f"🚨 Recompensa de {formatar_moeda(bounty_adicionado)} MC colocada na sua cabeça automaticamente")
+                
+                if usou_pe_de_cabra: emb_s.add_field(name="🕵️ Ferramenta", value="Usou **Pé de Cabra**", inline=True)
+                if bounty_ganho > 0: emb_s.add_field(name="🎯 Recompensa", value=f"**+{formatar_moeda(bounty_ganho)} MC**", inline=True)
+                if msg_mascotes:     emb_s.add_field(name="🐾 Ajuda Animal", value=msg_mascotes.strip(), inline=False)
+                if seguro_msg:       emb_s.add_field(name="📄 Seguro", value=seguro_msg, inline=False)
+                if msg_escudo:       emb_s.add_field(name="🛡️ Escudo", value=msg_escudo, inline=False)
+                if conquista_msg:    emb_s.add_field(name="🏆 Conquista!", value=conquista_msg, inline=False)
+                
+                emb_s.set_footer(text=f"🚨 Recompensa de {formatar_moeda(bounty_adicionado)} MC colocada na sua cabeça")
                 await ctx.send(embed=emb_s)
 
             else:
                 pct_multa = random.uniform(0.05, 0.10)
-                multa = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
+                multa_base = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
+                multa = round(multa_base * multa_multiplicador, 2)
+                
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
                 db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
                 self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
 
-                emb_f = disnake.Embed(
-                    title       = "👮 PRESO! O roubo falhou.",
-                    description = f"Você foi pego e pagou uma multa de **{formatar_moeda(multa)} MC** a {vitima.mention}.",
-                    color       = 0xE74C3C,
-                )
+                emb_f = disnake.Embed(title="👮 PRESO! O roubo falhou.", description=f"Você foi pego e pagou uma multa de **{formatar_moeda(multa)} MC** a {vitima.mention}.", color=0xE74C3C)
                 emb_f.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
                 emb_f.add_field(name="💸 Multa paga",     value=f"**-{formatar_moeda(multa)} MC**", inline=True)
                 emb_f.add_field(name="👮 Denunciado por", value=vitima.mention,                     inline=True)
-                if usou_pe_de_cabra:
-                    emb_f.add_field(name="🕵️ Pé de Cabra", value="Usou mas deu azar", inline=True)
-                if msg_escudo:
-                    emb_f.add_field(name="🛡️ Escudo", value=msg_escudo.strip().lstrip("\n"), inline=False)
+                if usou_pe_de_cabra: emb_f.add_field(name="🕵️ Pé de Cabra", value="Usou mas deu azar", inline=True)
+                if msg_mascotes:     emb_f.add_field(name="🐾 Interferência", value=msg_mascotes.strip(), inline=False)
+                if msg_escudo:       emb_f.add_field(name="🛡️ Escudo", value=msg_escudo, inline=False)
                 await ctx.send(embed=emb_f)
 
         except commands.CommandError:
@@ -387,19 +470,15 @@ class Economy(commands.Cog):
     @commands.command(aliases=["pix", "transferir", "pay"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def pagar(self, ctx, recebedor: disnake.Member = None, valor: float = None):
-        if recebedor is None or valor is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!pagar @usuario <valor>`")
-        if recebedor.id == ctx.author.id:
-            return await ctx.send(f"🐒 {ctx.author.mention}, não pode fazer Pix para si mesmo!")
-        if valor <= 0:
-            return await ctx.send("❌ O valor deve ser maior que zero!")
+        if recebedor is None or valor is None: return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!pagar @usuario <valor>`")
+        if recebedor.id == ctx.author.id: return await ctx.send(f"🐒 {ctx.author.mention}, não pode fazer Pix para si mesmo!")
+        if valor <= 0: return await ctx.send("❌ O valor deve ser maior que zero!")
         valor = round(valor, 2)
 
         try:
             pag       = db.get_user_data(str(ctx.author.id))
             saldo_pag = db.parse_float(pag['data'][2]) if pag else 0.0
-            if not pag or saldo_pag < valor:
-                return await ctx.send("❌ Saldo insuficiente!")
+            if not pag or saldo_pag < valor: return await ctx.send("❌ Saldo insuficiente!")
 
             rec = db.get_user_data(str(recebedor.id))
             if not rec:
@@ -409,11 +488,7 @@ class Economy(commands.Cog):
             db.update_value(pag['row'], 3, round(saldo_pag - valor, 2))
             db.update_value(rec['row'], 3, round(db.parse_float(rec['data'][2]) + valor, 2))
 
-            embed = disnake.Embed(
-                title="💸 PIX REALIZADO!",
-                description=f"**{ctx.author.mention}** enviou **{formatar_moeda(valor)} MC** para **{recebedor.mention}**.",
-                color=disnake.Color.green()
-            )
+            embed = disnake.Embed(title="💸 PIX REALIZADO!", description=f"**{ctx.author.mention}** enviou **{formatar_moeda(valor)} MC** para **{recebedor.mention}**.", color=disnake.Color.green())
             await ctx.send(embed=embed)
 
             if valor == 0.01:
@@ -422,7 +497,6 @@ class Economy(commands.Cog):
                 if "pix_irritante" not in lista_conquistas:
                     lista_conquistas.append("pix_irritante")
                     db.update_value(pag['row'], 10, ", ".join(lista_conquistas))
-
         except commands.CommandError:
             raise
         except Exception as e:

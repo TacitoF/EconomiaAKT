@@ -25,7 +25,7 @@ class General(commands.Cog):
         )
 
         embed.add_field(name="💵 BÁSICO E ECONOMIA", inline=False, value=(
-            "💰 **`!trabalhar`** ─ *Trabalhe a cada 1h para lucrar e achar caixas.*\n"
+            "💰 **`!trabalhar`** ─ *Trabalhe a cada 1h para lucrar e achar caixas e gaiolas.*\n"
             "👤 **`!perfil [@user]`** ─ *Cartão público com cargo, estilo e conquistas.*\n"
             "└ *No próprio perfil: botão para ver sua conta privada.*\n"
             "└ *No perfil alheio: botão para comprar o dossiê completo (500 MC).*\n"
@@ -37,9 +37,16 @@ class General(commands.Cog):
 
         embed.add_field(name="📦 MERCADO E CONTRABANDO", inline=False, value=(
             "🛒 **`!loja`** ─ *Mercado negro: cargos, itens, lootboxes e cosméticos.*\n"
-            "🔓 **`!abrir <caixote/baú/relíquia>`** ─ *Abra caixas do inventário.*\n"
-            "📊 **`!caixas`** ─ *Porcentagens e recompensas de cada lootbox.*\n"
+            "🔓 **`!abrir <caixote/baú/relíquia/gaiola>`** ─ *Abra caixas do inventário.*\n"
+            "📊 **`!caixas`** ─ *Porcentagens e recompensas de cada caixa.*\n"
             "✈️ **Airdrops** ─ *Caem do nada no chat. O 1º a `SAQUEAR` leva a caixa!*"
+        ))
+        
+        embed.add_field(name="🐾 MASCOTES", inline=False, value=(
+            "🐶 **`!mascote [@user]`** ─ *Vê o mascote atual e o nível de fome dele.*\n"
+            "📖 **`!mascotes`** ─ *Abre a Enciclopédia com todos os animais e poderes!*\n"
+            "🍗 **`!alimentar`** ─ *Usa uma **Ração Símia** do inventário para encher a fome.*\n"
+            "🚪 **`!libertar`** ─ *Liberta o seu mascote na selva para poder abrir outra gaiola.*"
         ))
 
         embed.add_field(name="😈 ROUBOS E SABOTAGEM", inline=False, value=(
@@ -56,13 +63,6 @@ class General(commands.Cog):
         embed.add_field(name="🏦 BANCO E INVESTIMENTO", inline=False, value=(
             "🏛️ **`!investir fixo <valor>`** ─ *+10% garantido na hora (limite 5.000 MC/dia).*\n"
             "📈 **`!investir cripto <valor>`** ─ *Alto risco! -25% a +20% após 30s.*"
-        ))
-
-        embed.add_field(name="🃏 TRUCO (neste canal)", inline=False, value=(
-            "🎴 **`!truco 1v1 <aposta>`** ─ *Desafio individual. Ex: `!truco 1v1 500`*\n"
-            "🎴 **`!truco 2v2 <aposta>`** ─ *Duplas. Ex: `!truco 2v2 1000` (por jogador)*\n"
-            "└ *Truco Paulista completo: mão de 11, truco/seis/nove/doze, aposta livre.*\n"
-            "└ *Adversários clicam **Entrar** no lobby → cartas enviadas em privado.*"
         ))
 
         embed.add_field(name="🎲 JOGOS E APOSTAS (Canal #🎰・akbet)", inline=False, value=(
@@ -99,7 +99,6 @@ class General(commands.Cog):
             color=disnake.Color.gold()
         )
 
-        # Atualizado para incluir os Limites Máximos de Aposta
         tabela = [
             ("🐒 Lêmure",      "40 – 80 MC",        "400 MC",         "—",            "1.200 MC"),
             ("🐵 Macaquinho",  "130 – 230 MC",      "1.500 MC",       "1.200 MC",     "5.500 MC"),

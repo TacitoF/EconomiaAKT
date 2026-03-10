@@ -8,7 +8,6 @@ def formatar_moeda(valor: float) -> str:
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # Cosméticos por raridade que podem sair nas lootboxes
-# Formato: (slug_inventário, label_exibição, emoji)
 COSM_COMUNS = [
     ("cor:verde",   "🟢 Cor Verde Selva",      "🟢"),
     ("cor:azul",    "🔵 Cor Azul Tropical",    "🔵"),
@@ -65,9 +64,7 @@ class Lootbox(commands.Cog):
             raise commands.CommandError("Canal incorreto.")
 
     def sortear_comum(self):
-        """
-        Caixote de Madeira — 100% focado em itens e cosméticos comuns.
-        """
+        """Caixote de Madeira — 100% focado em itens e cosméticos comuns."""
         chance = random.randint(1, 100)
         if chance <= 30:
             return {"tipo": "item", "nome": "Casca de Banana",  "emoji": "🍌"}
@@ -76,13 +73,10 @@ class Lootbox(commands.Cog):
         elif chance <= 85:
             return {"tipo": "item", "nome": "Bomba de Fumaça",  "emoji": "💨"}
         else:
-            # 15% de cosmético comum
             return _sortear_cosmetico(COSM_COMUNS)
 
     def sortear_raro(self):
-        """
-        Baú do Caçador — itens táticos + cosméticos raros.
-        """
+        """Baú do Caçador — itens táticos + cosméticos raros."""
         chance = random.randint(1, 100)
         if chance <= 25:
             return {"tipo": "item", "nome": "Escudo",       "emoji": "🛡️"}
@@ -93,16 +87,12 @@ class Lootbox(commands.Cog):
         elif chance <= 80:
             return {"tipo": "item", "nome": "Seguro",       "emoji": "📄"}
         elif chance <= 95:
-            # 15% cosmético raro
             return _sortear_cosmetico(COSM_RAROS)
         else:
-            # 5% cosmético comum (consolação)
             return _sortear_cosmetico(COSM_COMUNS)
 
     def sortear_lendario(self):
-        """
-        Relíquia Ancestral — itens de alto impacto + cosméticos épicos/lendários.
-        """
+        """Relíquia Ancestral — itens de alto impacto + cosméticos épicos/lendários."""
         chance = random.randint(1, 100)
         if chance <= 20:
             return {"tipo": "item", "nome": "Imposto do Gorila", "emoji": "🦍"}
@@ -113,19 +103,53 @@ class Lootbox(commands.Cog):
         elif chance <= 65:
             return {"tipo": "item", "nome": "Seguro",            "emoji": "📄"}
         elif chance <= 85:
-            # 20% cosmético épico
             return _sortear_cosmetico(COSM_EPICOS)
         elif chance <= 100:
-            # 15% cosmético lendário
             return _sortear_cosmetico(COSM_LENDARIOS)
         return _sortear_cosmetico(COSM_EPICOS)
+
+    def sortear_gaiola(self):
+        """Gaiola Misteriosa — Sorteia um dos 12 mascotes baseados na raridade."""
+        chance = random.randint(1, 100)
+        
+        # 🟢 COMUNS (60%)
+        if chance <= 20:
+            return {"tipo": "mascote", "slug": "capivara", "nome": "Capivara", "emoji": "🦦", "raridade": "Comum", "cor": disnake.Color.green()}
+        elif chance <= 40:
+            return {"tipo": "mascote", "slug": "preguica", "nome": "Bicho-Preguiça", "emoji": "🦥", "raridade": "Comum", "cor": disnake.Color.green()}
+        elif chance <= 60:
+            return {"tipo": "mascote", "slug": "sapo_boi", "nome": "Sapo-Boi", "emoji": "🐸", "raridade": "Comum", "cor": disnake.Color.green()}
+        
+        # 🔵 RAROS (25%)
+        elif chance <= 69:
+            return {"tipo": "mascote", "slug": "papagaio", "nome": "Papagaio", "emoji": "🦜", "raridade": "Raro", "cor": disnake.Color.blue()}
+        elif chance <= 77:
+            return {"tipo": "mascote", "slug": "jiboia", "nome": "Jiboia", "emoji": "🐍", "raridade": "Raro", "cor": disnake.Color.blue()}
+        elif chance <= 85:
+            return {"tipo": "mascote", "slug": "gamba", "nome": "Gambá", "emoji": "🦔", "raridade": "Raro", "cor": disnake.Color.blue()}
+        
+        # 🟣 ÉPICOS (10%)
+        elif chance <= 89:
+            return {"tipo": "mascote", "slug": "macaco_prego", "nome": "Macaco-Prego", "emoji": "🐒", "raridade": "Épico", "cor": disnake.Color.purple()}
+        elif chance <= 92:
+            return {"tipo": "mascote", "slug": "harpia", "nome": "Harpia", "emoji": "🦅", "raridade": "Épico", "cor": disnake.Color.purple()}
+        elif chance <= 95:
+            return {"tipo": "mascote", "slug": "lobo_guara", "nome": "Lobo-Guará", "emoji": "🐺", "raridade": "Épico", "cor": disnake.Color.purple()}
+        
+        # 🌟 LENDÁRIOS (5%)
+        elif chance <= 97:
+            return {"tipo": "mascote", "slug": "onca", "nome": "Onça Pintada", "emoji": "🐆", "raridade": "Lendária", "cor": disnake.Color.gold()}
+        elif chance <= 99:
+            return {"tipo": "mascote", "slug": "gorila_prateado", "nome": "Gorila Costas-Prateadas", "emoji": "🦍", "raridade": "Lendária", "cor": disnake.Color.gold()}
+        else:
+            return {"tipo": "mascote", "slug": "dragao_komodo", "nome": "Dragão-de-Komodo", "emoji": "🐉", "raridade": "Lendária", "cor": disnake.Color.gold()}
 
     @commands.command(aliases=["lootboxes", "chances"])
     async def caixas(self, ctx):
         """Exibe o conteúdo e as porcentagens de drop de cada caixa."""
         embed = disnake.Embed(
             title="🎁 LOOTBOXES DA SELVA",
-            description="As caixas contêm equipamentos, itens de sabotagem e cosméticos para o seu perfil.\nVeja as probabilidades de drop abaixo:",
+            description="As caixas contêm equipamentos, itens de sabotagem, cosméticos e até mascotes vivos!\nVeja as probabilidades de drop abaixo:",
             color=disnake.Color.dark_theme()
         )
         
@@ -163,17 +187,28 @@ class Lootbox(commands.Cog):
                 "`20%` 🟣 Cosmético Épico\n"
                 "`15%` 🌟 Cosmético Lendário"
             ),
+            inline=True
+        )
+
+        embed.add_field(
+            name="🐾 Gaiola Misteriosa (Drop do !trabalhar)",
+            value=(
+                "**🟢 Comuns (60%)**\n🦦 Capivara · 🦥 Preguiça · 🐸 Sapo-Boi\n"
+                "**🔵 Raros (25%)**\n🦜 Papagaio · 🐍 Jiboia · 🦔 Gambá\n"
+                "**🟣 Épicos (10%)**\n🐒 Macaco-Prego · 🦅 Harpia · 🐺 Lobo-Guará\n"
+                "**🌟 Lendários (5%)**\n🐆 Onça · 🦍 Gorila · 🐉 Dragão-de-Komodo"
+            ),
             inline=False
         )
         
-        embed.set_footer(text="🌟 Cosméticos Lendários só podem ser encontrados nas Relíquias Ancestrais!")
+        embed.set_footer(text="Gaiolas Misteriosas só podem ser encontradas como drop raro no comando !trabalhar.")
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["abrir"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def abrir_caixa(self, ctx, *, nome_caixa: str = None):
         if nome_caixa is None:
-            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!abrir <Caixote / Baú / Relíquia>`")
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!abrir <Caixote / Baú / Relíquia / Gaiola>`")
 
         nome_caixa = nome_caixa.lower()
         if "caixote" in nome_caixa or "madeira" in nome_caixa:
@@ -191,13 +226,27 @@ class Lootbox(commands.Cog):
             emoji_caixa  = "🏺"
             sorteio_func = self.sortear_lendario
             cor_final    = disnake.Color.gold()
+        elif "gaiola" in nome_caixa or "misteriosa" in nome_caixa:
+            caixa_alvo   = "Gaiola Misteriosa"
+            emoji_caixa  = "🐾"
+            sorteio_func = self.sortear_gaiola
+            cor_final    = disnake.Color.dark_grey() 
         else:
-            return await ctx.send("❌ Caixa inválida! Escolha entre: `Caixote`, `Baú` ou `Relíquia`.")
+            return await ctx.send("❌ Caixa inválida! Escolha entre: `Caixote`, `Baú`, `Relíquia` ou `Gaiola`.")
 
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
                 return await ctx.send("❌ Você não tem conta!")
+
+            # ── PROTEÇÃO DA GAIOLA ──
+            if caixa_alvo == "Gaiola Misteriosa":
+                tipo_atual, _ = db.get_mascote(user)
+                if tipo_atual:
+                    return await ctx.send(
+                        f"❌ {ctx.author.mention}, você já tem um mascote acompanhando-o!\n"
+                        f"Use o comando `!libertar` para soltá-lo na selva antes de abrir uma nova gaiola."
+                    )
 
             inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
@@ -205,7 +254,6 @@ class Lootbox(commands.Cog):
             if caixa_alvo not in inv_list:
                 return await ctx.send(f"❌ Você não tem nenhum(a) **{caixa_alvo}** no inventário!")
 
-            # remove a caixa antes de sortear pra evitar duplicação em caso de erro
             inv_list.remove(caixa_alvo)
             db.update_value(user["row"], 6, ", ".join(inv_list))
 
@@ -214,25 +262,24 @@ class Lootbox(commands.Cog):
             msg = await ctx.send(f"🔓 {ctx.author.mention} está abrindo **{caixa_alvo}**... {emoji_caixa}")
             await asyncio.sleep(3.0)
 
-            # Deixei o bloco de "mc" aqui por segurança, caso decida voltar a dropar MC no futuro
-            if premio["tipo"] == "mc":
-                saldo = db.parse_float(user["data"][2])
-                db.update_value(user["row"], 3, round(saldo + premio["valor"], 2))
-                texto_premio = f"`{formatar_moeda(premio['valor'])} MC`"
-                footer = "💵 Macacoins adicionados ao saldo!"
+            # ── 1. MASCOTES ──
+            if premio["tipo"] == "mascote":
+                db.set_mascote(user["row"], premio["slug"], 100)
+                texto_premio = f"**{premio['nome']}** ({premio['raridade']})"
+                cor_final = premio["cor"]
+                footer = "Use !mascote para ver os atributos do seu novo companheiro!"
 
+            # ── 2. COSMÉTICOS ──
             elif premio["tipo"] == "cosmetico":
-                # vai pro inventário como "cosmético:cor:roxo" etc.
                 user_atual = db.get_user_data(str(ctx.author.id))
                 inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip()]
                 chave_inv  = f"cosmético:{premio['slug']}"
 
-                # se já tiver o cosmético, dá MC de consolação no lugar
                 if chave_inv in inv_atual:
                     consolacao = random.randint(300, 800)
                     saldo = db.parse_float(user_atual["data"][2])
                     db.update_value(user_atual["row"], 3, round(saldo + consolacao, 2))
-                    texto_premio = f"`{formatar_moeda(consolacao)} MC` *(cosmético duplicado — convertido em MC)*"
+                    texto_premio = f"`{formatar_moeda(consolacao)} MC` *(cosmético duplicado convertido)*"
                     footer = "Você já tinha esse cosmético! MC de consolação adicionados."
                 else:
                     inv_atual.append(chave_inv)
@@ -240,6 +287,10 @@ class Lootbox(commands.Cog):
                     texto_premio = f"**{premio['nome']}**"
                     footer = f"✨ Use !visuais para equipar no seu perfil!"
 
+                if premio["slug"] in [s for s, *_ in [("moldura:🌟",), ("moldura:🏴‍☠️",), ("titulo:Lenda da Selva",)]]:
+                    cor_final = disnake.Color.from_rgb(255, 215, 0)
+
+            # ── 3. ITENS NORMAIS ──
             else:
                 user_atual = db.get_user_data(str(ctx.author.id))
                 inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip()]
@@ -251,12 +302,7 @@ class Lootbox(commands.Cog):
                 else:
                     footer = "Item adicionado ao inventário."
 
-            # cor especial para cosméticos lendários
-            if premio["tipo"] == "cosmetico" and premio["slug"] in [s for s, *_ in [
-                ("moldura:🌟",), ("moldura:🏴‍☠️",), ("titulo:Lenda da Selva",)
-            ]]:
-                cor_final = disnake.Color.from_rgb(255, 215, 0)
-
+            # ── MONTA O EMBED FINAL ──
             embed = disnake.Embed(
                 title=f"🎉 {emoji_caixa} LOOT OBTIDO!",
                 description=f"A caixa foi aberta e revelou:\n\n{premio['emoji']} {texto_premio}",

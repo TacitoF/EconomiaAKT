@@ -254,7 +254,9 @@ class Eventos(commands.Cog):
                 "🏆 **`!torneio <valor>`**\n"
                 "└ *Torneio mata-mata extremo de Jokenpô (até 8 jogadores).*\n"
                 "🥥 **`!coco <valor>`**\n"
-                "└ *Roleta do Coco Explosivo — sobreviva e leve o pote!*"
+                "└ *Roleta do Coco Explosivo — sobreviva e leve o pote!*\n"
+                "🃏 **`!truco <1v1 ou 2v2> <valor>`**\n"
+                "└ *Truco Paulista interativo com botões e blefes!*"
             ),
             inline = False,
         )

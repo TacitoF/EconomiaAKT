@@ -20,7 +20,6 @@ sheet = client.open_by_key(sheet_id).sheet1
 sheet_apostas = client.open_by_key(sheet_id).worksheet("Apostas_Esportivas")
 
 def parse_float(valor, padrao=0.0):
-    """Converte qualquer valor da planilha para float com segurança."""
     try:
         if valor is None or str(valor).strip() == "":
             return padrao
@@ -64,10 +63,14 @@ def create_user(user_id, name):
       1  - user_id       | 2  - name         | 3  - saldo      | 4  - cargo
       5  - trab_ts       | 6  - inventario   | 7  - roubo_ts   | 8  - invest_ts
       9  - cripto_usos   | 10 - conquistas   | 11 - imposto/CD | 12 - escudo/CD
-      13 - cosmeticos
+      13 - cosmeticos    | 14 - mascote (tipo|fome)
     """
     try:
-        sheet.append_row([str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", ""])
+        all_rows = sheet.get_all_values()
+        next_row = len(all_rows) + 1
+        # Adicionado o 14º campo (vazio) para o Mascote
+        dados = [str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", "", ""]
+        sheet.batch_update([{'range': f'A{next_row}', 'values': [dados]}])
     except Exception as e:
         handle_db_error(e)
 
@@ -81,22 +84,19 @@ def wipe_database():
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  IMPOSTO DO GORILA — persistência e Cooldown (Coluna 11 / data[10])
+#  IMPOSTO DO GORILA
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_imposto(user_data: dict) -> tuple:
-    """Retorna: (cobrador_id, cargas_restantes, cooldown_timestamp)"""
     raw = str(user_data['data'][10]) if len(user_data['data']) > 10 else ""
     raw = raw.strip()
     if not raw:
         return None, 0, 0.0
     try:
         partes = raw.split("|")
-        # Se for uma marcação de cooldown: "cd|timestamp"
         if partes[0] == "cd":
             return None, 0, float(partes[1])
         
-        # Se for um imposto ativo: "id_cobrador|cargas"
         cobrador_id = partes[0]
         cargas      = int(partes[1])
         if cargas <= 0:
@@ -113,7 +113,6 @@ def set_imposto(row: int, cobrador_id: str, cargas: int):
         handle_db_error(e)
 
 def set_imposto_cooldown(row: int, timestamp: float):
-    """Grava o momento em que o imposto acabou para calcular a imunidade de 24h."""
     try:
         sheet.update_cell(row, 11, f"cd|{timestamp}")
     except Exception as e:
@@ -127,11 +126,10 @@ def clear_imposto(row: int):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  ESCUDO — persistência de cargas e Cooldown (Coluna 12 / data[11])
+#  ESCUDO
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_escudo_data(user_data: dict) -> tuple:
-    """Retorna: (cargas_restantes, quebra_timestamp)"""
     raw = str(user_data['data'][11]) if len(user_data['data']) > 11 else ""
     raw = raw.strip()
     if not raw:
@@ -159,7 +157,7 @@ def set_escudo_data(row: int, cargas: int, quebra_ts: float = 0.0):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  CRIPTO — persistência de usos diários (Coluna 9 / data[8])
+#  CRIPTO
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_cripto_usos(user_data: dict) -> tuple[int, float]:
@@ -182,7 +180,7 @@ def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  COSMÉTICOS — personalização do perfil (Coluna 13 / data[12])
+#  COSMÉTICOS
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_cosmeticos(user_data: dict) -> dict:
@@ -215,6 +213,30 @@ def clear_cosmetico(row: int, user_data: dict, chave: str):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+#  MASCOTES (NOVO!)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_mascote(user_data: dict) -> tuple[str, int]:
+    """Retorna (slug_do_mascote, nivel_de_fome). Ex: ('capivara', 100)"""
+    raw = str(user_data["data"][13]) if len(user_data["data"]) > 13 else ""
+    raw = raw.strip()
+    if not raw:
+        return None, 0
+    try:
+        partes = raw.split("|")
+        return partes[0], int(partes[1])
+    except (IndexError, ValueError):
+        return None, 0
+
+def set_mascote(row: int, slug_mascote: str, fome: int):
+    try:
+        valor = f"{slug_mascote}|{fome}" if slug_mascote else ""
+        sheet.update_cell(row, 14, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -224,10 +246,15 @@ def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
         valor_str = str(valor).replace('.', ',')
         odd_str = str(odd).replace('.', ',')
 
-        sheet_apostas.append_row([
+        dados = [
             str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente",
             str(time_casa), str(time_fora), str(liga), str(horario)
-        ])
+        ]
+        
+        all_rows = sheet_apostas.get_all_values()
+        next_row = len(all_rows) + 1
+        sheet_apostas.batch_update([{'range': f'A{next_row}', 'values': [dados]}])
+
     except Exception as e:
         handle_db_error(e)
 
@@ -270,11 +297,23 @@ def limpar_apostas_finalizadas() -> int:
         header = all_rows[0]
         data_rows = all_rows[1:]
         status_finalizados = {"Venceu", "Perdeu", "Reembolso"}
-        rows_to_keep = [row for row in data_rows if len(row) < 6 or row[5] not in status_finalizados]
+        
+        max_cols = max(len(header), max((len(r) for r in data_rows), default=0))
+        if len(header) < max_cols:
+            header.extend([""] * (max_cols - len(header)))
+
+        rows_to_keep = []
+        for row in data_rows:
+            if len(row) < 6 or row[5] not in status_finalizados:
+                if len(row) < max_cols:
+                    row.extend([""] * (max_cols - len(row)))
+                rows_to_keep.append(row)
+        
         deleted_count = len(data_rows) - len(rows_to_keep)
         if deleted_count > 0:
             sheet_apostas.clear()
-            sheet_apostas.update('A1', [header] + rows_to_keep)
+            nova_planilha = [header] + rows_to_keep
+            sheet_apostas.batch_update([{'range': 'A1', 'values': nova_planilha}])
         return deleted_count
     except Exception as e:
         handle_db_error(e)
