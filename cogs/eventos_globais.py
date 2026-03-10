@@ -34,12 +34,16 @@ class AirdropView(disnake.ui.View):
         db.update_value(user['row'], 6, ", ".join(inv_list))
 
         nome_curto = self.caixa_nome.split()[0]  # pega só a primeira palavra pra usar no !abrir
+        
+        # Se for a Gaiola, ajusta o nome curto para o comando funcionar perfeitamente
+        if self.caixa_nome == "Gaiola Misteriosa":
+            nome_curto = "gaiola"
 
         embed = inter.message.embeds[0]
         embed.title = "🏁 AIRDROP REIVINDICADO"
         embed.description = (
             f"```fix\nCARGA CAPTURADA COM SUCESSO\n```\n"
-            f"🥷 **{inter.author.mention}** interceptou o suprimento e guardou o **{self.caixa_nome}** no inventário!\n\n"
+            f"🥷 **{inter.author.mention}** interceptou o suprimento e guardou o/a **{self.caixa_nome}** no inventário!\n\n"
             f"*(Dica: Use `!abrir {nome_curto}` para ver o que tem dentro!)*"
         )
         embed.color = disnake.Color.dark_grey()
@@ -103,7 +107,12 @@ class EventosGlobais(commands.Cog):
             cor    = disnake.Color.blue()
             header = "🔷 [ RARO ] 🔷"
             visual = "⛓️ 🪙 ⛓️"
-        else:                  # 88% — comum
+        elif sorteio <= 0.17:  # 5% — NOVO: Gaiola Misteriosa!
+            caixa  = "Gaiola Misteriosa"
+            cor    = disnake.Color.dark_theme()
+            header = "🐾 [ MASCOTE ] 🐾"
+            visual = "⛓️ 🐾 ⛓️"
+        else:                  # 83% — comum
             caixa  = "Caixote de Madeira"
             cor    = disnake.Color.from_rgb(139, 69, 19)
             header = "📦 [ COMUM ] 📦"
@@ -140,6 +149,7 @@ class EventosGlobais(commands.Cog):
         sorteio = random.random()
         if sorteio <= 0.02:   caixa = "Relíquia Ancestral"
         elif sorteio <= 0.12: caixa = "Baú do Caçador"
+        elif sorteio <= 0.17: caixa = "Gaiola Misteriosa"
         else:                 caixa = "Caixote de Madeira"
 
         view         = AirdropView(caixa)

@@ -191,7 +191,7 @@ class Lootbox(commands.Cog):
         )
 
         embed.add_field(
-            name="🐾 Gaiola Misteriosa (Drop do !trabalhar)",
+            name="🐾 Gaiola Misteriosa",
             value=(
                 "**🟢 Comuns (60%)**\n🦦 Capivara · 🦥 Preguiça · 🐸 Sapo-Boi\n"
                 "**🔵 Raros (25%)**\n🦜 Papagaio · 🐍 Jiboia · 🦔 Gambá\n"
@@ -201,7 +201,7 @@ class Lootbox(commands.Cog):
             inline=False
         )
         
-        embed.set_footer(text="Gaiolas Misteriosas só podem ser encontradas como drop raro no comando !trabalhar.")
+        embed.set_footer(text="Gaiolas Misteriosas só podem ser encontradas no !trabalhar ou em airdrops.")
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["abrir"])
