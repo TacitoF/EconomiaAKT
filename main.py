@@ -35,14 +35,14 @@ if google_creds:
 load_dotenv()
 
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_command=None)
-bot.is_locked = True # Inicia travado até carregar tudo
+bot.is_locked = True  # Inicia travado até carregar tudo
 
 # ──────────────────────────────────────────────
 #  ANTI-SPAM GLOBAL (TRAVA INTELIGENTE)
 # ──────────────────────────────────────────────
-ANTI_SPAM_COOLDOWN = 2.5 
+ANTI_SPAM_COOLDOWN = 2.5
 _spam_tracker: dict = {}
-_spam_warning_tracker: dict = {} 
+_spam_warning_tracker: dict = {}
 
 @bot.check
 async def global_check(ctx):
@@ -65,7 +65,7 @@ async def global_check(ctx):
                     f"⏱️ {ctx.author.mention}, a selva tem limites! Aguarde **{restante:.1f}s** antes de usar outro comando."
                 )
                 await aviso.delete(delay=3)
-                _spam_warning_tracker[chave] = agora 
+                _spam_warning_tracker[chave] = agora
             except Exception:
                 pass
         raise commands.CheckFailure("Anti-spam ativado.")
@@ -196,11 +196,11 @@ async def auto_kill_old_instance(message):
         embed = message.embeds[0]
         if embed.footer and embed.footer.text and "Instância:" in embed.footer.text:
             id_na_mensagem = embed.footer.text.split("Instância: ")[-1].strip()
-            
-            # Se o ID da mensagem for diferente do meu ID atual, significa que sou a instância velha!
+
+            # Se o ID da mensagem for diferente do meu ID, sou a instância velha — morro na hora
             if id_na_mensagem != INSTANCE_ID and "Online" in embed.footer.text:
-                print(f"⚠️ Nova instância ({id_na_mensagem}) detectada! Encerrando a antiga ({INSTANCE_ID}) para evitar duplicidade.")
-                bot.is_locked = True # Trava para não mandar a mensagem vermelha por cima da verde
+                print(f"⚠️ Nova instância ({id_na_mensagem}) detectada! Encerrando a antiga ({INSTANCE_ID}).")
+                bot.is_locked = True  # Trava imediatamente — para de responder comandos
                 await bot.close()
 
 
@@ -208,21 +208,26 @@ async def auto_kill_old_instance(message):
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=disnake.Game(name="!trabalhar para começar!"))
-    
+
     # Prepara o bot para ouvir a ordem de desligamento do servidor Koyeb
     try:
         bot.loop.add_signal_handler(signal.SIGTERM, lambda: bot.loop.create_task(shutdown_task()))
     except NotImplementedError:
-        pass # Ignora no Windows (ambiente de teste local)
+        pass  # Ignora no Windows (ambiente de teste local)
 
-    # Liga o bot automaticamente! Você não precisa mais digitar !ligar
+    # 1. Desbloqueia PRIMEIRO — nova instância já aceita comandos
     bot.is_locked = False
-    print(f"✅ {bot.user} (Koba) online! (Instância: {INSTANCE_ID})")
+    print(f"✅ [{INSTANCE_ID}] Koba online e desbloqueado!")
+
+    # 2. Agora manda o sinal — a instância velha lê e se mata
+    #    Neste ponto a nova já está 100% pronta, sem janela morta
     await atualizar_canal_status(online=True)
 
 @bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, (commands.CheckFailure, commands.CommandNotFound)):
+    if isinstance(error, commands.CommandNotFound):
+        return
+    if isinstance(error, commands.CheckFailure):
         return
     if isinstance(error, commands.CommandOnCooldown):
         try:
