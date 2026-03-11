@@ -130,8 +130,7 @@ ITENS_REEMBOLSAVEIS = {
     "Troca de Nick":       ("item:troca_nick",  3000.0),
     "Ração Símia":         ("item:racao",        250.0),
 }
-# Reembolso ao sistema = 50% do preço base (sem multiplicador de cargo/demanda)
-TAXA_REEMBOLSO = 0.50
+TAXA_REEMBOLSO = 1.0
 
 
 class ViewConfirmarReembolso(disnake.ui.View):
@@ -177,7 +176,7 @@ class ViewConfirmarReembolso(disnake.ui.View):
         embed = disnake.Embed(
             title="♻️ ITEM DEVOLVIDO!",
             description=(
-                f"**Item:** `{self.item}`\n**Reembolso:** `+{formatar_moeda(self.valor)} MC` *(50% do preço base)*\n**Novo saldo:** `{formatar_moeda(round(saldo_atual + self.valor, 2))} MC`"
+                f"**Item:** `{self.item}`\n**Reembolso:** `+{formatar_moeda(self.valor)} MC` *(100% do preço base)*\n**Novo saldo:** `{formatar_moeda(round(saldo_atual + self.valor, 2))} MC`"
             ),
             color=disnake.Color.blurple()
         )
@@ -336,11 +335,6 @@ class Trade(commands.Cog):
 
     @commands.command(aliases=["devolver", "retornar", "sellback"])
     async def reembolso(self, ctx, *, item: str = None):
-        """
-        Devolve um item ao sistema e recebe 50% do preço base de volta.
-        Uso: !reembolso <nome do item>
-        Exemplo: !reembolso Imposto do Gorila
-        """
         if not item:
             itens_fmt = "\n".join(
                 f"• **{nome}** → `+{formatar_moeda(preco * TAXA_REEMBOLSO)} MC`"
@@ -348,7 +342,7 @@ class Trade(commands.Cog):
             )
             return await ctx.send(
                 f"♻️ {ctx.author.mention}, use `!reembolso <item>` para devolver um item ao sistema.\n"
-                f"Você recebe **50% do preço base** de volta.\n\n"
+                f"Você recebe **100% do preço base** de volta.\n\n"
                 f"**Itens aceitos:**\n{itens_fmt}",
                 delete_after=60
             )
@@ -391,7 +385,7 @@ class Trade(commands.Cog):
                 description=(
                     f"**Item:** `{item_encontrado}`\n"
                     f"**Preço base:** `{formatar_moeda(preco_base)} MC`\n"
-                    f"**Você recebe:** `{formatar_moeda(valor_reembolso)} MC` *(50%)*\n\n"
+                    f"**Você recebe:** `{formatar_moeda(valor_reembolso)} MC` *(100%)*\n\n"
                     f"⚠️ Esta ação é **irreversível**. O item será removido do seu inventário."
                 ),
                 color=disnake.Color.orange()
