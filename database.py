@@ -1,4 +1,5 @@
 import os
+import time
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from disnake.ext import commands
@@ -423,9 +424,8 @@ def get_compras_item(item_id: str) -> int:
 def incrementar_compras(item_id: str, quantidade: int = 1):
     """Incrementa o contador de compras do item. Cria a linha se não existir."""
     try:
-        import time as _time
         row = _mercado_row(item_id)
-        agora = _time.time()
+        agora = time.time()
         if not row:
             next_row = len(sheet_mercado.col_values(1)) + 1
             sheet_mercado.update(f"A{next_row}:C{next_row}", [[item_id, quantidade, agora]])
