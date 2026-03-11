@@ -40,12 +40,27 @@ class General(commands.Cog):
             "└ *Rico paga mais: o cargo determina um multiplicador no preço dos itens de poder.*\n"
             "🤝 **`!vender @user <item> <preço>`** ─ *Venda itens para outros jogadores.*\n"
             "♻️ **`!vender <item>`** ─ *Sem @ — vende o item ao sistema pelo preço base.*\n"
+            "🔄 **`!trocar @user <seu item> por <item do alvo>`** ─ *Troca direta sem MC.*\n"
+            "└ *Suporta múltiplos itens: `!trocar @user item1 + item2 por item do alvo`*\n"
+            "└ *Anti-scam: ambos veem exatamente o que estão trocando antes de confirmar.*\n"
             "🎒 **`!inventario`** ─ *Veja seus itens e quais podem ser negociados.*\n"
             "🔓 **`!abrir <caixote/baú/relíquia/gaiola>`** ─ *Abra caixas do inventário.*\n"
             "📊 **`!caixas`** ─ *Porcentagens e recompensas de cada caixa.*\n"
             "✈️ **Airdrops** ─ *Caem do nada no chat. O 1º a `SAQUEAR` leva a caixa!*"
         ))
-        
+
+        embed.add_field(name="🔰 ITENS PASSIVOS", inline=False, value=(
+            "Os passivos são itens raros que caem do **`!trabalhar`** e ficam no seu inventário.\n"
+            "Equipe até **3 simultâneos** para ganhar bônus permanentes em combate e trabalho.\n\n"
+            "🔰 **`!equipar <item>`** ─ *Ativa um passivo do inventário (máx. 3 slots).*\n"
+            "└ *Sem argumento: mostra os passivos disponíveis no inventário.*\n"
+            "❌ **`!desequipar <item>`** ─ *Remove o passivo do slot (item fica no inventário).*\n"
+            "📋 **`!passivos [@user]`** ─ *Mostra slots equipados e passivos disponíveis.*\n\n"
+            "**Tier Comum** *(~3% drop)*: 🍀 Amuleto da Sorte · 🔧 Cinto de Ferramentas · 👛 Carteira Velha\n"
+            "**Tier Raro** *(~1.5% drop)*: 🔒 Segurança Particular · 🧤 Luvas de Seda · 🏛️ Sindicato · 🐕 Cão de Guarda\n"
+            "**Tier Épico** *(~0.5% drop)*: 🏺 Relíquia do Ancião · 🩸 Escudo de Sangue · 🌑 Manto das Sombras · 🌟 Talismã da Fortuna"
+        ))
+
         embed.add_field(name="🐾 MASCOTES", inline=False, value=(
             "🐶 **`!mascote [@user]`** ─ *Vê o mascote atual e o nível de fome dele.*\n"
             "📖 **`!mascotes`** ─ *Abre a Enciclopédia com todos os animais e poderes!*\n"
@@ -59,8 +74,9 @@ class General(commands.Cog):
             "🚨 **`!recompensa @user <valor>`** ─ *Coloca a cabeça do alvo a prêmio.*\n"
             "📜 **`!recompensas`** ─ *Mural de procurados da selva.*\n"
             "🍌 **`!casca @user`** ─ *Atrasa o trabalho do alvo.*\n"
-            "🦍 **`!taxar @user`** ─ *Rouba 25% do próximo trabalho.*\n"
-            "🪄 **`!apelidar @user <nick>`** ─ *Altera o apelido de alguém.*\n"
+            "🦍 **`!taxar @user`** ─ *Rouba 25% dos próximos 5 trabalhos do alvo.*\n"
+            "🪧 **`!greve @user`** ─ *Reduz o salário do alvo em **50%** pelos próximos 3 trabalhos.*\n"
+            "🪄 **`!apelidar @user <nick>`** ─ *Altera o apelido de alguém por 30min.*\n"
             "🧪 **`!energetico`** ─ *Zera CD trabalho* | 💨 **`!fumaca`** ─ *Zera CD roubo.*"
         ))
 
