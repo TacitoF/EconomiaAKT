@@ -118,6 +118,87 @@ class ViewConfirmarCompra(disnake.ui.View):
             pass
 
 
+
+
+# Mapa de nome do item → (slug, preço base) para reembolso ao sistema
+ITENS_REEMBOLSAVEIS = {
+    "Escudo":              ("item:escudo",      1000.0),
+    "Pé de Cabra":         ("item:pe_de_cabra", 1200.0),
+    "Seguro":              ("item:seguro",       950.0),
+    "Casca de Banana":     ("item:casca",        300.0),
+    "Imposto do Gorila":   ("item:imposto",     1500.0),
+    "Troca de Nick":       ("item:troca_nick",  3000.0),
+    "Ração Símia":         ("item:racao",        250.0),
+}
+# Reembolso ao sistema = 50% do preço base (sem multiplicador de cargo/demanda)
+TAXA_REEMBOLSO = 0.50
+
+
+class ViewConfirmarReembolso(disnake.ui.View):
+    def __init__(self, autor: disnake.Member, item: str, valor: float, user_row: int, inv_list: list):
+        super().__init__(timeout=30)
+        self.autor    = autor
+        self.item     = item
+        self.valor    = valor
+        self.user_row = user_row
+        self.inv_list = list(inv_list)
+
+    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
+        if inter.author.id != self.autor.id:
+            await inter.response.send_message("❌ Esta confirmação não é sua!", ephemeral=True)
+            return False
+        return True
+
+    @disnake.ui.button(label="✅ Confirmar devolução", style=disnake.ButtonStyle.success)
+    async def btn_confirmar(self, button, inter: disnake.MessageInteraction):
+        # Revalida no momento do clique
+        user_db = db.get_user_data(str(self.autor.id))
+        if not user_db:
+            return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
+
+        inv_atual = [i.strip() for i in str(user_db["data"][5]).split(",") if i.strip() and i.lower() != "nenhum"]
+        if self.item not in inv_atual:
+            self.stop()
+            return await inter.response.edit_message(
+                content=f"❌ **{self.item}** não está mais no seu inventário.",
+                embed=None, view=None
+            )
+
+        inv_atual.remove(self.item)
+        db.update_value(user_db["row"], 6, ", ".join(inv_atual) if inv_atual else "Nenhum")
+
+        saldo_atual = db.parse_float(user_db["data"][2])
+        db.update_value(user_db["row"], 3, round(saldo_atual + self.valor, 2))
+
+        self.stop()
+        for child in self.children:
+            child.disabled = True
+
+        embed = disnake.Embed(
+            title="♻️ ITEM DEVOLVIDO!",
+            description=(
+                f"**Item:** `{self.item}`\n**Reembolso:** `+{formatar_moeda(self.valor)} MC` *(50% do preço base)*\n**Novo saldo:** `{formatar_moeda(round(saldo_atual + self.valor, 2))} MC`"
+            ),
+            color=disnake.Color.blurple()
+        )
+        await inter.response.edit_message(embed=embed, view=self)
+
+    @disnake.ui.button(label="❌ Cancelar", style=disnake.ButtonStyle.secondary)
+    async def btn_cancelar(self, button, inter: disnake.MessageInteraction):
+        self.stop()
+        await inter.response.edit_message(
+            content="↩️ Devolução cancelada. O item continua no seu inventário.",
+            embed=None, view=None
+        )
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        try:
+            await self.message.edit(content="⏳ Confirmação expirou.", embed=None, view=self)
+        except Exception:
+            pass
+
 # ── Cog principal ─────────────────────────────────────────────────────────────
 
 class Trade(commands.Cog):
@@ -251,6 +332,80 @@ class Trade(commands.Cog):
             raise error
         print(f"❌ Erro inesperado no !vender: {error}")
         await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+
+    @commands.command(aliases=["devolver", "retornar", "sellback"])
+    async def reembolso(self, ctx, *, item: str = None):
+        """
+        Devolve um item ao sistema e recebe 50% do preço base de volta.
+        Uso: !reembolso <nome do item>
+        Exemplo: !reembolso Imposto do Gorila
+        """
+        if not item:
+            itens_fmt = "\n".join(
+                f"• **{nome}** → `+{formatar_moeda(preco * TAXA_REEMBOLSO)} MC`"
+                for nome, (_, preco) in ITENS_REEMBOLSAVEIS.items()
+            )
+            return await ctx.send(
+                f"♻️ {ctx.author.mention}, use `!reembolso <item>` para devolver um item ao sistema.\n"
+                f"Você recebe **50% do preço base** de volta.\n\n"
+                f"**Itens aceitos:**\n{itens_fmt}",
+                delete_after=60
+            )
+
+        try:
+            user_db = db.get_user_data(str(ctx.author.id))
+            if not user_db:
+                return await ctx.send("❌ Você não tem conta!")
+
+            inv_str  = str(user_db["data"][5]) if len(user_db["data"]) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.lower() != "nenhum"]
+            inv_list = [i for i in inv_list if not i.startswith("cosmético:") and not i.startswith("cosmetico:")]
+
+            # Busca item no inventário (case-insensitive, parcial)
+            item_encontrado = None
+            for inv_item in inv_list:
+                if item.lower() in inv_item.lower():
+                    item_encontrado = inv_item
+                    break
+
+            if not item_encontrado:
+                return await ctx.send(
+                    f"❌ {ctx.author.mention}, **{item}** não encontrado no inventário.\n"
+                    f"Use `!inventario` para ver seus itens."
+                )
+
+            # Verifica se o item é reembolsável
+            if item_encontrado not in ITENS_REEMBOLSAVEIS:
+                return await ctx.send(
+                    f"❌ **{item_encontrado}** não pode ser devolvido ao sistema.\n"
+                    f"Cosméticos, cargos e caixas não são reembolsáveis.\n"
+                    f"Tente vender para outro jogador com `!vender @usuario {item_encontrado} <preço>`."
+                )
+
+            _, preco_base = ITENS_REEMBOLSAVEIS[item_encontrado]
+            valor_reembolso = round(preco_base * TAXA_REEMBOLSO, 2)
+
+            embed = disnake.Embed(
+                title="♻️ DEVOLVER AO SISTEMA?",
+                description=(
+                    f"**Item:** `{item_encontrado}`\n"
+                    f"**Preço base:** `{formatar_moeda(preco_base)} MC`\n"
+                    f"**Você recebe:** `{formatar_moeda(valor_reembolso)} MC` *(50%)*\n\n"
+                    f"⚠️ Esta ação é **irreversível**. O item será removido do seu inventário."
+                ),
+                color=disnake.Color.orange()
+            )
+            embed.set_footer(text="Expira em 30 segundos.")
+
+            view = ViewConfirmarReembolso(ctx.author, item_encontrado, valor_reembolso, user_db["row"], inv_list)
+            view.message = await ctx.send(embed=embed, view=view)
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !reembolso de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["inv", "mochila", "bolsa"])
     async def inventario(self, ctx, membro: disnake.Member = None):
