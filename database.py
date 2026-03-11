@@ -19,6 +19,17 @@ if not sheet_id:
 sheet = client.open_by_key(sheet_id).sheet1
 sheet_apostas = client.open_by_key(sheet_id).worksheet("Apostas_Esportivas")
 
+# Aba de configuração global (cria se não existir)
+def _get_or_create_config_sheet():
+    try:
+        return client.open_by_key(sheet_id).worksheet("Config")
+    except gspread.exceptions.WorksheetNotFound:
+        ws = client.open_by_key(sheet_id).add_worksheet(title="Config", rows=10, cols=2)
+        ws.update("A1:B1", [["chave", "valor"]])
+        return ws
+
+sheet_config = _get_or_create_config_sheet()
+
 def parse_float(valor, padrao=0.0):
     try:
         if valor is None or str(valor).strip() == "":
@@ -318,3 +329,39 @@ def limpar_apostas_finalizadas() -> int:
     except Exception as e:
         handle_db_error(e)
         return 0
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  INSTÂNCIA ATIVA (lock distribuído para rolling deploy)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _config_row(chave: str) -> int | None:
+    """Retorna o índice da linha onde a chave existe, ou None."""
+    try:
+        col = sheet_config.col_values(1)
+        idx = col.index(chave)
+        return idx + 1  # gspread é 1-indexed
+    except ValueError:
+        return None
+
+def set_instancia_ativa(instance_id: str):
+    """Grava o ID da instância ativa na aba Config."""
+    try:
+        row = _config_row("instancia_ativa")
+        if row:
+            sheet_config.update_cell(row, 2, instance_id)
+        else:
+            # Primeira vez — adiciona a linha
+            next_row = len(sheet_config.col_values(1)) + 1
+            sheet_config.update(f"A{next_row}:B{next_row}", [["instancia_ativa", instance_id]])
+    except Exception as e:
+        handle_db_error(e)
+
+def get_instancia_ativa() -> str | None:
+    """Lê o ID da instância ativa da aba Config. Retorna None se não existir."""
+    try:
+        row = _config_row("instancia_ativa")
+        if not row:
+            return None
+        return sheet_config.cell(row, 2).value
+    except Exception:
+        return None  # Em caso de erro, deixa o comando passar (fail-open)

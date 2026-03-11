@@ -33,6 +33,7 @@ if google_creds:
     print("✅ credentials.json gerado pelo ambiente.")
 
 load_dotenv()
+import database as db
 
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), help_command=None)
 bot.is_locked = True  # Inicia travado até carregar tudo
@@ -51,6 +52,11 @@ async def global_check(ctx):
 
     if bot.is_locked:
         raise commands.CheckFailure("Bot em manutenção.")
+
+    # Lock distribuído — descarta se não somos a instância ativa no Sheets
+    instancia_ativa = db.get_instancia_ativa()
+    if instancia_ativa and instancia_ativa != INSTANCE_ID:
+        raise commands.CheckFailure("instancia_inativa")
 
     chave = str(ctx.author.id)
     agora = time.time()
@@ -215,12 +221,17 @@ async def on_ready():
     except NotImplementedError:
         pass  # Ignora no Windows (ambiente de teste local)
 
-    # 1. Desbloqueia PRIMEIRO — nova instância já aceita comandos
+    # 1. Registra esta instância como ativa no Sheets (lock distribuído)
+    #    A partir daqui, qualquer outra instância que checar vai se descartada
+    db.set_instancia_ativa(INSTANCE_ID)
+    print(f"🔒 [{INSTANCE_ID}] Registrado como instância ativa no Sheets.")
+
+    # 2. Desbloqueia — nova instância já aceita comandos
     bot.is_locked = False
     print(f"✅ [{INSTANCE_ID}] Koba online e desbloqueado!")
 
-    # 2. Agora manda o sinal — a instância velha lê e se mata
-    #    Neste ponto a nova já está 100% pronta, sem janela morta
+    # 3. Manda o sinal para a instância velha se matar
+    #    Ela já está bloqueada pelo Sheets desde o passo 1
     await atualizar_canal_status(online=True)
 
 @bot.event
