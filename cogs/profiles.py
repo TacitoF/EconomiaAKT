@@ -31,7 +31,6 @@ def _parse_inv(user: dict) -> list:
     return [i.strip() for i in raw.split(",") if i.strip() and i.strip().lower() != "nenhum"]
 
 def _parse_cosm_str(user: dict) -> dict:
-    # CORREÇÃO: Lê da coluna M (índice 12), e não mais da L (índice 11)
     raw = str(user["data"][12]) if len(user["data"]) > 12 else ""
     result = {}
     for parte in raw.strip().split("|"):
@@ -81,7 +80,7 @@ class ViewVisuais(disnake.ui.View):
         super().__init__(timeout=120)
         self.autor         = autor
         self.row           = row
-        self.itens_normais = list(itens_normais) # CORREÇÃO: Salva os itens normais para não deletá-los
+        self.itens_normais = list(itens_normais)
         self.cosm_inv      = list(cosm_inv)
         self.cosm_atual    = dict(cosm_atual)
         self._rebuild_select()
@@ -111,14 +110,13 @@ class ViewVisuais(disnake.ui.View):
             self.add_item(select)
 
     async def _salvar(self):
-        # CORREÇÃO: Junta os itens normais com os cosméticos antes de salvar na F
         inv_completo = self.itens_normais + self.cosm_inv
         inv_str  = _montar_inv_str(inv_completo)
         cosm_str = _serializar_cosm(self.cosm_atual)
         try:
             db.sheet.batch_update([
                 {"range": f"F{self.row}", "values": [[inv_str]]},
-                {"range": f"M{self.row}", "values": [[cosm_str]]}, # CORREÇÃO: Salva na M (13) e não na L (Escudo)
+                {"range": f"M{self.row}", "values": [[cosm_str]]},
             ])
         except Exception as e:
             db.handle_db_error(e)
@@ -184,124 +182,6 @@ class ViewVisuais(disnake.ui.View):
 
     async def on_timeout(self):
         pass
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  VIEW: MEU PERFIL — botão "Ver minha conta" ephemeral
-# ══════════════════════════════════════════════════════════════════════════════
-
-class ViewPortalPerfil(disnake.ui.View):
-    def __init__(self, author_id: int, cog):
-        super().__init__(timeout=90)
-        self.author_id = author_id
-        self.cog       = cog
-
-    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
-        if inter.author.id != self.author_id:
-            await inter.response.send_message("❌ Este painel não é seu!", ephemeral=True)
-            return False
-        return True
-
-    @disnake.ui.button(label="🔒 Ver minha conta", style=disnake.ButtonStyle.primary)
-    async def btn_conta(self, button, inter: disnake.MessageInteraction):
-        user = db.get_user_data(str(self.author_id))
-        if not user:
-            return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
-        embed = self.cog._build_embed_conta(inter.author, user, str(self.author_id))
-        try:
-            await inter.response.send_message(embed=embed, ephemeral=True)
-        except disnake.InteractionResponded:
-            await inter.followup.send(embed=embed, ephemeral=True)
-
-    @disnake.ui.button(label="❌ Fechar", style=disnake.ButtonStyle.secondary)
-    async def btn_fechar(self, button, inter: disnake.MessageInteraction):
-        await inter.response.defer()
-        try:
-            await inter.message.delete()
-        except Exception:
-            pass
-
-    async def on_timeout(self):
-        for child in self.children:
-            child.disabled = True
-        try:
-            await self.message.edit(content="⏳ Portal expirado. Digite `!perfil` novamente.", view=self)
-        except Exception:
-            pass
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  VIEW: PERFIL ALHEIO — botão para comprar dossiê
-# ══════════════════════════════════════════════════════════════════════════════
-
-class ViewPerfilAlheio(disnake.ui.View):
-    def __init__(self, author_id: int, alvo: disnake.Member, cog):
-        super().__init__(timeout=90)
-        self.author_id = author_id
-        self.alvo      = alvo
-        self.cog       = cog
-
-    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
-        if inter.author.id != self.author_id:
-            await inter.response.send_message("❌ Este painel não é seu!", ephemeral=True)
-            return False
-        return True
-
-    @disnake.ui.button(label="🕵️ Ver dados completos (500 MC)", style=disnake.ButtonStyle.danger)
-    async def btn_dossie(self, button, inter: disnake.MessageInteraction):
-        espiao = db.get_user_data(str(inter.author.id))
-        if not espiao:
-            return await inter.response.send_message("❌ Conta não encontrada!", ephemeral=True)
-
-        saldo = db.parse_float(espiao["data"][2])
-        custo = self.cog.CUSTO_ESPIONAR
-
-        if saldo < custo:
-            faltam = round(custo - saldo, 2)
-            return await inter.response.send_message(
-                f"❌ Saldo insuficiente! Precisa de **`{int(custo)} MC`** — faltam `{formatar_moeda(faltam)} MC`.",
-                ephemeral=True
-            )
-
-        alvo_data = db.get_user_data(str(self.alvo.id))
-        if not alvo_data:
-            return await inter.response.send_message(
-                f"❌ {self.alvo.mention} não tem conta!", ephemeral=True
-            )
-
-        db.update_value(espiao["row"], 3, round(saldo - custo, 2))
-        embed = self.cog._build_embed_dados(self.alvo, alvo_data, str(self.alvo.id))
-        embed.set_footer(text=f"🕵️ Relatório confidencial — custou {int(custo)} MC  ·  só você está vendo isso")
-
-        await inter.response.send_message(
-            content=f"🕵️ Informante pago! Relatório de **{self.alvo.display_name}**:",
-            embed=embed,
-            ephemeral=True
-        )
-
-        button.disabled = True
-        button.label    = "✅ Dossiê obtido"
-        button.style    = disnake.ButtonStyle.secondary
-        try:
-            await inter.message.edit(view=self)
-        except Exception:
-            pass
-
-    @disnake.ui.button(label="❌ Fechar", style=disnake.ButtonStyle.secondary)
-    async def btn_fechar(self, button, inter: disnake.MessageInteraction):
-        await inter.response.defer()
-        try:
-            await inter.message.delete()
-        except Exception:
-            pass
-
-    async def on_timeout(self):
-        for child in self.children:
-            child.disabled = True
-        try:
-            await self.message.edit(view=self)
-        except Exception:
-            pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -422,14 +302,40 @@ class Profiles(commands.Cog):
         if isinstance(error, commands.CommandOnCooldown):
             await ctx.send(f"⏳ Tente novamente em {error.retry_after:.1f}s.", delete_after=3)
 
-    # ── helpers de embed ──────────────────────────────────────────────────────
-
-    CUSTO_ESPIONAR = 500.0
+    # ── helpers de embed unificado ────────────────────────────────────────────
 
     def _build_embed_perfil(self, membro: disnake.Member, user: dict, user_id: str) -> disnake.Embed:
         saldo = db.parse_float(user["data"][2])
         cargo = user["data"][3] if len(user["data"]) > 3 and user["data"][3] else "Lêmure"
+        agora = time.time()
 
+        # Cooldowns
+        ultimo_work   = db.parse_float(user["data"][4] if len(user["data"]) > 4 else None)
+        ultimo_roubo  = db.parse_float(user["data"][6] if len(user["data"]) > 6 else None)
+        ultimo_invest = db.parse_float(user["data"][7] if len(user["data"]) > 7 else None)
+
+        def _cd(ultimo, cooldown):
+            return "✅ Disponível" if agora - ultimo >= cooldown else f"<t:{int(ultimo + cooldown)}:R>"
+
+        # Inventário e Escudos
+        inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
+        inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.strip().lower() != "nenhum"]
+        cargas_escudo = self.bot.escudos_ativos.get(user_id, 0) if hasattr(self.bot, "escudos_ativos") else 0
+
+        if inv_list:
+            contagem = {}
+            for item in inv_list:
+                # Ocultar as chaves de cosmético na exibição de mochila
+                if not item.startswith("cosmético:") and not item.startswith("cosmetico:"):
+                    contagem[item] = contagem.get(item, 0) + 1
+            itens = [f"`{q}× {i}`" if q > 1 else f"`{i}`" for i, q in contagem.items()]
+        else:
+            itens = []
+        if cargas_escudo > 0:
+            itens.append(f"`🛡️ Escudo ({cargas_escudo}/{ESCUDO_CARGAS})`")
+        inv_val = "  ".join(itens) if itens else "*Mochila vazia*"
+
+        # Cosméticos
         cosm    = _parse_cosm_str(user)
         cor_str = cosm.get("cor", "")
         moldura = cosm.get("moldura", "")
@@ -443,29 +349,34 @@ class Profiles(commands.Cog):
         if moldura: nome_display = f"{moldura} {nome_display}"
         if titulo:  nome_display = f"{nome_display}  ·  *{titulo}*"
 
+        # Posição no Rank
+        pos_rank = "—"
+        try:
+            all_rows = db.sheet.get_all_values()
+            if len(all_rows) > 0:
+                primeira = all_rows[0]
+                tem_cabecalho = any(c.lower() in ("nome", "saldo", "cargo", "user_id") for c in primeira)
+                dados = all_rows[1:] if tem_cabecalho else all_rows
+                dados_sorted = sorted(dados, key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
+                for i, row in enumerate(dados_sorted):
+                    if str(row[0]) == user_id:
+                        pos_rank = f"#{i+1} de {len(dados_sorted)}"
+                        break
+        except Exception:
+            pass
+
+        # Emblemas e Conquistas
         emblemas = []
         if saldo >= 500000:      emblemas.append("🤑 Burguês Safado")
         elif saldo >= 100000:    emblemas.append("💎 Magnata")
         if 0 < saldo < 100:      emblemas.append("📉 Falência Técnica")
         if saldo <= 0:           emblemas.append("🦴 Passa Fome")
         if cargo == "Rei Símio": emblemas.append("👑 Rei da Selva")
-
-        inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
-        inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.strip().lower() != "nenhum"]
         if "Pé de Cabra" in inv_list: emblemas.append("🕵️ Invasor")
 
-        try:
-            all_rows = db.sheet.get_all_values()
-            if len(all_rows) > 1:
-                dados_sorted = sorted(all_rows[1:], key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
-                for i, row in enumerate(dados_sorted):
-                    if str(row[0]) == user_id:
-                        if i == 0:   emblemas.append("🥇 Alfa da Selva")
-                        elif i == 1: emblemas.append("🥈 Vice-Líder")
-                        elif i == 2: emblemas.append("🥉 Bronze de Ouro")
-                        break
-        except Exception as e:
-            print(f"⚠️ Rank no !perfil: {e}")
+        if pos_rank.startswith("#1 "): emblemas.append("🥇 Alfa da Selva")
+        elif pos_rank.startswith("#2 "): emblemas.append("🥈 Vice-Líder")
+        elif pos_rank.startswith("#3 "): emblemas.append("🥉 Bronze de Ouro")
 
         conquistas_db = str(user["data"][9]) if len(user["data"]) > 9 else ""
         for slug in [c.strip() for c in conquistas_db.split(",") if c.strip()]:
@@ -479,21 +390,32 @@ class Profiles(commands.Cog):
         if valores_rec and max(recompensas_gerais, key=recompensas_gerais.get) == user_id:
             emblemas.append("💀 Rei do Crime")
 
+        # Construção da Descrição
         sep  = "─" * 34
-        desc = f"### {cargo_icon}  {nome_display}\n{sep}\n💼  **Cargo:** `{cargo}`"
-        if bio: desc += f"\n💬  *\"{bio}\"*"
-        if rec > 0: desc += f"\n🚨  **Recompensa:** `{formatar_moeda(rec)} MC`"
+        desc = f"### {cargo_icon}  {nome_display}\n{sep}\n"
+        if bio: desc += f"💬 *\"{bio}\"*\n\n"
+        desc += f"💰 **Saldo:** `{formatar_moeda(saldo)} MC`\n"
+        desc += f"💼 **Cargo:** `{cargo}`\n"
+        desc += f"📊 **Rank:** `{pos_rank}`"
+        if rec > 0: desc += f"\n🚨 **Recompensa:** `{formatar_moeda(rec)} MC`"
 
+        # Montagem do Embed
         embed = disnake.Embed(description=desc, color=embed_color)
         embed.set_author(name=f"🌿 Perfil · {membro.display_name}", icon_url=membro.display_avatar.url)
         embed.set_thumbnail(url=membro.display_avatar.url)
+
+        embed.add_field(name="🔨 Trabalho",     value=_cd(ultimo_work,   3600),  inline=True)
+        embed.add_field(name="🔫 Roubo",        value=_cd(ultimo_roubo,  7200),  inline=True)
+        embed.add_field(name="🏛️ Investimento", value=_cd(ultimo_invest, 86400), inline=True)
+        
+        embed.add_field(name="🎒 Inventário",   value=inv_val, inline=False)
 
         cosm_equipados = []
         if cor_str: cosm_equipados.append(f"🎨 `{cor_str}`")
         if moldura:  cosm_equipados.append(f"🖼️ `{moldura}`")
         if titulo:   cosm_equipados.append(f"🏷️ `{titulo}`")
         if cosm_equipados:
-            embed.add_field(name="✨  Estilo", value="  ·  ".join(cosm_equipados), inline=False)
+            embed.add_field(name="✨ Estilo", value="  ·  ".join(cosm_equipados), inline=False)
 
         if emblemas:
             linhas = []
@@ -502,153 +424,15 @@ class Profiles(commands.Cog):
             emblemas_val = "\n".join(linhas)
         else:
             emblemas_val = "*Nenhuma conquista ainda — vá à luta!*"
-        embed.add_field(name=f"🏆  Conquistas  ({len(emblemas)})", value=emblemas_val, inline=False)
+        embed.add_field(name=f"🏆 Conquistas ({len(emblemas)})", value=emblemas_val, inline=False)
 
-        embed.set_footer(text="🐒 Selva dos Macacoins  ·  !visuais para personalizar  ·  !conta para ver seus dados")
+        embed.set_footer(text="🐒 Selva dos Macacoins  ·  !visuais para personalizar")
         return embed
 
-    def _build_embed_conta(self, membro: disnake.Member, user: dict, user_id: str) -> disnake.Embed:
-        saldo = db.parse_float(user["data"][2])
-        cargo = user["data"][3] if len(user["data"]) > 3 and user["data"][3] else "Lêmure"
-        agora = time.time()
+    # ── !perfil (Agora unificado, público e completo) ─────────────────────────
 
-        ultimo_work   = db.parse_float(user["data"][4] if len(user["data"]) > 4 else None)
-        ultimo_roubo  = db.parse_float(user["data"][6] if len(user["data"]) > 6 else None)
-        ultimo_invest = db.parse_float(user["data"][7] if len(user["data"]) > 7 else None)
-
-        def _cd(ultimo, cooldown):
-            return "✅ Disponível" if agora - ultimo >= cooldown else f"<t:{int(ultimo + cooldown)}:R>"
-
-        inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
-        inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.strip().lower() != "nenhum"]
-        cargas_escudo = self.bot.escudos_ativos.get(user_id, 0) if hasattr(self.bot, "escudos_ativos") else 0
-
-        if inv_list:
-            contagem = {}
-            for item in inv_list:
-                contagem[item] = contagem.get(item, 0) + 1
-            itens = [f"`{q}× {i}`" if q > 1 else f"`{i}`" for i, q in contagem.items()]
-        else:
-            itens = []
-        if cargas_escudo > 0:
-            itens.append(f"`🛡️ Escudo ({cargas_escudo}/{ESCUDO_CARGAS})`")
-        inv_val = "  ".join(itens) if itens else "*Mochila vazia*"
-
-        cargo_icon, cor_cargo = self._CARGO_INFO.get(cargo, ("🐒", 0xFFD700))
-
-        pos_rank = "—"
-        try:
-            all_rows = db.sheet.get_all_values()
-            if len(all_rows) > 0:
-                primeira = all_rows[0]
-                tem_cabecalho = any(c.lower() in ("nome", "saldo", "cargo", "user_id") for c in primeira)
-                dados = all_rows[1:] if tem_cabecalho else all_rows
-                dados_sorted = sorted(dados, key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
-                for i, row in enumerate(dados_sorted):
-                    if str(row[0]) == user_id:
-                        pos_rank = f"#{i+1} de {len(dados_sorted)}"
-                        break
-        except Exception:
-            pass
-
-        rec  = getattr(self.bot, "recompensas", {}).get(user_id, 0.0)
-        sep  = "─" * 34
-        desc = (
-            f"### 🔒  Painel Privado — {membro.display_name}\n"
-            f"{sep}\n"
-            f"💰  **Saldo:** `{formatar_moeda(saldo)} MC`\n"
-            f"💼  **Cargo:** `{cargo_icon} {cargo}`\n"
-            f"📊  **Posição no Rank:** `{pos_rank}`"
-        )
-        if rec > 0:
-            desc += f"\n🚨  **Recompensa na sua cabeça:** `{formatar_moeda(rec)} MC`"
-
-        embed = disnake.Embed(description=desc, color=cor_cargo)
-        embed.set_author(name=f"🔐 Minha Conta · {membro.display_name}", icon_url=membro.display_avatar.url)
-        embed.set_thumbnail(url=membro.display_avatar.url)
-
-        embed.add_field(name="🔨  Trabalho",     value=_cd(ultimo_work,   3600),  inline=True)
-        embed.add_field(name="🔫  Roubo",        value=_cd(ultimo_roubo,  7200),  inline=True)
-        embed.add_field(name="🏛️  Investimento", value=_cd(ultimo_invest, 86400), inline=True)
-        embed.add_field(name="🎒  Inventário",   value=inv_val,                   inline=False)
-
-        embed.set_footer(text="🔒 Só você está vendo isso  ·  !perfil para ver seu cartão  ·  !visuais para personalizar")
-        return embed
-
-    def _build_embed_dados(self, membro: disnake.Member, user: dict, user_id: str) -> disnake.Embed:
-        saldo = db.parse_float(user["data"][2])
-        cargo = user["data"][3] if len(user["data"]) > 3 and user["data"][3] else "Lêmure"
-        agora = time.time()
-
-        ultimo_work   = db.parse_float(user["data"][4] if len(user["data"]) > 4 else None)
-        ultimo_roubo  = db.parse_float(user["data"][6] if len(user["data"]) > 6 else None)
-        ultimo_invest = db.parse_float(user["data"][7] if len(user["data"]) > 7 else None)
-
-        def _cd_label(ultimo, cooldown):
-            if agora - ultimo >= cooldown: return "✅ Disponível agora"
-            mins = int((ultimo + cooldown) - agora) // 60
-            return f"⏳ ~{mins} min restantes"
-
-        inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
-        inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.strip().lower() != "nenhum"]
-        cargas_escudo = self.bot.escudos_ativos.get(user_id, 0) if hasattr(self.bot, "escudos_ativos") else 0
-
-        if inv_list:
-            contagem = {}
-            for item in inv_list:
-                contagem[item] = contagem.get(item, 0) + 1
-            itens = [f"`{q}× {i}`" if q > 1 else f"`{i}`" for i, q in contagem.items()]
-        else:
-            itens = []
-        if cargas_escudo > 0:
-            itens.append(f"`🛡️ Escudo ({cargas_escudo}/{ESCUDO_CARGAS})`")
-        inv_val = "  ".join(itens) if itens else "*Mochila vazia*"
-
-        cargo_icon, _ = self._CARGO_INFO.get(cargo, ("🐒", 0xFFD700))
-
-        pos_rank = "—"
-        try:
-            all_rows = db.sheet.get_all_values()
-            if len(all_rows) > 0:
-                primeira = all_rows[0]
-                tem_cabecalho = any(c.lower() in ("nome", "saldo", "cargo", "user_id") for c in primeira)
-                dados = all_rows[1:] if tem_cabecalho else all_rows
-                dados_sorted = sorted(dados, key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
-                for i, row in enumerate(dados_sorted):
-                    if str(row[0]) == user_id:
-                        pos_rank = f"#{i+1} de {len(dados_sorted)}"
-                        break
-        except Exception:
-            pass
-
-        rec  = getattr(self.bot, "recompensas", {}).get(user_id, 0.0)
-        sep  = "─" * 34
-        desc = (
-            f"### 🕵️  Relatório de Inteligência\n"
-            f"{sep}\n"
-            f"🎯  **Alvo:** {membro.mention}\n"
-            f"💼  **Cargo:** `{cargo_icon} {cargo}`\n"
-            f"💰  **Saldo estimado:** `{formatar_moeda(saldo)} MC`\n"
-            f"📊  **Posição no Rank:** `{pos_rank}`"
-        )
-        if rec > 0:
-            desc += f"\n🚨  **Recompensa:** `{formatar_moeda(rec)} MC`"
-
-        embed = disnake.Embed(description=desc, color=0x2C2F33)
-        embed.set_author(name=f"🕵️ Dossiê · {membro.display_name}", icon_url=membro.display_avatar.url)
-        embed.set_thumbnail(url=membro.display_avatar.url)
-
-        embed.add_field(name="🔨  Trabalho",     value=_cd_label(ultimo_work,   3600),  inline=True)
-        embed.add_field(name="🔫  Roubo",        value=_cd_label(ultimo_roubo,  7200),  inline=True)
-        embed.add_field(name="🏛️  Investimento", value=_cd_label(ultimo_invest, 86400), inline=True)
-        embed.add_field(name="🎒  Inventário",   value=inv_val,                         inline=False)
-
-        return embed
-
-    # ── !perfil ───────────────────────────────────────────────────────────────
-
-    @commands.command(aliases=["p", "status"])
-    @commands.cooldown(1, 6, commands.BucketType.user)
+    @commands.command(aliases=["p", "status", "conta", "carteira", "saldo", "stats", "dados", "espionar"])
+    @commands.cooldown(1, 4, commands.BucketType.user)
     async def perfil(self, ctx, membro: disnake.Member = None):
         membro  = membro or ctx.author
         user_id = str(membro.id)
@@ -658,28 +442,12 @@ class Profiles(commands.Cog):
                 nome = "você" if membro.id == ctx.author.id else membro.mention
                 return await ctx.send(f"❌ {nome} não tem conta! Use `!trabalhar` para se registrar.")
 
-            embed_pub = self._build_embed_perfil(membro, user, user_id)
+            embed = self._build_embed_perfil(membro, user, user_id)
+            
             try: await ctx.message.delete()
             except: pass
 
-            if membro.id == ctx.author.id:
-                view = ViewPortalPerfil(ctx.author.id, self)
-                view.message = await ctx.send(
-                    content=f"🔒 {ctx.author.mention}, clique para ver seus dados privados.",
-                    embed=embed_pub,
-                    view=view,
-                )
-                return
-
-            view = ViewPerfilAlheio(ctx.author.id, membro, self)
-            view.message = await ctx.send(
-                content=(
-                    f"🕵️ {ctx.author.mention}, quer ver os dados completos de **{membro.display_name}**?\n"
-                    f"Custa **`{int(self.CUSTO_ESPIONAR)} MC`** — só você verá o resultado."
-                ),
-                embed=embed_pub,
-                view=view,
-            )
+            await ctx.send(embed=embed)
 
         except commands.CommandError:
             raise
@@ -691,48 +459,9 @@ class Profiles(commands.Cog):
     async def perfil_error(self, ctx, error):
         if isinstance(error, commands.CommandOnCooldown):
             await ctx.send(f"⏳ Não faça spam, macaco! Tente novamente em {error.retry_after:.1f}s.", delete_after=5)
-
-    # ── !conta ────────────────────────────────────────────────────────────────
-    # Prefixo não suporta ephemeral — redireciona para o botão privado do !perfil
-
-    @commands.command(aliases=["carteira", "saldo", "stats"])
-    @commands.cooldown(1, 5, commands.BucketType.user)
-    async def conta(self, ctx):
-        try: await ctx.message.delete()
-        except: pass
-        await ctx.send(
-            f"🔒 {ctx.author.mention}, seus dados são privados! Use `!perfil` e clique em 🔒 Ver minha conta — só você verá.",
-            delete_after=10
-        )
-
-    @conta.error
-    async def conta_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"⏳ Aguarde {error.retry_after:.1f}s.", delete_after=5)
-
-    # ── !dados ────────────────────────────────────────────────────────────────
-
-    @commands.command(aliases=["espionar", "dossie", "investigar"])
-    @commands.cooldown(1, 8, commands.BucketType.user)
-    async def dados(self, ctx, alvo: disnake.Member = None):
-        if not alvo:
-            return await ctx.send(
-                f"❌ {ctx.author.mention}, mencione um jogador! Ex: `!dados @usuario`", delete_after=8
-            )
-        if alvo.id == ctx.author.id:
-            return await ctx.send(
-                f"🤦 {ctx.author.mention}, use `!conta` para ver seus próprios dados — de graça!", delete_after=8
-            )
-        if alvo.bot:
-            return await ctx.send(f"🤖 Bots não têm carteira na selva!", delete_after=6)
-        await ctx.invoke(self.perfil, membro=alvo)
-
-    @dados.error
-    async def dados_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"⏳ Aguarde {error.retry_after:.1f}s.", delete_after=5)
         elif isinstance(error, commands.MemberNotFound):
-            await ctx.send(f"❌ Jogador não encontrado! Use `!dados @usuario`.", delete_after=8)
+            await ctx.send(f"❌ Jogador não encontrado! Use `!perfil @usuario`.", delete_after=8)
+
 
     # ── !bio ──────────────────────────────────────────────────────────────────
 
@@ -768,11 +497,11 @@ class Profiles(commands.Cog):
 
             inv_list   = _parse_inv(user)
             cosm_inv   = [i for i in inv_list if i.startswith("cosmético:") or i.startswith("cosmetico:")]
-            itens_normais = [i for i in inv_list if not (i.startswith("cosmético:") or i.startswith("cosmetico:"))] # CORREÇÃO
+            itens_normais = [i for i in inv_list if not (i.startswith("cosmético:") or i.startswith("cosmetico:"))]
             cosm_atual = _parse_cosm_str(user)
 
             embed = _build_embed_visuais(ctx.author, cosm_inv, cosm_atual)
-            view  = ViewVisuais(ctx.author, user["row"], itens_normais, cosm_inv, cosm_atual) # CORREÇÃO
+            view  = ViewVisuais(ctx.author, user["row"], itens_normais, cosm_inv, cosm_atual)
 
             try: await ctx.message.delete()
             except: pass
@@ -829,15 +558,6 @@ class Profiles(commands.Cog):
                 if s >= 1_000:     return f"{formatar_moeda(s/1_000)}K MC"
                 return f"{formatar_moeda(s)} MC"
 
-            def _faixa(s):
-                if s >= 1_000_000: return "1M+ MC"
-                if s >= 500_000:   return "500K–1M MC"
-                if s >= 100_000:   return "100K–500K MC"
-                if s >= 50_000:    return "50K–100K MC"
-                if s >= 10_000:    return "10K–50K MC"
-                if s >= 1_000:     return "1K–10K MC"
-                return "< 1K MC"
-
             autor_id  = str(ctx.author.id)
             autor_pos = None
             for i, row in enumerate(sorted_all):
@@ -873,24 +593,18 @@ class Profiles(commands.Cog):
                     saldo = db.parse_float(row[idx_saldo])
                     cargo = row[idx_cargo] if len(row) > idx_cargo else "Lêmure"
                     c_em  = CARGO_EMOJI.get(cargo, "🐒")
-                    linhas.append(f"{NUMS[i-3]}  {c_em} **{nome}** — `{_faixa(saldo)}`")
+                    # AGORA MOSTRA O VALOR EXATO PARA AS POSIÇÕES 4 AO 10!
+                    linhas.append(f"{NUMS[i-3]}  {c_em} **{nome}** — `{formatar_moeda(saldo)} MC`")
                 embed.add_field(name="📊  Classificação", value="\n".join(linhas), inline=False)
 
             if autor_pos:
-                if autor_pos <= 10:
-                    embed.add_field(
-                        name  = "📍  Sua posição",
-                        value = f"{ctx.author.mention} está em **#{autor_pos}** no ranking!",
-                        inline= False,
-                    )
-                else:
-                    embed.add_field(
-                        name  = "📍  Sua posição",
-                        value = f"{ctx.author.mention} está em **#{autor_pos}** · use `!conta` para ver seu saldo.",
-                        inline= False,
-                    )
+                embed.add_field(
+                    name  = "📍  Sua posição",
+                    value = f"{ctx.author.mention} está em **#{autor_pos}** no ranking!",
+                    inline= False,
+                )
 
-            embed.set_footer(text="🌿 Pódio com saldo real · 4º–10º com faixa estimada · !perfil @user para detalhes")
+            embed.set_footer(text="!perfil @user para ver os detalhes completos de qualquer jogador")
             await ctx.send(embed=embed)
 
         except commands.CommandError:

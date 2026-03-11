@@ -5,7 +5,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 from disnake.ext import commands
 from dotenv import load_dotenv
 
-# Carrega as variáveis de ambiente (para garantir leitura local do .env)
 load_dotenv()
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -20,7 +19,6 @@ if not sheet_id:
 sheet = client.open_by_key(sheet_id).sheet1
 sheet_apostas = client.open_by_key(sheet_id).worksheet("Apostas_Esportivas")
 
-# Aba de configuração global (cria se não existir)
 def _get_or_create_config_sheet():
     try:
         return client.open_by_key(sheet_id).worksheet("Config")
@@ -53,7 +51,6 @@ def get_user_data(user_id):
             row_index = col_a.index(str(user_id)) + 1
         except ValueError:
             return None
-
         row = sheet.row_values(row_index)
         return {"row": row_index, "data": row}
     except commands.CommandError:
@@ -75,13 +72,12 @@ def create_user(user_id, name):
       1  - user_id       | 2  - name         | 3  - saldo      | 4  - cargo
       5  - trab_ts       | 6  - inventario   | 7  - roubo_ts   | 8  - invest_ts
       9  - cripto_usos   | 10 - conquistas   | 11 - imposto/CD | 12 - escudo/CD
-      13 - cosmeticos    | 14 - mascote (tipo|fome)
+      13 - cosmeticos    | 14 - mascote      | 15 - greve_ts   | 16 - passivos
     """
     try:
         all_rows = sheet.get_all_values()
         next_row = len(all_rows) + 1
-        # Adicionado o 14º campo (vazio) para o Mascote
-        dados = [str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", "", ""]
+        dados = [str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", "", "", "", ""]
         sheet.batch_update([{'range': f'A{next_row}', 'values': [dados]}])
     except Exception as e:
         handle_db_error(e)
@@ -108,7 +104,6 @@ def get_imposto(user_data: dict) -> tuple:
         partes = raw.split("|")
         if partes[0] == "cd":
             return None, 0, float(partes[1])
-        
         cobrador_id = partes[0]
         cargas      = int(partes[1])
         if cargas <= 0:
@@ -225,7 +220,7 @@ def clear_cosmetico(row: int, user_data: dict, chave: str):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  MASCOTES (NOVO!)
+#  MASCOTES
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_mascote(user_data: dict) -> tuple[str, int]:
@@ -249,6 +244,56 @@ def set_mascote(row: int, slug_mascote: str, fome: int):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+#  GREVE (coluna 15)
+#  Formato: timestamp_expira  (float)
+#  Enquanto time.time() < timestamp_expira, o !trabalhar rende 50% menos
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_greve(user_data: dict) -> float:
+    """Retorna o timestamp de expiração da greve. 0.0 se não houver."""
+    raw = str(user_data["data"][14]) if len(user_data["data"]) > 14 else ""
+    raw = raw.strip()
+    if not raw:
+        return 0.0
+    try:
+        return float(raw)
+    except ValueError:
+        return 0.0
+
+def set_greve(row: int, timestamp_expira: float):
+    """Salva o timestamp de expiração da greve na coluna 15."""
+    try:
+        sheet.update_cell(row, 15, str(timestamp_expira) if timestamp_expira > 0 else "")
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  PASSIVOS (coluna 16)
+#  Formato: "Amuleto da Sorte,Cinto de Ferramentas,Segurança Particular"
+#  Lista simples separada por vírgula — máx 3 itens
+# ──────────────────────────────────────────────────────────────────────────────
+
+MAX_PASSIVOS = 3
+
+def get_passivos(user_data: dict) -> list[str]:
+    """Retorna lista de slugs de passivos equipados. Ex: ['Amuleto da Sorte', 'Cinto de Ferramentas']"""
+    raw = str(user_data["data"][15]) if len(user_data["data"]) > 15 else ""
+    raw = raw.strip()
+    if not raw:
+        return []
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+def set_passivos(row: int, passivos: list[str]):
+    """Salva a lista de passivos equipados na coluna 16."""
+    try:
+        valor = ", ".join(passivos[:MAX_PASSIVOS]) if passivos else ""
+        sheet.update_cell(row, 16, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -257,16 +302,13 @@ def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
     try:
         valor_str = str(valor).replace('.', ',')
         odd_str = str(odd).replace('.', ',')
-
         dados = [
             str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente",
             str(time_casa), str(time_fora), str(liga), str(horario)
         ]
-        
         all_rows = sheet_apostas.get_all_values()
         next_row = len(all_rows) + 1
         sheet_apostas.batch_update([{'range': f'A{next_row}', 'values': [dados]}])
-
     except Exception as e:
         handle_db_error(e)
 
@@ -301,16 +343,13 @@ def atualizar_status_aposta(row, status):
     except Exception as e:
         handle_db_error(e)
 
-
 def atualizar_valor_aposta(row: int, novo_valor: float):
-    """Atualiza o valor apostado de uma linha específica na sheet_apostas."""
     try:
         sheet_apostas.update_cell(row, 4, str(round(novo_valor, 2)).replace('.', ','))
     except Exception as e:
         handle_db_error(e)
 
 def get_apostas_pendentes_usuario(user_id: str) -> list:
-    """Retorna todas as apostas pendentes de um usuário específico."""
     todas = obter_apostas_pendentes()
     return [a for a in todas if str(a["user_id"]) == str(user_id)]
 
@@ -322,18 +361,15 @@ def limpar_apostas_finalizadas() -> int:
         header = all_rows[0]
         data_rows = all_rows[1:]
         status_finalizados = {"Venceu", "Perdeu", "Reembolso"}
-        
         max_cols = max(len(header), max((len(r) for r in data_rows), default=0))
         if len(header) < max_cols:
             header.extend([""] * (max_cols - len(header)))
-
         rows_to_keep = []
         for row in data_rows:
             if len(row) < 6 or row[5] not in status_finalizados:
                 if len(row) < max_cols:
                     row.extend([""] * (max_cols - len(row)))
                 rows_to_keep.append(row)
-        
         deleted_count = len(data_rows) - len(rows_to_keep)
         if deleted_count > 0:
             sheet_apostas.clear()
@@ -344,45 +380,42 @@ def limpar_apostas_finalizadas() -> int:
         handle_db_error(e)
         return 0
 
+
 # ──────────────────────────────────────────────────────────────────────────────
-#  INSTÂNCIA ATIVA (lock distribuído para rolling deploy)
+#  INSTÂNCIA ATIVA
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _config_row(chave: str) -> int | None:
-    """Retorna o índice da linha onde a chave existe, ou None."""
     try:
         col = sheet_config.col_values(1)
         idx = col.index(chave)
-        return idx + 1  # gspread é 1-indexed
+        return idx + 1
     except ValueError:
         return None
 
 def set_instancia_ativa(instance_id: str):
-    """Grava o ID da instância ativa na aba Config."""
     try:
         row = _config_row("instancia_ativa")
         if row:
             sheet_config.update_cell(row, 2, instance_id)
         else:
-            # Primeira vez — adiciona a linha
             next_row = len(sheet_config.col_values(1)) + 1
             sheet_config.update(f"A{next_row}:B{next_row}", [["instancia_ativa", instance_id]])
     except Exception as e:
         handle_db_error(e)
 
 def get_instancia_ativa() -> str | None:
-    """Lê o ID da instância ativa da aba Config. Retorna None se não existir."""
     try:
         row = _config_row("instancia_ativa")
         if not row:
             return None
         return sheet_config.cell(row, 2).value
     except Exception:
-        return None  # Em caso de erro, deixa o comando passar (fail-open)
+        return None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  MERCADO DINÂMICO (contagem de compras por item)
+#  MERCADO DINÂMICO
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _get_or_create_mercado_sheet():
@@ -404,7 +437,6 @@ def _mercado_row(item_id: str) -> int | None:
         return None
 
 def get_compras_item(item_id: str) -> int:
-    """Retorna quantas compras o item teve hoje. Zera automaticamente se passou 24h."""
     try:
         row = _mercado_row(item_id)
         if not row:
@@ -412,17 +444,14 @@ def get_compras_item(item_id: str) -> int:
         valores = sheet_mercado.row_values(row)
         compras = int(valores[1]) if len(valores) > 1 and valores[1] else 0
         ultimo_reset = float(valores[2]) if len(valores) > 2 and valores[2] else 0.0
-
-        # Reset automático se passou 24h
         if time.time() - ultimo_reset >= 86400:
             sheet_mercado.update(f"B{row}:C{row}", [[0, time.time()]])
             return 0
         return compras
     except Exception:
-        return 0  # fail-open: preço base se der erro
+        return 0
 
 def incrementar_compras(item_id: str, quantidade: int = 1):
-    """Incrementa o contador de compras do item. Cria a linha se não existir."""
     try:
         row = _mercado_row(item_id)
         agora = time.time()

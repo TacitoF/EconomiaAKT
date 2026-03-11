@@ -4,7 +4,38 @@ import database as db
 import time
 import asyncio
 
-ESCUDO_CARGAS = 3  # Número de roubos que o Escudo bloqueia antes de quebrar
+ESCUDO_CARGAS = 3
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  CATÁLOGO DE PASSIVOS — usado no !equipar / !desequipar / !passivos
+# ──────────────────────────────────────────────────────────────────────────────
+
+PASSIVOS_INFO = {
+    # Tier Comum
+    "Amuleto da Sorte":     {"emoji": "🍀", "tier": "Comum",  "efeito": "+3% chance de sucesso no !roubar"},
+    "Cinto de Ferramentas": {"emoji": "🔧", "tier": "Comum",  "efeito": "+4% ganho no !trabalhar"},
+    "Carteira Velha":       {"emoji": "👛", "tier": "Comum",  "efeito": "-0.5% no máximo que podem te roubar"},
+    # Tier Raro
+    "Segurança Particular": {"emoji": "🔒", "tier": "Raro",   "efeito": "-8% chance do ladrão ter sucesso contra você"},
+    "Luvas de Seda":        {"emoji": "🧤", "tier": "Raro",   "efeito": "+3% no máximo que você pode roubar"},
+    "Sindicato":            {"emoji": "🏛️", "tier": "Raro",   "efeito": "-10min de cooldown no !trabalhar"},
+    "Cão de Guarda":        {"emoji": "🐕", "tier": "Raro",   "efeito": "+10% na multa do ladrão se falhar contra você"},
+    # Tier Épico
+    "Relíquia do Ancião":   {"emoji": "🏺", "tier": "Épico",  "efeito": "+10% ganho no !trabalhar"},
+    "Escudo de Sangue":     {"emoji": "🩸", "tier": "Épico",  "efeito": "Recupera 5% do valor roubado de volta"},
+    "Manto das Sombras":    {"emoji": "🌑", "tier": "Épico",  "efeito": "+12% chance de sucesso no !roubar"},
+    "Talismã da Fortuna":   {"emoji": "🌟", "tier": "Épico",  "efeito": "Reduz prejuízo máximo no !cripto para 15%"},
+}
+
+TIER_COR = {
+    "Comum": 0x8B8B8B,
+    "Raro":  0x1A6E9A,
+    "Épico": 0x7B2D8B,
+}
+
+GREVE_TURNS = 3     # quantos !trabalhar sofrem o debuff
+GREVE_DURACAO = GREVE_TURNS * 3600  # 3h (equivale a 3 turnos se usar todo CD)
+
 
 class Items(commands.Cog):
     def __init__(self, bot):
@@ -22,7 +53,9 @@ class Items(commands.Cog):
             await ctx.send(f"⚠️ {ctx.author.mention}, use itens no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
 
-    # ── !casca ────────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !casca
+    # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["banana"])
     async def casca(self, ctx, vitima: disnake.Member = None):
@@ -54,7 +87,9 @@ class Items(commands.Cog):
             print(f"❌ Erro no !casca de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-    # ── !taxar ────────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !taxar
+    # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["imposto"])
     async def taxar(self, ctx, vitima: disnake.Member = None):
@@ -79,30 +114,26 @@ class Items(commands.Cog):
             if not vitima_db:
                 return await ctx.send("❌ O alvo não tem conta registrada!")
 
-            # LER DO BANCO E SINCRONIZAR A MEMÓRIA
             cobrador_id, cargas, cd_imposto = db.get_imposto(vitima_db)
 
-            # Se estiver em Cooldown
             if cd_imposto > 0 and time.time() < cd_imposto:
                 return await ctx.send(
                     f"🛡️ {vitima.mention} está **imune** ao Imposto do Gorila! "
                     f"A imunidade expira <t:{int(cd_imposto)}:R>."
                 )
-            
-            # Se já estiver sob imposto de alguém
+
             if cargas > 0:
                 return await ctx.send(
                     f"❌ {vitima.mention} já está sob imposto! "
                     f"Restam **{cargas} trabalhos** taxados para ele."
                 )
 
-            # APLICA O IMPOSTO
             inv_list.remove("Imposto do Gorila")
             db.update_value(user['row'], 6, ", ".join(inv_list))
-            
+
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
             db.set_imposto(vitima_db['row'], str(ctx.author.id), 5)
-            
+
             await ctx.send(
                 f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o **Imposto do Gorila** a {vitima.mention}!\n"
                 f"Durante os próximos **5 trabalhos** dele, **25%** do suor vai direto para você!"
@@ -114,7 +145,9 @@ class Items(commands.Cog):
             print(f"❌ Erro no !taxar de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-    # ── !apelidar ─────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !apelidar
+    # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["nick", "renomear"])
     async def apelidar(self, ctx, vitima: disnake.Member = None, *, novo_nick: str = None):
@@ -160,7 +193,9 @@ class Items(commands.Cog):
             print(f"❌ Erro no !apelidar de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-    # ── !escudo ───────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !escudo
+    # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["ativar_escudo", "status_escudo"])
     async def escudo(self, ctx, alvo: disnake.Member = None):
@@ -169,12 +204,10 @@ class Items(commands.Cog):
 
         alvo_id = str(alvo.id)
         alvo_db = db.get_user_data(alvo_id)
-        
-        # Sincroniza memória com DB
+
         cargas_db, _ = db.get_escudo_data(alvo_db) if alvo_db else (0, 0.0)
-        cargas_mem = self.bot.escudos_ativos.get(alvo_id, 0)
-        
-        cargas = max(cargas_db, cargas_mem) # Confia no maior valor
+        cargas_mem   = self.bot.escudos_ativos.get(alvo_id, 0)
+        cargas       = max(cargas_db, cargas_mem)
         if cargas > 0:
             self.bot.escudos_ativos[alvo_id] = cargas
 
@@ -204,7 +237,6 @@ class Items(commands.Cog):
                 inv_list.remove("Escudo")
                 db.update_value(user['row'], 6, ", ".join(inv_list))
                 db.set_escudo_data(user['row'], ESCUDO_CARGAS)
-                
                 return await ctx.send(
                     f"🛡️ {ctx.author.mention} ativou o seu **Escudo**! "
                     f"Você está protegido contra **{ESCUDO_CARGAS} tentativas de roubo**.\n"
@@ -225,11 +257,12 @@ class Items(commands.Cog):
             print(f"❌ Erro no !escudo de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-    # ── !energetico ───────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !energetico
+    # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["energético", "redbull", "boost"])
     async def energetico(self, ctx):
-        """Usa um Energético Símio do inventário para zerar o cooldown de !trabalhar."""
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
@@ -258,7 +291,7 @@ class Items(commands.Cog):
             db.update_value(user['row'], 6, ", ".join(inv_list))
             db.update_value(user['row'], 5, 0)
 
-            minutos = int(cd_restante // 60)
+            minutos  = int(cd_restante // 60)
             segundos = int(cd_restante % 60)
             tempo_fmt = f"{minutos}m {segundos}s" if minutos else f"{segundos}s"
 
@@ -280,11 +313,12 @@ class Items(commands.Cog):
             print(f"❌ Erro no !energetico de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-    # ── !fumaca ───────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !fumaca
+    # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["fumaça", "smoke", "bomba_de_fumaca"])
     async def fumaca(self, ctx):
-        """Usa uma Bomba de Fumaça do inventário para zerar o cooldown de !roubar."""
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
@@ -313,15 +347,12 @@ class Items(commands.Cog):
             db.update_value(user['row'], 6, ", ".join(inv_list))
             db.update_value(user['row'], 7, 0)
 
-            horas   = int(cd_restante // 3600)
-            minutos = int((cd_restante % 3600) // 60)
+            horas    = int(cd_restante // 3600)
+            minutos  = int((cd_restante % 3600) // 60)
             segundos = int(cd_restante % 60)
-            if horas:
-                tempo_fmt = f"{horas}h {minutos}m"
-            elif minutos:
-                tempo_fmt = f"{minutos}m {segundos}s"
-            else:
-                tempo_fmt = f"{segundos}s"
+            if horas:       tempo_fmt = f"{horas}h {minutos}m"
+            elif minutos:   tempo_fmt = f"{minutos}m {segundos}s"
+            else:           tempo_fmt = f"{segundos}s"
 
             embed = disnake.Embed(
                 title="💨 BOMBA DE FUMAÇA LANÇADA!",
@@ -341,11 +372,12 @@ class Items(commands.Cog):
             print(f"❌ Erro no !fumaca de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-    # ── !c4 ───────────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !c4
+    # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["explodir", "bomb"])
     async def c4(self, ctx, vitima: disnake.Member = None):
-        """Usa uma Carga de C4 para destruir o Escudo de um alvo e ativa o cooldown de 24h nele."""
         if vitima is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!c4 @usuario`")
         if vitima.id == ctx.author.id:
@@ -368,13 +400,13 @@ class Items(commands.Cog):
             vitima_id = str(vitima.id)
             alvo_db   = db.get_user_data(vitima_id)
 
-            cargas_db, _ = db.get_escudo_data(alvo_db) if alvo_db else (0, 0.0)
-            cargas_mem   = self.bot.escudos_ativos.get(vitima_id, 0)
+            cargas_db, _  = db.get_escudo_data(alvo_db) if alvo_db else (0, 0.0)
+            cargas_mem    = self.bot.escudos_ativos.get(vitima_id, 0)
             cargas_escudo = max(cargas_db, cargas_mem)
 
             escudo_no_inv = False
             if alvo_db:
-                inv_alvo = [i.strip() for i in str(alvo_db['data'][5] if len(alvo_db['data']) > 5 else "").split(',') if i.strip()]
+                inv_alvo      = [i.strip() for i in str(alvo_db['data'][5] if len(alvo_db['data']) > 5 else "").split(',') if i.strip()]
                 escudo_no_inv = "Escudo" in inv_alvo
 
             if cargas_escudo == 0 and not escudo_no_inv:
@@ -383,20 +415,16 @@ class Items(commands.Cog):
                     f"Use `!escudo {vitima.mention}` para verificar."
                 )
 
-            # Consome o C4 do ladrão
             inv_list.remove("Carga de C4")
             db.update_value(user['row'], 6, ", ".join(inv_list))
 
             agora = time.time()
 
-            # Se o escudo estava ativo, quebra e inicia cooldown de 24h
             if cargas_escudo > 0:
                 if vitima_id in self.bot.escudos_ativos:
                     del self.bot.escudos_ativos[vitima_id]
                 if alvo_db:
                     db.set_escudo_data(alvo_db['row'], 0, agora)
-
-            # Se o escudo estava só guardado no inventário, apenas remove (não dá cooldown)
             elif escudo_no_inv and alvo_db:
                 inv_alvo.remove("Escudo")
                 db.update_value(alvo_db['row'], 6, ", ".join(inv_alvo))
@@ -418,6 +446,376 @@ class Items(commands.Cog):
         except Exception as e:
             print(f"❌ Erro no !c4 de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !greve — aplica debuff de -50% no !trabalhar do alvo por 3 turnos
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @commands.command(aliases=["strike", "paralisacao"])
+    async def greve(self, ctx, vitima: disnake.Member = None):
+        """Usa o item Greve para reduzir o salário do alvo em 50% pelos próximos 3 trabalhos."""
+        if vitima is None:
+            return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!greve @usuario`")
+        if vitima.id == ctx.author.id:
+            return await ctx.send(f"🪧 {ctx.author.mention}, não pode declarar greve contra si mesmo!")
+        if vitima.bot:
+            return await ctx.send("🤖 Bots não têm trabalhadores para entrar em greve!")
+
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return await ctx.send("❌ Você não tem conta!")
+
+            inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
+
+            if "Greve" not in inv_list:
+                return await ctx.send(
+                    f"❌ {ctx.author.mention}, você não tem o item **Greve** no inventário!\n"
+                    f"Encontre um nas lootboxes."
+                )
+
+            vitima_db = db.get_user_data(str(vitima.id))
+            if not vitima_db:
+                return await ctx.send("❌ O alvo não tem conta registrada!")
+
+            # Verifica se já existe greve ativa
+            agora         = time.time()
+            greve_expira  = db.get_greve(vitima_db)
+            if greve_expira > 0 and agora < greve_expira:
+                return await ctx.send(
+                    f"🪧 {vitima.mention} já está em **greve**! "
+                    f"A atual termina <t:{int(greve_expira)}:R>."
+                )
+
+            # Aplica a greve
+            nova_expira = agora + GREVE_DURACAO
+            inv_list.remove("Greve")
+            db.update_value(user['row'], 6, ", ".join(inv_list) if inv_list else "Nenhum")
+            db.set_greve(vitima_db['row'], nova_expira)
+
+            embed = disnake.Embed(
+                title="🪧 GREVE DECLARADA!",
+                description=(
+                    f"{ctx.author.mention} organizou os trabalhadores de {vitima.mention}!\n\n"
+                    f"📉 **Salário reduzido em 50%** pelos próximos **{GREVE_TURNS} trabalhos**.\n"
+                    f"⏳ A greve dura até <t:{int(nova_expira)}:R>."
+                ),
+                color=disnake.Color.orange()
+            )
+            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+            embed.set_footer(text="💡 A greve expira automaticamente após o tempo, independente de trabalhos.")
+            await ctx.send(embed=embed)
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !greve de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !equipar — equipa um passivo do inventário (máx 3 simultâneos)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @commands.command(aliases=["equip"])
+    async def equipar(self, ctx, *, nome_item: str = None):
+        """Equipa um item passivo do inventário. Máximo de 3 passivos simultâneos."""
+        if nome_item is None:
+            # Mostra passivos disponíveis no inventário
+            return await self._mostrar_passivos_disponiveis(ctx)
+
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return await ctx.send("❌ Você não tem conta!")
+
+            inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != "nenhum"]
+
+            # Busca o passivo no inventário (case-insensitive, parcial)
+            item_encontrado = None
+            for inv_item in inv_list:
+                if nome_item.lower() in inv_item.lower() and inv_item in PASSIVOS_INFO:
+                    item_encontrado = inv_item
+                    break
+
+            if not item_encontrado:
+                # Verifica se existe mas não é passivo
+                for inv_item in inv_list:
+                    if nome_item.lower() in inv_item.lower():
+                        return await ctx.send(
+                            f"❌ **{inv_item}** não é um item passivo e não pode ser equipado.\n"
+                            f"Use `!equipar` sem argumentos para ver seus passivos disponíveis."
+                        )
+                return await ctx.send(
+                    f"❌ Passivo **{nome_item}** não encontrado no seu inventário.\n"
+                    f"Use `!equipar` para ver o que você tem disponível."
+                )
+
+            passivos_atuais = db.get_passivos(user)
+
+            # Verifica se já está equipado
+            if item_encontrado in passivos_atuais:
+                return await ctx.send(
+                    f"🔰 **{item_encontrado}** já está **equipado**!\n"
+                    f"Use `!desequipar {item_encontrado}` para removê-lo."
+                )
+
+            # Verifica limite de 3 slots
+            if len(passivos_atuais) >= db.MAX_PASSIVOS:
+                slots_fmt = "\n".join(
+                    f"• {PASSIVOS_INFO[p]['emoji']} **{p}**" if p in PASSIVOS_INFO else f"• **{p}**"
+                    for p in passivos_atuais
+                )
+                return await ctx.send(
+                    f"❌ Você já tem **{db.MAX_PASSIVOS} passivos equipados** (limite máximo)!\n\n"
+                    f"**Equipados atualmente:**\n{slots_fmt}\n\n"
+                    f"Use `!desequipar <item>` para liberar um slot."
+                )
+
+            # Equipa o passivo (não remove do inventário — só marca como equipado)
+            passivos_atuais.append(item_encontrado)
+            db.set_passivos(user['row'], passivos_atuais)
+
+            info  = PASSIVOS_INFO[item_encontrado]
+            slots_usados = len(passivos_atuais)
+
+            embed = disnake.Embed(
+                title=f"{info['emoji']} PASSIVO EQUIPADO!",
+                description=(
+                    f"**{item_encontrado}** foi ativado e seus efeitos já estão em vigor!\n\n"
+                    f"✨ **Efeito:** {info['efeito']}\n"
+                    f"🏷️ **Tier:** {info['tier']}\n"
+                    f"🔰 **Slots:** {slots_usados}/{db.MAX_PASSIVOS}"
+                ),
+                color=TIER_COR.get(info['tier'], 0x888888)
+            )
+            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+            embed.set_footer(text="Use !desequipar para remover · Passivos equipados aparecem em !inventario")
+            await ctx.send(embed=embed)
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !equipar de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !desequipar — remove um passivo dos slots ativos
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @commands.command(aliases=["unequip", "remover_passivo"])
+    async def desequipar(self, ctx, *, nome_item: str = None):
+        """Remove um passivo dos slots ativos. O item continua no inventário."""
+        if nome_item is None:
+            return await self._mostrar_passivos_equipados(ctx)
+
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return await ctx.send("❌ Você não tem conta!")
+
+            passivos_atuais = db.get_passivos(user)
+
+            if not passivos_atuais:
+                return await ctx.send(
+                    f"🔰 {ctx.author.mention}, você não tem nenhum passivo equipado.\n"
+                    f"Use `!equipar` para ativar um."
+                )
+
+            # Busca no slot (case-insensitive, parcial)
+            item_encontrado = None
+            for p in passivos_atuais:
+                if nome_item.lower() in p.lower():
+                    item_encontrado = p
+                    break
+
+            if not item_encontrado:
+                slots_fmt = "\n".join(
+                    f"• {PASSIVOS_INFO[p]['emoji']} **{p}**" if p in PASSIVOS_INFO else f"• **{p}**"
+                    for p in passivos_atuais
+                )
+                return await ctx.send(
+                    f"❌ **{nome_item}** não está entre seus passivos equipados.\n\n"
+                    f"**Equipados:**\n{slots_fmt}"
+                )
+
+            passivos_atuais.remove(item_encontrado)
+            db.set_passivos(user['row'], passivos_atuais)
+
+            info = PASSIVOS_INFO.get(item_encontrado, {})
+            emoji = info.get('emoji', '🔰')
+
+            embed = disnake.Embed(
+                title=f"{emoji} PASSIVO REMOVIDO",
+                description=(
+                    f"**{item_encontrado}** foi desequipado.\n"
+                    f"O item continua no seu inventário — use `!equipar` para reativar.\n\n"
+                    f"🔰 **Slots livres:** {db.MAX_PASSIVOS - len(passivos_atuais)}/{db.MAX_PASSIVOS}"
+                ),
+                color=disnake.Color.dark_gray()
+            )
+            embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !desequipar de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !passivos — mostra os passivos equipados e disponíveis no inventário
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @commands.command(aliases=["meus_passivos", "passive"])
+    async def passivos(self, ctx, membro: disnake.Member = None):
+        """Mostra os passivos equipados. Sem argumento = seus próprios."""
+        alvo = membro or ctx.author
+        try:
+            user_db = db.get_user_data(str(alvo.id))
+            if not user_db:
+                return await ctx.send("❌ Conta não encontrada!")
+
+            passivos_equipados = db.get_passivos(user_db)
+
+            # Passivos no inventário (não equipados)
+            inv_str  = str(user_db['data'][5]) if len(user_db['data']) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != "nenhum"]
+            passivos_inv = [i for i in inv_list if i in PASSIVOS_INFO and i not in passivos_equipados]
+
+            # Conta duplicatas no inventário
+            contagem_inv: dict[str, int] = {}
+            for p in passivos_inv:
+                contagem_inv[p] = contagem_inv.get(p, 0) + 1
+
+            embed = disnake.Embed(
+                title=f"🔰 Passivos de {alvo.display_name}",
+                color=0x7B2D8B
+            )
+            embed.set_author(name=alvo.display_name, icon_url=alvo.display_avatar.url)
+
+            # Slots equipados
+            if passivos_equipados:
+                linhas_eq = []
+                for p in passivos_equipados:
+                    info = PASSIVOS_INFO.get(p, {})
+                    emoji = info.get('emoji', '🔰')
+                    efeito = info.get('efeito', '?')
+                    tier   = info.get('tier', '?')
+                    linhas_eq.append(f"{emoji} **{p}** *({tier})*\n　└ {efeito}")
+                embed.add_field(
+                    name=f"⚔️ Equipados ({len(passivos_equipados)}/{db.MAX_PASSIVOS})",
+                    value="\n".join(linhas_eq),
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name=f"⚔️ Equipados (0/{db.MAX_PASSIVOS})",
+                    value="*Nenhum passivo equipado.*\nUse `!equipar <item>` para ativar.",
+                    inline=False
+                )
+
+            # Passivos no inventário (não equipados)
+            if passivos_inv and alvo.id == ctx.author.id:
+                linhas_inv = []
+                vistos = set()
+                for p in passivos_inv:
+                    if p in vistos: continue
+                    vistos.add(p)
+                    info  = PASSIVOS_INFO.get(p, {})
+                    emoji = info.get('emoji', '🔰')
+                    qtd   = contagem_inv[p]
+                    qtd_str = f" ×{qtd}" if qtd > 1 else ""
+                    linhas_inv.append(f"{emoji} **{p}**{qtd_str}")
+                embed.add_field(
+                    name="🎒 No inventário (não equipados)",
+                    value="\n".join(linhas_inv),
+                    inline=False
+                )
+
+            embed.set_footer(text="!equipar <item> · !desequipar <item> · Passivos podem ser vendidos com !vender")
+            await ctx.send(embed=embed, delete_after=90)
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !passivos de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    #  Helpers internos
+    # ──────────────────────────────────────────────────────────────────────────
+
+    async def _mostrar_passivos_disponiveis(self, ctx):
+        """Mostra passivos no inventário que podem ser equipados."""
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return await ctx.send("❌ Conta não encontrada!")
+
+            inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(',') if i.strip() and i.strip().lower() != "nenhum"]
+            passivos_equipados = db.get_passivos(user)
+            disponiveis = [i for i in inv_list if i in PASSIVOS_INFO and i not in passivos_equipados]
+
+            if not disponiveis:
+                return await ctx.send(
+                    f"🔰 {ctx.author.mention}, você não tem passivos disponíveis para equipar.\n"
+                    f"Abra lootboxes para encontrar passivos!\n\n"
+                    f"**Slots:** {len(passivos_equipados)}/{db.MAX_PASSIVOS} ocupados · "
+                    f"Use `!passivos` para ver os equipados."
+                )
+
+            linhas = []
+            vistos = set()
+            for p in disponiveis:
+                if p in vistos: continue
+                vistos.add(p)
+                info  = PASSIVOS_INFO[p]
+                linhas.append(f"{info['emoji']} **{p}** *({info['tier']})*\n　└ {info['efeito']}")
+
+            embed = disnake.Embed(
+                title="🔰 Passivos disponíveis para equipar",
+                description="\n".join(linhas),
+                color=0x1A6E9A
+            )
+            embed.set_footer(
+                text=f"Slots: {len(passivos_equipados)}/{db.MAX_PASSIVOS} · "
+                     f"Use: !equipar <nome do item>"
+            )
+            await ctx.send(embed=embed, delete_after=60)
+
+        except Exception as e:
+            print(f"❌ Erro em _mostrar_passivos_disponiveis: {e}")
+
+    async def _mostrar_passivos_equipados(self, ctx):
+        """Atalho: mostra passivos equipados quando !desequipar é chamado sem args."""
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return await ctx.send("❌ Conta não encontrada!")
+
+            passivos = db.get_passivos(user)
+            if not passivos:
+                return await ctx.send(
+                    f"🔰 {ctx.author.mention}, nenhum passivo equipado.\n"
+                    f"Use `!equipar` para ativar um."
+                )
+
+            linhas = []
+            for p in passivos:
+                info  = PASSIVOS_INFO.get(p, {})
+                emoji = info.get('emoji', '🔰')
+                linhas.append(f"{emoji} **{p}**")
+
+            await ctx.send(
+                f"🔰 **Passivos equipados:**\n" + "\n".join(linhas) +
+                f"\n\nUse `!desequipar <nome>` para remover um.",
+                delete_after=60
+            )
+        except Exception as e:
+            print(f"❌ Erro em _mostrar_passivos_equipados: {e}")
 
 
 def setup(bot):
