@@ -38,8 +38,8 @@ class General(commands.Cog):
         embed.add_field(name="📦 MERCADO E CONTRABANDO", inline=False, value=(
             "🛒 **`!loja`** ─ *Mercado negro com **preços dinâmicos** — a demanda define o preço!*\n"
             "└ *Rico paga mais: o cargo determina um multiplicador no preço dos itens de poder.*\n"
-            "🤝 **`!vender @user <item> <preço>`** ─ *Venda itens do inventário para outros jogadores.*\n"
-            "♻️ **`!reembolso <item>`** ─ *Devolve o item ao sistema e recebe 50% do preço base.*\n"
+            "🤝 **`!vender @user <item> <preço>`** ─ *Venda itens para outros jogadores.*\n"
+            "♻️ **`!vender <item>`** ─ *Sem @ — vende o item ao sistema pelo preço base.*\n"
             "🎒 **`!inventario`** ─ *Veja seus itens e quais podem ser negociados.*\n"
             "🔓 **`!abrir <caixote/baú/relíquia/gaiola>`** ─ *Abra caixas do inventário.*\n"
             "📊 **`!caixas`** ─ *Porcentagens e recompensas de cada caixa.*\n"

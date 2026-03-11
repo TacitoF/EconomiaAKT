@@ -214,29 +214,54 @@ class Trade(commands.Cog):
     @commands.command(aliases=["negociar", "comercio"])
     async def vender(self, ctx, comprador: disnake.Member = None, *, args: str = ""):
         """
-        Vende um item do inventário para outro jogador.
-        Uso: !vender @usuario <nome do item> <preço>
-        Exemplo: !vender @João Imposto do Gorila 1000
-        O preço é sempre o último número da mensagem.
+        Vende um item para outro jogador ou para o sistema.
+        !vender @usuario <item> <preço>  → proposta para jogador
+        !vender <item>                   → vende ao sistema pelo preço base
         """
-        # Separa o último token (preço) do resto (item)
+        # ── Modo sistema: sem @ de comprador ──────────────────────────────────
+        # Se o primeiro argumento não for um Member, trata tudo como nome do item
+        if comprador is None or isinstance(comprador, str):
+            # comprador não resolveu — args pode estar vazio, o item está em comprador+args
+            # Reconstruímos a string completa
+            partes_raw = ([comprador.name if hasattr(comprador, "name") else (comprador or "")] + [args]).strip()
+            nome_item  = " ".join(filter(None, [
+                comprador if isinstance(comprador, str) else "",
+                args
+            ])).strip() or (comprador if isinstance(comprador, str) else "")
+
+            if not nome_item:
+                return await ctx.send(
+                    f"⚠️ {ctx.author.mention}, uso:\n"
+                    f"• Vender para jogador: `!vender @usuario <item> <preço>`\n"
+                    f"• Vender ao sistema: `!vender <item>`\n"
+                    f"*Use `!inventario` para ver seus itens.*"
+                )
+            return await self._vender_sistema(ctx, nome_item)
+
+        # ── Modo jogador: comprador é um Member ────────────────────────────────
         item = None
         preco = None
         if args:
-            partes = args.rsplit(None, 1)  # divide pelo último espaço
+            partes = args.rsplit(None, 1)
             if len(partes) == 2:
                 try:
                     preco = float(partes[1].replace(",", "."))
                     item = partes[0].strip()
                 except ValueError:
+                    # sem preço no final — pode ser venda ao sistema com @ errado
                     pass
 
-        if comprador is None or item is None or preco is None:
+        if item is None or preco is None:
+            # Tenta interpretar como venda ao sistema com @ mencionado acidentalmente
+            nome_item = args.strip() if args else ""
+            if nome_item:
+                return await self._vender_sistema(ctx, nome_item)
             return await ctx.send(
                 f"⚠️ {ctx.author.mention}, uso: `!vender @usuario <item> <preço>`\n"
                 f"Exemplo: `!vender @João Imposto do Gorila 1000`\n"
                 f"*O preço é sempre o último número. Use `!inventario` para ver seus itens.*"
             )
+
         if comprador.id == ctx.author.id:
             return await ctx.send(f"🐒 {ctx.author.mention}, não pode vender para si mesmo!")
         if comprador.bot:
@@ -254,7 +279,6 @@ class Trade(commands.Cog):
             inv_str = str(vendedor_db["data"][5]) if len(vendedor_db["data"]) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.lower() != "nenhum"]
 
-            # Busca o item no inventário (case-insensitive, busca parcial)
             item_encontrado = None
             for inv_item in inv_list:
                 if item.lower() in inv_item.lower():
@@ -268,20 +292,17 @@ class Trade(commands.Cog):
                     f"**Seus itens:**\n{itens_fmt}"
                 )
 
-            # Verifica se o item pode ser negociado
             if item_encontrado in ITENS_INTRANSFERÍVEIS:
                 return await ctx.send(
                     f"❌ **{item_encontrado}** não pode ser vendido entre jogadores pois tem lógica de estado ativo."
                 )
 
-            # Verifica se comprador tem conta
             comprador_db = db.get_user_data(str(comprador.id))
             if not comprador_db:
                 return await ctx.send(f"❌ {comprador.mention} não tem conta registrada!")
 
             saldo_comprador = db.parse_float(comprador_db["data"][2])
 
-            # Cria a proposta
             import uuid
             proposta_id = str(uuid.uuid4())[:8]
             _propostas[proposta_id] = {
@@ -314,6 +335,57 @@ class Trade(commands.Cog):
             print(f"❌ Erro no !vender de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
+    async def _vender_sistema(self, ctx, nome_item: str):
+        """Fluxo de venda ao sistema pelo preço base."""
+        try:
+            user_db = db.get_user_data(str(ctx.author.id))
+            if not user_db:
+                return await ctx.send("❌ Você não tem conta!")
+
+            inv_str  = str(user_db["data"][5]) if len(user_db["data"]) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.lower() != "nenhum"]
+            inv_list = [i for i in inv_list if not i.startswith("cosmético:") and not i.startswith("cosmetico:")]
+
+            item_encontrado = None
+            for inv_item in inv_list:
+                if nome_item.lower() in inv_item.lower():
+                    item_encontrado = inv_item
+                    break
+
+            if not item_encontrado:
+                return await ctx.send(
+                    f"❌ {ctx.author.mention}, **{nome_item}** não encontrado no inventário.\n"
+                    f"Use `!inventario` para ver seus itens."
+                )
+
+            if item_encontrado not in ITENS_REEMBOLSAVEIS:
+                return await ctx.send(
+                    f"❌ **{item_encontrado}** não pode ser vendido ao sistema.\n"
+                    f"Cosméticos, cargos e caixas não são aceitos.\n"
+                    f"Tente vender para outro jogador: `!vender @usuario {item_encontrado} <preço>`"
+                )
+
+            _, preco_base = ITENS_REEMBOLSAVEIS[item_encontrado]
+            valor = round(preco_base * TAXA_REEMBOLSO, 2)
+
+            embed = disnake.Embed(
+                title="🏦 VENDER AO SISTEMA?",
+                description=(
+                    f"**Item:** `{item_encontrado}`\n"
+                    f"**Valor de venda:** `{formatar_moeda(valor)} MC` *(preço base)*\n\n"
+                    f"⚠️ Esta ação é **irreversível**. O item será removido do inventário."
+                ),
+                color=disnake.Color.orange()
+            )
+            embed.set_footer(text="Expira em 30 segundos.")
+
+            view = ViewConfirmarReembolso(ctx.author, item_encontrado, valor, user_db["row"], inv_list)
+            view.message = await ctx.send(embed=embed, view=view)
+
+        except Exception as e:
+            print(f"❌ Erro no _vender_sistema de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
 
     @vender.error
     async def vender_error(self, ctx, error):
@@ -332,74 +404,6 @@ class Trade(commands.Cog):
         print(f"❌ Erro inesperado no !vender: {error}")
         await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
-
-    @commands.command(aliases=["devolver", "retornar", "sellback"])
-    async def reembolso(self, ctx, *, item: str = None):
-        if not item:
-            itens_fmt = "\n".join(
-                f"• **{nome}** → `+{formatar_moeda(preco * TAXA_REEMBOLSO)} MC`"
-                for nome, (_, preco) in ITENS_REEMBOLSAVEIS.items()
-            )
-            return await ctx.send(
-                f"♻️ {ctx.author.mention}, use `!reembolso <item>` para devolver um item ao sistema.\n"
-                f"Você recebe **100% do preço base** de volta.\n\n"
-                f"**Itens aceitos:**\n{itens_fmt}",
-                delete_after=60
-            )
-
-        try:
-            user_db = db.get_user_data(str(ctx.author.id))
-            if not user_db:
-                return await ctx.send("❌ Você não tem conta!")
-
-            inv_str  = str(user_db["data"][5]) if len(user_db["data"]) > 5 else ""
-            inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.lower() != "nenhum"]
-            inv_list = [i for i in inv_list if not i.startswith("cosmético:") and not i.startswith("cosmetico:")]
-
-            # Busca item no inventário (case-insensitive, parcial)
-            item_encontrado = None
-            for inv_item in inv_list:
-                if item.lower() in inv_item.lower():
-                    item_encontrado = inv_item
-                    break
-
-            if not item_encontrado:
-                return await ctx.send(
-                    f"❌ {ctx.author.mention}, **{item}** não encontrado no inventário.\n"
-                    f"Use `!inventario` para ver seus itens."
-                )
-
-            # Verifica se o item é reembolsável
-            if item_encontrado not in ITENS_REEMBOLSAVEIS:
-                return await ctx.send(
-                    f"❌ **{item_encontrado}** não pode ser devolvido ao sistema.\n"
-                    f"Cosméticos, cargos e caixas não são reembolsáveis.\n"
-                    f"Tente vender para outro jogador com `!vender @usuario {item_encontrado} <preço>`."
-                )
-
-            _, preco_base = ITENS_REEMBOLSAVEIS[item_encontrado]
-            valor_reembolso = round(preco_base * TAXA_REEMBOLSO, 2)
-
-            embed = disnake.Embed(
-                title="♻️ DEVOLVER AO SISTEMA?",
-                description=(
-                    f"**Item:** `{item_encontrado}`\n"
-                    f"**Preço base:** `{formatar_moeda(preco_base)} MC`\n"
-                    f"**Você recebe:** `{formatar_moeda(valor_reembolso)} MC` *(100%)*\n\n"
-                    f"⚠️ Esta ação é **irreversível**. O item será removido do seu inventário."
-                ),
-                color=disnake.Color.orange()
-            )
-            embed.set_footer(text="Expira em 30 segundos.")
-
-            view = ViewConfirmarReembolso(ctx.author, item_encontrado, valor_reembolso, user_db["row"], inv_list)
-            view.message = await ctx.send(embed=embed, view=view)
-
-        except commands.CommandError:
-            raise
-        except Exception as e:
-            print(f"❌ Erro no !reembolso de {ctx.author}: {e}")
-            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["inv", "mochila", "bolsa"])
     async def inventario(self, ctx, membro: disnake.Member = None):
