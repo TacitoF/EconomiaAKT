@@ -228,9 +228,7 @@ class Trade(commands.Cog):
         # Bloqueia visualização do inventário alheio — use !perfil @usuario para isso (500 MC)
         if membro and membro.id != ctx.author.id:
             return await ctx.send(
-                f"🔒 {ctx.author.mention}, o inventário de outros jogadores é informação privada!
-"
-                f"Use `!perfil @{membro.display_name}` e clique em **🕵️ Ver dados completos** para espionar."
+                f"🔒 {ctx.author.mention}, o inventário de outros jogadores é informação privada!\nUse `!perfil @{membro.display_name}` e clique em **🕵️ Ver dados completos** para espionar."
             )
 
         alvo = ctx.author
@@ -246,9 +244,7 @@ class Trade(commands.Cog):
 
             if not inv_list:
                 return await ctx.send(
-                    f"🎒 {ctx.author.mention}, seu inventário está vazio!
-"
-                    f"Trabalhe na selva, abra caixas ou compre itens na `!loja`."
+                    f"🎒 {ctx.author.mention}, seu inventário está vazio!\nTrabalhe na selva, abra caixas ou compre itens na `!loja`."
                 )
 
             # Agrupa itens repetidos
@@ -264,8 +260,7 @@ class Trade(commands.Cog):
 
             embed = disnake.Embed(
                 title=f"🎒 Seu Inventário",
-                description="
-".join(linhas),
+                description="\n".join(linhas),
                 color=disnake.Color.dark_theme()
             )
             embed.set_author(name=alvo.display_name, icon_url=alvo.display_avatar.url)
