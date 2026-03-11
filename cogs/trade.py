@@ -132,17 +132,30 @@ class Trade(commands.Cog):
             raise commands.CommandError("Canal incorreto.")
 
     @commands.command(aliases=["negociar", "comercio"])
-    async def vender(self, ctx, comprador: disnake.Member = None, item: str = None, preco: float = None):
+    async def vender(self, ctx, comprador: disnake.Member = None, *, args: str = ""):
         """
         Vende um item do inventário para outro jogador.
         Uso: !vender @usuario <nome do item> <preço>
-        Exemplo: !vender @João "Casca de Banana" 200
+        Exemplo: !vender @João Imposto do Gorila 1000
+        O preço é sempre o último número da mensagem.
         """
+        # Separa o último token (preço) do resto (item)
+        item = None
+        preco = None
+        if args:
+            partes = args.rsplit(None, 1)  # divide pelo último espaço
+            if len(partes) == 2:
+                try:
+                    preco = float(partes[1].replace(",", "."))
+                    item = partes[0].strip()
+                except ValueError:
+                    pass
+
         if comprador is None or item is None or preco is None:
             return await ctx.send(
                 f"⚠️ {ctx.author.mention}, uso: `!vender @usuario <item> <preço>`\n"
-                f"Exemplo: `!vender @João Casca 200`\n"
-                f"*Use `!inventario` para ver seus itens disponíveis.*"
+                f"Exemplo: `!vender @João Imposto do Gorila 1000`\n"
+                f"*O preço é sempre o último número. Use `!inventario` para ver seus itens.*"
             )
         if comprador.id == ctx.author.id:
             return await ctx.send(f"🐒 {ctx.author.mention}, não pode vender para si mesmo!")
@@ -220,6 +233,24 @@ class Trade(commands.Cog):
         except Exception as e:
             print(f"❌ Erro no !vender de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+
+    @vender.error
+    async def vender_error(self, ctx, error):
+        if isinstance(error, commands.MemberNotFound):
+            return await ctx.send(
+                f"❌ {ctx.author.mention}, jogador não encontrado!\n"
+                f"Use: `!vender @usuario <item> <preço>` — mencione o jogador com @."
+            )
+        if isinstance(error, commands.MissingRequiredArgument):
+            return await ctx.send(
+                f"⚠️ {ctx.author.mention}, uso: `!vender @usuario <item> <preço>`\n"
+                f"Exemplo: `!vender @Souza Imposto do Gorila 10000`"
+            )
+        if isinstance(error, commands.CommandError):
+            raise error
+        print(f"❌ Erro inesperado no !vender: {error}")
+        await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     @commands.command(aliases=["inv", "mochila", "bolsa"])
     async def inventario(self, ctx, membro: disnake.Member = None):

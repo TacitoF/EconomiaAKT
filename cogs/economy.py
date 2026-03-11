@@ -375,29 +375,51 @@ class Economy(commands.Cog):
                     return await ctx.send(embed=emb_b)
 
             if random.randint(1, 100) <= chance_sucesso:
-                if saldo_alvo < 500:
+                # Busca apostas pendentes da vítima para incluir no cálculo
+                apostas_vitima = db.get_apostas_pendentes_usuario(str(vitima.id))
+                total_apostado = sum(a["valor"] for a in apostas_vitima)
+                patrimonio_total = saldo_alvo + total_apostado
+
+                if patrimonio_total < 80:
+                    return await ctx.send(f"😬 {vitima.mention} está tão pobre que não vale a pena o risco.")
+
+                if patrimonio_total < 500:
                     pct, is_pobre = random.uniform(0.01, 0.05), True
                 else:
                     pct, is_pobre = random.uniform(0.05, 0.10), False
 
                 pct += roubo_bonus
                 limite_saque = 15000.0 if roubo_bonus > 0 else 12000.0
-                valor_roubado = min(round(saldo_alvo * pct, 2), limite_saque)
+                valor_roubado = min(round(patrimonio_total * pct, 2), limite_saque)
 
                 if valor_roubado < 5:
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco.")
+
+                # Distribui o corte proporcionalmente: saldo e apostas são reduzidos na mesma %
+                corte_saldo   = round(valor_roubado * (saldo_alvo / patrimonio_total), 2) if patrimonio_total > 0 else valor_roubado
+                corte_apostas = round(valor_roubado - corte_saldo, 2)
+
+                # Desconta das apostas proporcionalmente
+                apostas_msg = ""
+                if apostas_vitima and corte_apostas > 0:
+                    for aposta in apostas_vitima:
+                        proporcao    = aposta["valor"] / total_apostado
+                        corte_ap     = round(corte_apostas * proporcao, 2)
+                        novo_valor   = max(0.0, round(aposta["valor"] - corte_ap, 2))
+                        db.atualizar_valor_aposta(aposta["row"], novo_valor)
+                    apostas_msg = f"\n🎰 **{formatar_moeda(corte_apostas)} MC** deduzidos das apostas pendentes."
 
                 bounty_ganho = self.bot.recompensas.pop(vitima_id, 0.0)
 
                 seguro_msg = ""
                 if "Seguro" in inv_alvo:
-                    recuperado = round(valor_roubado * 0.6, 2)
-                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado + recuperado, 2))
+                    recuperado = round(corte_saldo * 0.6, 2)
+                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - corte_saldo + recuperado, 2))
                     inv_alvo.remove("Seguro")
                     db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
                     seguro_msg = f"📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{formatar_moeda(recuperado)} MC**!"
                 else:
-                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado, 2))
+                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - corte_saldo, 2))
 
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao + valor_roubado + bounty_ganho, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
@@ -427,6 +449,7 @@ class Economy(commands.Cog):
                 emb_s.add_field(name="💸 Roubado",    value=f"**+{formatar_moeda(valor_roubado)} MC**", inline=True)
                 emb_s.add_field(name="🎯 Alvo",       value=vitima.mention,                             inline=True)
                 
+                if apostas_msg: emb_s.add_field(name="🎰 Apostas afetadas", value=apostas_msg.strip(), inline=False)
                 if usou_pe_de_cabra: emb_s.add_field(name="🕵️ Ferramenta", value="Usou **Pé de Cabra**", inline=True)
                 if bounty_ganho > 0: emb_s.add_field(name="🎯 Recompensa", value=f"**+{formatar_moeda(bounty_ganho)} MC**", inline=True)
                 if msg_mascotes:     emb_s.add_field(name="🐾 Ajuda Animal", value=msg_mascotes.strip(), inline=False)

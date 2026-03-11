@@ -1,5 +1,4 @@
 import os
-import time
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from disnake.ext import commands
@@ -301,6 +300,19 @@ def atualizar_status_aposta(row, status):
     except Exception as e:
         handle_db_error(e)
 
+
+def atualizar_valor_aposta(row: int, novo_valor: float):
+    """Atualiza o valor apostado de uma linha específica na sheet_apostas."""
+    try:
+        sheet_apostas.update_cell(row, 4, str(round(novo_valor, 2)).replace('.', ','))
+    except Exception as e:
+        handle_db_error(e)
+
+def get_apostas_pendentes_usuario(user_id: str) -> list:
+    """Retorna todas as apostas pendentes de um usuário específico."""
+    todas = obter_apostas_pendentes()
+    return [a for a in todas if str(a["user_id"]) == str(user_id)]
+
 def limpar_apostas_finalizadas() -> int:
     try:
         all_rows = sheet_apostas.get_all_values()
@@ -411,8 +423,9 @@ def get_compras_item(item_id: str) -> int:
 def incrementar_compras(item_id: str, quantidade: int = 1):
     """Incrementa o contador de compras do item. Cria a linha se não existir."""
     try:
+        import time as _time
         row = _mercado_row(item_id)
-        agora = time.time()
+        agora = _time.time()
         if not row:
             next_row = len(sheet_mercado.col_values(1)) + 1
             sheet_mercado.update(f"A{next_row}:C{next_row}", [[item_id, quantidade, agora]])
