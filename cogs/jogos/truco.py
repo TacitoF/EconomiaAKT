@@ -135,6 +135,8 @@ class Partida:
         self.maos = {}
         for i, _ in enumerate(self.jogadores):
             self.maos[i] = [baralho.pop() for _ in range(3)]
+        # Carta que "vira" — próxima do baralho após distribuir
+        self.vira = baralho.pop() if baralho else None
         self.cartas_mesa = {}
         self.ja_jogou    = set()
         self.maos_ganhas = [0, 0]
@@ -334,6 +336,10 @@ def embed_partida(p: Partida, titulo: str = "🃏 TRUCO PAULISTA", msg: str = ""
     valor_str = {1: "1 ponto", 3: "Truco! (3)", 6: "Seis! (6)", 9: "Nove! (9)", 12: "Doze! (12)"}
     desc += f"💰 Apostado: **{formatar_moeda(p.aposta)} MC** × {valor_str.get(p.truco_valor, str(p.truco_valor))}\n"
 
+    # Mostra carta que vira
+    if hasattr(p, 'vira') and p.vira:
+        desc += f"🔄 **Vira:** {label_carta(*p.vira)}\n"
+
     # Rodadas ganhas
     icones = []
     for r in p.maos_rodada:
@@ -407,6 +413,8 @@ class ViewLobby(disnake.ui.View):
             return await inter.response.send_message("❌ Lobby cheio!", ephemeral=True)
 
         lobby["jogadores"].append(inter.author)
+        # Reset timeout a cada vez que alguém entra no lobby
+        self.timeout = 120  # reinicia o timer
         await inter.response.defer()
 
         # Atualiza embed do lobby
@@ -748,15 +756,22 @@ class Truco(commands.Cog):
             await inter.response.edit_message(embed=embed, view=view)
             return
 
-        # Rodada fechada — resolve
+        # Rodada fechada — mostra todas as cartas antes de resolver
+        # Monta embed mostrando a mesa completa
+        embed_reveal = embed_partida(p, msg=f"🃏 Todas as cartas na mesa! Revelando resultado...")
+        view = ViewTruco(canal_id, self)
+        await inter.response.edit_message(embed=embed_reveal, view=view)
+        await asyncio.sleep(1.5)
+
+        # Resolve rodada
         resultado, _ = p.resolver_rodada()
         if resultado == "empate":
             msg_res = "🤝 Empate na rodada!"
         else:
-            nome_time = (p.jogadores[0] if p.modo == "1v1" else
-                         f"Time {resultado + 1}").display_name if p.modo == "1v1" else f"Time {resultado + 1}"
             if p.modo == "1v1":
                 nome_time = p.jogadores[resultado].display_name
+            else:
+                nome_time = f"Time {resultado + 1}"
             msg_res = f"✅ Rodada {p.rodada} para **{nome_time}**!"
 
         p.rodada += 1
@@ -771,7 +786,12 @@ class Truco(commands.Cog):
                 msg_res += f" | 🃏 Nova mão! Placar: `{p.pontos[0]}` × `{p.pontos[1]}`"
                 embed = embed_partida(p, msg=msg_res)
                 view  = ViewTruco(canal_id, self)
-                await inter.response.edit_message(embed=embed, view=view)
+                try:
+                    await inter.edit_original_message(embed=embed, view=view)
+                except Exception:
+                    canal = self.bot.get_channel(canal_id)
+                    if canal:
+                        await canal.send(embed=embed, view=view)
                 await self._enviar_cartas_todos(canal_id)
                 if p.mao_de_11:
                     await self._processar_mao11(canal_id)
@@ -790,7 +810,12 @@ class Truco(commands.Cog):
 
         embed = embed_partida(p, msg=msg_res)
         view  = ViewTruco(canal_id, self)
-        await inter.response.edit_message(embed=embed, view=view)
+        try:
+            await inter.edit_original_message(embed=embed, view=view)
+        except Exception:
+            canal = self.bot.get_channel(canal_id)
+            if canal:
+                await canal.send(embed=embed, view=view)
 
     # ── Truco ─────────────────────────────────────────────────────────────────
 
