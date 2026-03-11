@@ -365,3 +365,64 @@ def get_instancia_ativa() -> str | None:
         return sheet_config.cell(row, 2).value
     except Exception:
         return None  # Em caso de erro, deixa o comando passar (fail-open)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  MERCADO DINÂMICO (contagem de compras por item)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _get_or_create_mercado_sheet():
+    try:
+        return client.open_by_key(sheet_id).worksheet("Mercado")
+    except gspread.exceptions.WorksheetNotFound:
+        ws = client.open_by_key(sheet_id).add_worksheet(title="Mercado", rows=50, cols=3)
+        ws.update("A1:C1", [["item_id", "compras_hoje", "ultimo_reset"]])
+        return ws
+
+sheet_mercado = _get_or_create_mercado_sheet()
+
+def _mercado_row(item_id: str) -> int | None:
+    try:
+        col = sheet_mercado.col_values(1)
+        idx = col.index(item_id)
+        return idx + 1
+    except ValueError:
+        return None
+
+def get_compras_item(item_id: str) -> int:
+    """Retorna quantas compras o item teve hoje. Zera automaticamente se passou 24h."""
+    try:
+        row = _mercado_row(item_id)
+        if not row:
+            return 0
+        valores = sheet_mercado.row_values(row)
+        compras = int(valores[1]) if len(valores) > 1 and valores[1] else 0
+        ultimo_reset = float(valores[2]) if len(valores) > 2 and valores[2] else 0.0
+
+        # Reset automático se passou 24h
+        if time.time() - ultimo_reset >= 86400:
+            sheet_mercado.update(f"B{row}:C{row}", [[0, time.time()]])
+            return 0
+        return compras
+    except Exception:
+        return 0  # fail-open: preço base se der erro
+
+def incrementar_compras(item_id: str, quantidade: int = 1):
+    """Incrementa o contador de compras do item. Cria a linha se não existir."""
+    try:
+        import time as _time
+        row = _mercado_row(item_id)
+        agora = _time.time()
+        if not row:
+            next_row = len(sheet_mercado.col_values(1)) + 1
+            sheet_mercado.update(f"A{next_row}:C{next_row}", [[item_id, quantidade, agora]])
+        else:
+            valores = sheet_mercado.row_values(row)
+            compras_atuais = int(valores[1]) if len(valores) > 1 and valores[1] else 0
+            ultimo_reset = float(valores[2]) if len(valores) > 2 and valores[2] else 0.0
+            if agora - ultimo_reset >= 86400:
+                compras_atuais = 0
+                ultimo_reset = agora
+            sheet_mercado.update(f"B{row}:C{row}", [[compras_atuais + quantidade, ultimo_reset]])
+    except Exception as e:
+        print(f"⚠️ Erro ao incrementar compras de {item_id}: {e}")

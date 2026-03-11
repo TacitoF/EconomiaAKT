@@ -8,6 +8,54 @@ ESCUDO_CARGAS = 3
 def formatar_moeda(valor: float) -> str:
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+# ── Preço dinâmico ────────────────────────────────────────────────────────────
+# Itens de poder têm preço variável por demanda E por cargo do comprador.
+# Cosméticos e cargos sempre têm preço fixo.
+
+ITENS_PRECO_DINAMICO = {
+    "item:escudo", "item:pe_de_cabra", "item:seguro",
+    "item:casca", "item:imposto", "item:racao",
+}
+
+# Quanto cada cargo paga a mais (rico paga mais, pobre paga base)
+MULTIPLICADOR_CARGO = {
+    "Lêmure":      1.00,
+    "Macaquinho":  1.10,
+    "Babuíno":     1.22,
+    "Chimpanzé":   1.38,
+    "Orangutango": 1.58,
+    "Gorila":      1.82,
+    "Ancestral":   2.10,
+    "Rei Símio":   2.45,
+}
+
+def preco_dinamico(slug: str, preco_base: float, cargo: str) -> tuple[float, str]:
+    """
+    Retorna (preco_final, indicador_tendencia).
+    - Aplica multiplicador de cargo para itens de poder
+    - Aplica variação de demanda (+3% por compra hoje, teto +80%, piso -40%)
+    """
+    if slug not in ITENS_PRECO_DINAMICO:
+        return preco_base, ""
+
+    # Multiplicador de cargo
+    mult_cargo = MULTIPLICADOR_CARGO.get(cargo, 1.0)
+
+    # Multiplicador de demanda
+    compras = db.get_compras_item(slug)
+    variacao_demanda = compras * 0.03
+    mult_demanda = max(0.60, min(1.80, 1.0 + variacao_demanda))
+
+    preco_final = round(preco_base * mult_cargo * mult_demanda, 2)
+
+    # Indicador de tendência
+    if mult_demanda >= 1.50:   tendencia = "🔥 Alta demanda"
+    elif mult_demanda >= 1.20: tendencia = "📈 Em alta"
+    elif mult_demanda <= 0.70: tendencia = "📉 Pouca procura"
+    else:                      tendencia = ""
+
+    return preco_final, tendencia
+
 # ── Catálogos ─────────────────────────────────────────────────────────────────
 # Formato: slug -> (preco, label, emoji, descricao_ou_raridade)
 
@@ -103,26 +151,35 @@ def _batch_compra(row: int, novo_saldo: float, nova_inv: list, col_extra: str = 
 
 async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: dict, is_cosm: bool, quantidade: int = 1):
     dados = itens[slug]
-    preco, label, emoji = dados[0], dados[1], dados[2]
-    preco_total = preco * quantidade
+    preco_base, label, emoji = dados[0], dados[1], dados[2]
 
     user = db.get_user_data(str(inter.author.id))
     if not user: return "❌ Conta não encontrada!"
 
     saldo    = db.parse_float(user["data"][2])
+    cargo    = str(user["data"][3]) if len(user["data"]) > 3 else "Lêmure"
     row      = user["row"]
     inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
     inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.strip().lower() != "nenhum"]
 
+    # Aplica preço dinâmico (por cargo + demanda) apenas em itens de poder
+    preco, tendencia = preco_dinamico(slug, preco_base, cargo)
+    preco_total = preco * quantidade
+
     if saldo < preco_total:
         faltam = round(preco_total - saldo, 2)
         qtd_str = f" (×{quantidade})" if quantidade > 1 else ""
-        return f"❌ Saldo insuficiente!\nPrecisa de **{formatar_moeda(preco_total)} MC**{qtd_str} (faltam **{formatar_moeda(faltam)} MC**)."
+        tend_txt = f"\n{tendencia}" if tendencia else ""
+        return f"❌ Saldo insuficiente!\nPrecisa de **{formatar_moeda(preco_total)} MC**{qtd_str} (faltam **{formatar_moeda(faltam)} MC**).{tend_txt}"
 
     if slug.startswith("cargo:"):
         nome_cargo = NOME_CARGO[slug]
         _batch_compra(row, saldo - preco, inv_list, col_extra="D", val_extra=nome_cargo)
         return f"🎉 Você evoluiu para o cargo **{emoji} {nome_cargo}**!\n💸 **-{formatar_moeda(preco)} MC** debitados."
+
+    # Incrementa contador de demanda para itens de poder
+    if slug in ITENS_PRECO_DINAMICO:
+        db.incrementar_compras(slug, quantidade)
 
     if slug == "item:escudo":
         bot, uid, agora = inter.bot, str(inter.author.id), time.time()
@@ -148,7 +205,8 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: 
     nome_item = NOME_ITEM.get(slug, label)
     inv_list.extend([nome_item] * quantidade)
     _batch_compra(row, saldo - preco_total, inv_list)
-    return f"{emoji} **×{quantidade} {nome_item}** comprado{'s' if quantidade > 1 else ''}!\n💸 **-{formatar_moeda(preco_total)} MC**."
+    tend_txt = f"\n{tendencia}" if tendencia else ""
+    return f"{emoji} **×{quantidade} {nome_item}** comprado{'s' if quantidade > 1 else ''}!\n💸 **-{formatar_moeda(preco_total)} MC**.{tend_txt}"
 
 class _BotaoQtd(disnake.ui.Button):
     def __init__(self, qtd: int, pode: bool):
@@ -214,8 +272,16 @@ def _build_categoria(author_id, saldo, cat):
         is_cosm = True
 
     emb.description = f"💰 Saldo: **{formatar_moeda(saldo)} MC**\nSelecione abaixo:"
+    # Para itens de poder, mostra o preço real do cargo do usuário
+    user_tmp = db.get_user_data(str(author_id))
+    cargo_tmp = str(user_tmp["data"][3]) if user_tmp and len(user_tmp["data"]) > 3 else "Lêmure"
     for slug, (p, l, e, d) in itens.items():
-        emb.add_field(name=f"{e} {l}", value=f"`{formatar_moeda(p)} MC` {'✅' if saldo >= p else '❌'}\n*{d}*" if not is_cosm else f"`{formatar_moeda(p)} MC` {'✅' if saldo >= p else '❌'}", inline=True)
+        p_real, tend = preco_dinamico(slug, p, cargo_tmp)
+        tend_str = f" {tend}" if tend else ""
+        if not is_cosm:
+            emb.add_field(name=f"{e} {l}", value=f"`{formatar_moeda(p_real)} MC` {'✅' if saldo >= p_real else '❌'}{tend_str}\n*{d}*", inline=True)
+        else:
+            emb.add_field(name=f"{e} {l}", value=f"`{formatar_moeda(p_real)} MC` {'✅' if saldo >= p_real else '❌'}", inline=True)
     return emb, ViewItens(author_id, saldo, itens, cat, is_cosm=is_cosm)
 
 def _embed_inicio(saldo: float) -> disnake.Embed:
