@@ -25,67 +25,86 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="📜 REGISTRO DE ATUALIZAÇÕES: v9.5 — A GRANDE EXPANSÃO DOS MASCOTES",
+            title="📜 REGISTRO DE ATUALIZAÇÕES: v10.0 — O MERCADO VIVO",
             description=(
-                "A selva está mais viva do que nunca! 🐾\n"
-                "Expandimos massivamente o sistema de **Mascotes**. Agora existem **12 animais diferentes** "
-                "para você resgatar, cada um com estratégias únicas para ajudar a enriquecer ou destruir os seus rivais."
+                "A economia da selva nunca mais será a mesma. 💹\n"
+                "Esta atualização transforma o mercado em um sistema **vivo e dinâmico**, "
+                "onde os preços flutuam com a demanda e os jogadores podem negociar diretamente entre si."
             ),
-            color=disnake.Color.green()
+            color=0x00C853
         )
 
         embed.add_field(
-            name="🐾 COMO CONSEGUIR O SEU?",
+            name="💹 PREÇOS DINÂMICOS NO MERCADO",
             inline=False,
             value=(
-                "Trabalhe arduamente! Ao usar `!trabalhar`, existe uma chance de encontrar uma **Gaiola Misteriosa** perdida. "
-                "Use `!abrir gaiola` para descobrir qual dos 12 mascotes você tirou e que raridade ele tem."
+                "Os itens de poder agora têm **preço variável** — a oferta e a demanda mandam!\n\n"
+                "📈 **Alta demanda:** Cada compra empurra o preço **+3%** para cima (teto: **+80%**)\n"
+                "📉 **Baixa demanda:** Se ninguém comprar, o preço cai gradualmente (piso: **-40%**)\n"
+                "🔄 O contador de compras **reseta todo dia**, então os preços oscilam diariamente\n\n"
+                "A loja exibe o indicador de tendência ao lado de cada item:\n"
+                "`🔥 Alta demanda` · `📈 Em alta` · `📉 Pouca procura`"
             )
         )
 
         embed.add_field(
-            name="🟢 COMUNS E 🔵 RAROS",
+            name="⚖️ IMPOSTO PROGRESSIVO POR CARGO",
             inline=False,
             value=(
-                "🦦 **Capivara**: +10% de lucro no Trabalho\n"
-                "🦥 **Bicho-Preguiça**: +15% no Trabalho *(mas gasta a fome mais rápido)*\n"
-                "🐸 **Sapo-Boi**: +8% no Trabalho *(20% de chance de NÃO gastar fome)*\n"
-                "🦜 **Papagaio**: -15% de chance de ser roubado\n"
-                "🐍 **Jiboia**: -10% de chance de ser roubado *(e o Ladrão paga uma multa 50% maior se falhar)*\n"
-                "🦔 **Gambá**: -20% de chance de ser roubado *(gasta muita fome ao te defender)*"
+                "Rico paga mais, pobre paga menos — simples assim.\n\n"
+                "🐭 **Lêmure** → preço base (100%)\n"
+                "🐒 **Macaquinho** → +10%\n"
+                "🦍 **Babuíno** → +22%\n"
+                "🐵 **Chimpanzé** → +38%\n"
+                "🦧 **Orangutango** → +58%\n"
+                "🦾 **Gorila** → +82%\n"
+                "🗿 **Ancestral** → +110%\n"
+                "👑 **Rei Símio** → +145%\n\n"
+                "*Cosméticos e upgrades de cargo sempre têm preço fixo.*"
             )
         )
 
         embed.add_field(
-            name="🟣 ÉPICOS E 🌟 LENDÁRIOS",
+            name="🤝 COMÉRCIO ENTRE JOGADORES",
             inline=False,
             value=(
-                "🐒 **Macaco-Prego**: +15% de chance de sucesso no Roubo\n"
-                "🦅 **Harpia**: +10% Roubo *(permite saquear uma quantia maior de MC da vítima)*\n"
-                "🐺 **Lobo-Guará**: +10% Trabalho **E** +10% Roubo\n"
-                "🐆 **Onça Pintada**: +15% Trabalho / +15% Roubo / -15% Defesa\n"
-                "🦍 **Gorila Costas-Prateadas**: +25% Trabalho / +20% Roubo *(O brutamontes do dinheiro)*\n"
-                "🐉 **Dragão-de-Komodo**: +25% Roubo / -25% Defesa *(O rei absoluto do submundo)*"
+                "Agora é possível **vender itens do inventário** diretamente para outros jogadores!\n\n"
+                "🛒 `!vender @usuario <item> <preço>` — Cria uma proposta de venda\n"
+                "✅ O comprador recebe uma notificação e tem **60 segundos** para aceitar ou recusar\n"
+                "🔒 O bot revalida o item e o saldo no momento do aceite — sem golpes possíveis\n\n"
+                "**Itens intransferíveis** (têm lógica de estado ativo):\n"
+                "`Escudo` · `Pé de Cabra` · `Seguro`"
             )
         )
 
         embed.add_field(
-            name="🍗 CUIDADOS BÁSICOS",
+            name="🎒 NOVO COMANDO: !inventario",
             inline=False,
             value=(
-                "Os seus mascotes gastam energia ao trabalhar ou ao ajudá-lo/defendê-lo em roubos. "
-                "Se a **Fome chegar a 0%**, eles dormem e os bônus desligam! Compre **Ração Símia** na `!loja` "
-                "e use `!alimentar` para mantê-los ativos. Se quiser tentar a sorte noutro animal, use `!libertar` primeiro."
+                "`!inventario` — Mostra seus itens vendíveis de forma organizada\n"
+                "✅ Indica quais podem ser negociados e quais são intransferíveis\n"
+                "🔒 O inventário de outros jogadores continua sendo **dado privado** — "
+                "use `!perfil @usuario` para espionar (500 MC)"
             )
         )
 
-        embed.set_footer(text="Koba: Escolha bem o seu parceiro. A selva não perdoa fracos. 🦍")
+        embed.add_field(
+            name="⚠️ O QUE NÃO MUDOU",
+            inline=False,
+            value=(
+                "• Preços de **cargos** e **cosméticos** continuam fixos\n"
+                "• Jogadores com cargos baixos **nunca são prejudicados** pela inflação\n"
+                "• Toda a lógica de roubos, escudo e imposto continua igual"
+            )
+        )
+
+        embed.set_footer(text="Koba: O mercado pune os ingênuos e recompensa os espertos. 🦍")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        await canal_patchnotes.send(embed=embed)
-        await ctx.author.send("✅ Patchnotes v9.5 enviado com sucesso!")
+        await canal_patchnotes.send(content="@everyone", embed=embed)
+        await ctx.author.send("✅ Patchnotes v10.0 enviado com sucesso!")
 
 def setup(bot):
     bot.add_cog(Patchnotes(bot))
