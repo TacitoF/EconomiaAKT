@@ -118,8 +118,6 @@ class ViewConfirmarCompra(disnake.ui.View):
             pass
 
 
-
-
 # Mapa de nome do item → (slug, preço base) para reembolso ao sistema
 ITENS_REEMBOLSAVEIS = {
     "Escudo":              ("item:escudo",      1000.0),
@@ -197,6 +195,7 @@ class ViewConfirmarReembolso(disnake.ui.View):
             await self.message.edit(content="⏳ Confirmação expirou.", embed=None, view=self)
         except Exception:
             pass
+
 
 # ── Cog principal ─────────────────────────────────────────────────────────────
 
@@ -329,6 +328,62 @@ class Trade(commands.Cog):
         else:
             # ── Modo sistema: tudo em args é o nome do item ───────────────────
             await self._vender_sistema(ctx, args.strip())
+
+    async def _vender_sistema(self, ctx, item: str):
+        """Vende um item ao sistema pelo preço base (mesmo que !reembolso)."""
+        try:
+            user_db = db.get_user_data(str(ctx.author.id))
+            if not user_db:
+                return await ctx.send("❌ Você não tem conta!")
+
+            inv_str  = str(user_db["data"][5]) if len(user_db["data"]) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.lower() != "nenhum"]
+            inv_list = [i for i in inv_list if not i.startswith("cosmético:") and not i.startswith("cosmetico:")]
+
+            # Busca item no inventário (case-insensitive, parcial)
+            item_encontrado = None
+            for inv_item in inv_list:
+                if item.lower() in inv_item.lower():
+                    item_encontrado = inv_item
+                    break
+
+            if not item_encontrado:
+                itens_fmt = "\n".join(f"• {i}" for i in inv_list) if inv_list else "*Inventário vazio*"
+                return await ctx.send(
+                    f"❌ **{item}** não encontrado no seu inventário!\n\n"
+                    f"**Seus itens:**\n{itens_fmt}"
+                )
+
+            if item_encontrado not in ITENS_REEMBOLSAVEIS:
+                return await ctx.send(
+                    f"❌ **{item_encontrado}** não pode ser vendido ao sistema.\n"
+                    f"Cosméticos, cargos e caixas não são reembolsáveis.\n"
+                    f"Tente vender para outro jogador com `!vender @usuario {item_encontrado} <preço>`."
+                )
+
+            _, preco_base = ITENS_REEMBOLSAVEIS[item_encontrado]
+            valor_reembolso = round(preco_base * TAXA_REEMBOLSO, 2)
+
+            embed = disnake.Embed(
+                title="♻️ VENDER AO SISTEMA?",
+                description=(
+                    f"**Item:** `{item_encontrado}`\n"
+                    f"**Você recebe:** `{formatar_moeda(valor_reembolso)} MC` *(preço base)*\n\n"
+                    f"⚠️ Esta ação é **irreversível**. O item será removido do seu inventário."
+                ),
+                color=disnake.Color.orange()
+            )
+            embed.set_footer(text="Expira em 30 segundos.")
+
+            view = ViewConfirmarReembolso(ctx.author, item_encontrado, valor_reembolso, user_db["row"], inv_list)
+            view.message = await ctx.send(embed=embed, view=view)
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !vender sistema de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
     @vender.error
     async def vender_error(self, ctx, error):
         if isinstance(error, commands.CommandError):
@@ -409,7 +464,6 @@ class Trade(commands.Cog):
     async def inventario(self, ctx, membro: disnake.Member = None):
         """Mostra os itens vendíveis do próprio inventário.
         Ver o inventário de outra pessoa requer o dossiê no !perfil."""
-        # Bloqueia visualização do inventário alheio — use !perfil @usuario para isso (500 MC)
         if membro and membro.id != ctx.author.id:
             return await ctx.send(
                 f"🔒 {ctx.author.mention}, o inventário de outros jogadores é informação privada!\nUse `!perfil @{membro.display_name}` e clique em **🕵️ Ver dados completos** para espionar."
@@ -449,7 +503,6 @@ class Trade(commands.Cog):
             )
             embed.set_author(name=alvo.display_name, icon_url=alvo.display_avatar.url)
             embed.set_footer(text="✅ Vendível com !vender  |  🔒 Intransferível  |  !visuais para cosméticos")
-            # Ephemeral via send normal — inventário é dado sensível
             await ctx.send(embed=embed, delete_after=60)
 
         except Exception as e:
