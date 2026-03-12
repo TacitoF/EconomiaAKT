@@ -459,14 +459,10 @@ class Economy(commands.Cog):
 
             # ── ROUBO ──
             if random.randint(1, 100) <= chance_sucesso:
-                apostas_vitima   = db.get_apostas_pendentes_usuario(str(vitima.id))
-                total_apostado   = sum(a["valor"] for a in apostas_vitima)
-                patrimonio_total = saldo_alvo + total_apostado
-
-                if patrimonio_total < 80:
+                if saldo_alvo < 80:
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não vale a pena o risco.")
 
-                if patrimonio_total < 500:
+                if saldo_alvo < 500:
                     pct, is_pobre = random.uniform(0.01, 0.05), True
                 else:
                     pct, is_pobre = random.uniform(0.05, 0.10 + pct_max_bonus), False
@@ -476,42 +472,30 @@ class Economy(commands.Cog):
 
                 pct        += roubo_bonus
                 limite_saque = 15000.0 if roubo_bonus > 0 else 12000.0
-                valor_roubado = min(round(patrimonio_total * pct, 2), limite_saque)
+                valor_roubado = min(round(saldo_alvo * pct, 2), limite_saque)
 
                 if valor_roubado < 5:
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não valia a pena o risco.")
-
-                corte_saldo   = round(valor_roubado * (saldo_alvo / patrimonio_total), 2) if patrimonio_total > 0 else valor_roubado
-                corte_apostas = round(valor_roubado - corte_saldo, 2)
-
-                apostas_msg = ""
-                if apostas_vitima and corte_apostas > 0:
-                    for aposta in apostas_vitima:
-                        proporcao  = aposta["valor"] / total_apostado
-                        corte_ap   = round(corte_apostas * proporcao, 2)
-                        novo_valor = max(0.0, round(aposta["valor"] - corte_ap, 2))
-                        db.atualizar_valor_aposta(aposta["row"], novo_valor)
-                    apostas_msg = f"\n🎰 **{formatar_moeda(corte_apostas)} MC** deduzidos das apostas pendentes."
 
                 bounty_ganho = self.bot.recompensas.pop(vitima_id, 0.0)
 
                 # ── PASSIVO: Escudo de Sangue — devolve % do roubado ──
                 escudo_sangue_msg = ""
                 if devolve_pct > 0:
-                    devolvido = round(valor_roubado * devolve_pct, 2)
-                    corte_saldo = max(0, corte_saldo - devolvido)
+                    devolvido   = round(valor_roubado * devolve_pct, 2)
+                    corte_saldo = max(0, valor_roubado - devolvido)
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - corte_saldo, 2))
                     escudo_sangue_msg = f"🔰 **Escudo de Sangue:** {vitima.mention} recuperou **{formatar_moeda(devolvido)} MC** do roubo!"
                 
                 seguro_msg = ""
                 if "Seguro" in inv_alvo:
-                    recuperado = round(corte_saldo * 0.6, 2)
-                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - corte_saldo + recuperado, 2))
+                    recuperado = round(valor_roubado * 0.6, 2)
+                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado + recuperado, 2))
                     inv_alvo.remove("Seguro")
                     db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
                     seguro_msg = f"📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{formatar_moeda(recuperado)} MC**!"
                 elif not escudo_sangue_msg:
-                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - corte_saldo, 2))
+                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado, 2))
 
                 db.update_value(ladrao_data['row'], 3, round(saldo_ladrao + valor_roubado + bounty_ganho, 2))
                 db.update_value(ladrao_data['row'], 7, agora)
@@ -541,7 +525,6 @@ class Economy(commands.Cog):
                 emb_s.add_field(name="💸 Roubado", value=f"**+{formatar_moeda(valor_roubado)} MC**", inline=True)
                 emb_s.add_field(name="🎯 Alvo",    value=vitima.mention,                             inline=True)
 
-                if apostas_msg:      emb_s.add_field(name="🎰 Apostas afetadas",  value=apostas_msg.strip(),      inline=False)
                 if usou_pe_de_cabra: emb_s.add_field(name="🕵️ Ferramenta",        value="Usou **Pé de Cabra**",   inline=True)
                 if bounty_ganho > 0: emb_s.add_field(name="🎯 Recompensa",        value=f"**+{formatar_moeda(bounty_ganho)} MC**", inline=True)
                 if msg_passivos:     emb_s.add_field(name="🔰 Passivos",           value=msg_passivos.strip(),     inline=False)

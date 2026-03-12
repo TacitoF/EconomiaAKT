@@ -320,14 +320,20 @@ class SelectCancelarAposta(disnake.ui.StringSelect):
             return await inter.edit_original_response(content="❌ Esta aposta já foi liquidada ou cancelada!")
             
         saldo_atual = db.parse_float(user_db["data"][2])
-        valor_reembolso = aposta_atualizada["valor"]
+        valor_original = aposta_atualizada["valor"]
+        taxa = round(valor_original * 0.30, 2)
+        valor_reembolso = round(valor_original - taxa, 2)
         novo_saldo = round(saldo_atual + valor_reembolso, 2)
         
         db.update_value(user_db["row"], 3, novo_saldo)
         db.atualizar_status_aposta(aposta_atualizada["row"], "Reembolso")
         
         await inter.edit_original_response(
-            content=f"✅ Aposta cancelada com sucesso! **{formatar_moeda(valor_reembolso)} MC** foram devolvidos ao seu saldo.\n*Use o comando `!pule` novamente para atualizar a sua lista visual.*"
+            content=(
+                f"✅ Aposta cancelada! **{formatar_moeda(valor_reembolso)} MC** foram devolvidos ao seu saldo.\n"
+                f"🪙 Taxa de cancelamento de 30%: **-{formatar_moeda(taxa)} MC** (de {formatar_moeda(valor_original)} MC apostados).\n"
+                f"*Use o comando `!pule` novamente para atualizar a sua lista visual.*"
+            )
         )
 
 
@@ -493,7 +499,7 @@ class Esportes(commands.Cog):
                 ),
                 inline=False
             )
-        embed.set_footer(text="O Menu abaixo permite cancelar apostas em jogos que ainda NÃO começaram.")
+        embed.set_footer(text="Cancelar aposta cobra taxa de 30% do valor apostado • Só disponível antes do jogo começar.")
         
         view = ViewGerenciarBilhetes(ctx.author.id, minhas, info_jogos)
         await msg.edit(content=None, embed=embed, view=view)
