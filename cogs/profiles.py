@@ -309,33 +309,31 @@ class Profiles(commands.Cog):
         cargo = user["data"][3] if len(user["data"]) > 3 and user["data"][3] else "Lêmure"
         agora = time.time()
 
-        # Cooldowns
+        # ── Cooldowns ──
         ultimo_work   = db.parse_float(user["data"][4] if len(user["data"]) > 4 else None)
         ultimo_roubo  = db.parse_float(user["data"][6] if len(user["data"]) > 6 else None)
         ultimo_invest = db.parse_float(user["data"][7] if len(user["data"]) > 7 else None)
 
         def _cd(ultimo, cooldown):
-            return "✅ Disponível" if agora - ultimo >= cooldown else f"<t:{int(ultimo + cooldown)}:R>"
+            if agora - ultimo >= cooldown:
+                return "✅ livre"
+            return f"<t:{int(ultimo + cooldown)}:R>"
 
-        # Inventário e Escudos
+        # ── Inventário ──
         inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
         inv_list = [i.strip() for i in inv_str.split(",") if i.strip() and i.strip().lower() != "nenhum"]
         cargas_escudo = self.bot.escudos_ativos.get(user_id, 0) if hasattr(self.bot, "escudos_ativos") else 0
 
-        if inv_list:
-            contagem = {}
-            for item in inv_list:
-                # Ocultar as chaves de cosmético na exibição de mochila
-                if not item.startswith("cosmético:") and not item.startswith("cosmetico:"):
-                    contagem[item] = contagem.get(item, 0) + 1
-            itens = [f"`{q}× {i}`" if q > 1 else f"`{i}`" for i, q in contagem.items()]
-        else:
-            itens = []
+        contagem = {}
+        for item in inv_list:
+            if not item.startswith("cosmético:") and not item.startswith("cosmetico:"):
+                contagem[item] = contagem.get(item, 0) + 1
+        itens = [f"`{q}× {i}`" if q > 1 else f"`{i}`" for i, q in contagem.items()]
         if cargas_escudo > 0:
-            itens.append(f"`🛡️ Escudo ({cargas_escudo}/{ESCUDO_CARGAS})`")
-        inv_val = "  ".join(itens) if itens else "*Mochila vazia*"
+            itens.append(f"`🛡️ Escudo {cargas_escudo}/{ESCUDO_CARGAS}`")
+        inv_val = "  ".join(itens) if itens else "*vazia*"
 
-        # Cosméticos
+        # ── Cosméticos ──
         cosm    = _parse_cosm_str(user)
         cor_str = cosm.get("cor", "")
         moldura = cosm.get("moldura", "")
@@ -345,12 +343,9 @@ class Profiles(commands.Cog):
         cargo_icon, cor_cargo = self._CARGO_INFO.get(cargo, ("🐒", 0xFFD700))
         embed_color = self._CORES.get(cor_str, cor_cargo)
 
-        nome_display = membro.display_name
-        if moldura: nome_display = f"{moldura} {nome_display}"
-        if titulo:  nome_display = f"{nome_display}  ·  *{titulo}*"
-
-        # Posição no Rank
+        # ── Posição no Rank ──
         pos_rank = "—"
+        pos_num  = None
         try:
             all_rows = db.sheet.get_all_values()
             if len(all_rows) > 0:
@@ -360,12 +355,13 @@ class Profiles(commands.Cog):
                 dados_sorted = sorted(dados, key=lambda r: db.parse_float(r[2]) if len(r) > 2 else 0, reverse=True)
                 for i, row in enumerate(dados_sorted):
                     if str(row[0]) == user_id:
-                        pos_rank = f"#{i+1} de {len(dados_sorted)}"
+                        pos_num  = i + 1
+                        pos_rank = f"#{i+1}"
                         break
         except Exception:
             pass
 
-        # Emblemas e Conquistas
+        # ── Emblemas e Conquistas ──
         emblemas = []
         if saldo >= 500000:      emblemas.append("🤑 Burguês Safado")
         elif saldo >= 100000:    emblemas.append("💎 Magnata")
@@ -374,9 +370,9 @@ class Profiles(commands.Cog):
         if cargo == "Rei Símio": emblemas.append("👑 Rei da Selva")
         if "Pé de Cabra" in inv_list: emblemas.append("🕵️ Invasor")
 
-        if pos_rank.startswith("#1 "): emblemas.append("🥇 Alfa da Selva")
-        elif pos_rank.startswith("#2 "): emblemas.append("🥈 Vice-Líder")
-        elif pos_rank.startswith("#3 "): emblemas.append("🥉 Bronze de Ouro")
+        if pos_num == 1:   emblemas.append("🥇 Alfa da Selva")
+        elif pos_num == 2: emblemas.append("🥈 Vice-Líder")
+        elif pos_num == 3: emblemas.append("🥉 Bronze de Ouro")
 
         conquistas_db = str(user["data"][9]) if len(user["data"]) > 9 else ""
         for slug in [c.strip() for c in conquistas_db.split(",") if c.strip()]:
@@ -390,43 +386,74 @@ class Profiles(commands.Cog):
         if valores_rec and max(recompensas_gerais, key=recompensas_gerais.get) == user_id:
             emblemas.append("💀 Rei do Crime")
 
-        # Construção da Descrição
-        sep  = "─" * 34
-        desc = f"### {cargo_icon}  {nome_display}\n{sep}\n"
-        if bio: desc += f"💬 *\"{bio}\"*\n\n"
-        desc += f"💰 **Saldo:** `{formatar_moeda(saldo)} MC`\n"
-        desc += f"💼 **Cargo:** `{cargo}`\n"
-        desc += f"📊 **Rank:** `{pos_rank}`"
-        if rec > 0: desc += f"\n🚨 **Recompensa:** `{formatar_moeda(rec)} MC`"
+        # ── Descrição: cabeçalho do perfil ──
+        nome_linha = membro.display_name
+        if moldura: nome_linha = f"{moldura} {nome_linha}"
+        if titulo:  nome_linha = f"{nome_linha} · *{titulo}*"
 
-        # Montagem do Embed
+        # Formatar posição no rank de forma legível
+        if pos_num == 1:
+            rank_display = "🥇 #1 — Líder da Selva"
+        elif pos_num == 2:
+            rank_display = "🥈 #2 — Vice-Líder"
+        elif pos_num == 3:
+            rank_display = "🥉 #3 — Pódio"
+        elif pos_num:
+            rank_display = f"🌿 #{pos_num}"
+        else:
+            rank_display = "🌿 —"
+
+        desc = f"### {cargo_icon} {nome_linha}\n"
+        if bio:
+            desc += f"-# {bio}\n"
+        desc += "\n"
+        desc += f"🪙 **{formatar_moeda(saldo)} MC**\n"
+        desc += f"{cargo_icon} `{cargo}`  ·  {rank_display}"
+        if rec > 0:
+            desc += f"\n🚨 *Recompensa:* `{formatar_moeda(rec)} MC`"
+
+        # ── Montagem do embed ──
         embed = disnake.Embed(description=desc, color=embed_color)
-        embed.set_author(name=f"🌿 Perfil · {membro.display_name}", icon_url=membro.display_avatar.url)
+        embed.set_author(name=membro.display_name, icon_url=membro.display_avatar.url)
         embed.set_thumbnail(url=membro.display_avatar.url)
 
-        embed.add_field(name="🔨 Trabalho",     value=_cd(ultimo_work,   3600),  inline=True)
-        embed.add_field(name="🔫 Roubo",        value=_cd(ultimo_roubo,  7200),  inline=True)
-        embed.add_field(name="🏛️ Investimento", value=_cd(ultimo_invest, 86400), inline=True)
-        
-        embed.add_field(name="🎒 Inventário",   value=inv_val, inline=False)
+        # ── Field: Cooldowns (inline) ──
+        embed.add_field(
+            name="🕐 Próximos turnos",
+            value=(
+                f"🔨 {_cd(ultimo_work,   3600)}\n"
+                f"🥷 {_cd(ultimo_roubo,  7200)}\n"
+                f"🏛️ {_cd(ultimo_invest, 86400)}"
+            ),
+            inline=True
+        )
 
-        cosm_equipados = []
-        if cor_str: cosm_equipados.append(f"🎨 `{cor_str}`")
-        if moldura:  cosm_equipados.append(f"🖼️ `{moldura}`")
-        if titulo:   cosm_equipados.append(f"🏷️ `{titulo}`")
-        if cosm_equipados:
-            embed.add_field(name="✨ Estilo", value="  ·  ".join(cosm_equipados), inline=False)
+        # ── Field: Estilo (inline) ──
+        cosm_linhas = []
+        if cor_str: cosm_linhas.append(f"🎨 `{cor_str}`")
+        if moldura:  cosm_linhas.append(f"🖼️ `{moldura}`")
+        if titulo:   cosm_linhas.append(f"🏷️ `{titulo}`")
+        embed.add_field(
+            name="✨ Visual",
+            value="\n".join(cosm_linhas) if cosm_linhas else "*—*",
+            inline=True
+        )
 
+        # ── Field: Mochila ──
+        embed.add_field(name="🎒 Mochila", value=inv_val, inline=False)
+
+        # ── Field: Conquistas ──
         if emblemas:
-            linhas = []
+            # Quebra em linhas de 3 para não estourar o field
+            linhas_emb = []
             for i in range(0, len(emblemas), 3):
-                linhas.append("  ·  ".join(emblemas[i:i+3]))
-            emblemas_val = "\n".join(linhas)
+                linhas_emb.append("  ·  ".join(emblemas[i:i+3]))
+            emblemas_val = "\n".join(linhas_emb)
         else:
-            emblemas_val = "*Nenhuma conquista ainda — vá à luta!*"
+            emblemas_val = "-# Nenhuma conquista ainda — vá à luta!"
         embed.add_field(name=f"🏆 Conquistas ({len(emblemas)})", value=emblemas_val, inline=False)
 
-        embed.set_footer(text="🐒 Selva dos Macacoins  ·  !visuais para personalizar")
+        embed.set_footer(text="!visuais · !conquistas · !mascote")
         return embed
 
     # ── !perfil (Agora unificado, público e completo) ─────────────────────────
@@ -530,7 +557,6 @@ class Profiles(commands.Cog):
 
             primeira = all_rows[0]
             tem_cabecalho = any(c.lower() in ("nome", "saldo", "cargo", "user_id") for c in primeira)
-
             if tem_cabecalho:
                 cabecalho = primeira
                 dados     = all_rows[1:]
@@ -565,27 +591,33 @@ class Profiles(commands.Cog):
                     autor_pos = i + 1
                     break
 
+            # ── Pódio ── top 3 em fields inline
+            PODIO = [
+                ("🥇", "1º"),
+                ("🥈", "2º"),
+                ("🥉", "3º"),
+            ]
+
             embed = disnake.Embed(
-                title       = "🏆  RANKING DA SELVA",
-                description = "Os macacos mais ricos de toda a selva.",
-                color       = 0xFFD700,
+                title="🌿 RANKING DA SELVA",
+                color=0x2d5a27,   # verde floresta escuro
             )
 
-            PODIO = ["🥇  **1º Lugar**", "🥈  **2º Lugar**", "🥉  **3º Lugar**"]
             for i in range(min(3, len(top))):
                 row   = top[i]
                 nome  = row[idx_nome]  if len(row) > idx_nome  else "???"
                 saldo = db.parse_float(row[idx_saldo])
                 cargo = row[idx_cargo] if len(row) > idx_cargo else "Lêmure"
                 c_em  = CARGO_EMOJI.get(cargo, "🐒")
+                medal, pos_label = PODIO[i]
                 embed.add_field(
-                    name  = PODIO[i],
-                    value = f"**{nome}**\n{c_em} `{cargo}`\n💰 `{_fmt(saldo)}`",
-                    inline= True,
+                    name=f"{medal} {pos_label} — {nome}",
+                    value=f"{c_em} `{cargo}`\n🪙 **{_fmt(saldo)}**",
+                    inline=True,
                 )
 
+            # ── Posições 4–10 ──
             if len(top) > 3:
-                embed.add_field(name="\u200b", value="\u200b", inline=False)
                 NUMS = ["4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
                 linhas = []
                 for i, row in enumerate(top[3:], start=3):
@@ -593,18 +625,31 @@ class Profiles(commands.Cog):
                     saldo = db.parse_float(row[idx_saldo])
                     cargo = row[idx_cargo] if len(row) > idx_cargo else "Lêmure"
                     c_em  = CARGO_EMOJI.get(cargo, "🐒")
-                    # AGORA MOSTRA O VALOR EXATO PARA AS POSIÇÕES 4 AO 10!
-                    linhas.append(f"{NUMS[i-3]}  {c_em} **{nome}** — `{formatar_moeda(saldo)} MC`")
-                embed.add_field(name="📊  Classificação", value="\n".join(linhas), inline=False)
+                    linhas.append(f"{NUMS[i-3]} {c_em} **{nome}** — `{_fmt(saldo)}`")
 
-            if autor_pos:
                 embed.add_field(
-                    name  = "📍  Sua posição",
-                    value = f"{ctx.author.mention} está em **#{autor_pos}** no ranking!",
-                    inline= False,
+                    name="─────────────────",
+                    value="\n".join(linhas),
+                    inline=False
                 )
 
-            embed.set_footer(text="!perfil @user para ver os detalhes completos de qualquer jogador")
+            # ── Posição do autor ──
+            if autor_pos:
+                if autor_pos == 1:
+                    pos_txt = "👑 Você está **em 1º** — líder absoluto da selva!"
+                elif autor_pos <= 3:
+                    pos_txt = f"🏅 Você está no **pódio** em #{autor_pos}!"
+                elif autor_pos <= 10:
+                    pos_txt = f"🌿 Você está em **#{autor_pos}** no ranking."
+                else:
+                    pos_txt = f"🐒 Você está em **#{autor_pos}** — suba mais!"
+                embed.add_field(
+                    name="📍 Sua posição",
+                    value=f"{ctx.author.mention} · {pos_txt}",
+                    inline=False
+                )
+
+            embed.set_footer(text=f"{len(sorted_all)} jogadores na selva  ·  !perfil @user para detalhes")
             await ctx.send(embed=embed)
 
         except commands.CommandError:

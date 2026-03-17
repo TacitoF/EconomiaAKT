@@ -136,32 +136,48 @@ class Economy(commands.Cog):
             mascote_msg = ""
             tipo_mascote, fome_mascote = db.get_mascote(user)
             if tipo_mascote and fome_mascote > 0:
-                gasto_fome  = 10
+                gasto_fome   = 10
                 buff_ativado = False
+                ganho_antes  = ganho
 
                 if tipo_mascote == "capivara":
-                    ganho = round(ganho * 1.10, 2); mascote_msg = "🦦 **Capivara:** +10% de lucro extra!\n"; buff_ativado = True
+                    ganho = round(ganho * 1.10, 2); buff_ativado = True
                 elif tipo_mascote == "preguica":
-                    ganho = round(ganho * 1.15, 2); gasto_fome = 15; mascote_msg = "🦥 **Bicho-Preguiça:** +15% de lucro extra!\n"; buff_ativado = True
+                    ganho = round(ganho * 1.15, 2); gasto_fome = 15; buff_ativado = True
                 elif tipo_mascote == "sapo_boi":
                     ganho = round(ganho * 1.08, 2)
                     if random.random() <= 0.20:
-                        gasto_fome = 0; mascote_msg = "🐸 **Sapo-Boi:** +8% de lucro *(Não gastou energia!)*\n"
-                    else:
-                        mascote_msg = "🐸 **Sapo-Boi:** +8% de lucro extra!\n"
+                        gasto_fome = 0
                     buff_ativado = True
                 elif tipo_mascote == "lobo_guara":
-                    ganho = round(ganho * 1.10, 2); mascote_msg = "🐺 **Lobo-Guará:** +10% de lucro extra!\n"; buff_ativado = True
+                    ganho = round(ganho * 1.10, 2); buff_ativado = True
                 elif tipo_mascote == "onca":
-                    ganho = round(ganho * 1.15, 2); mascote_msg = "🐆 **Onça Pintada:** +15% de lucro extra!\n"; buff_ativado = True
+                    ganho = round(ganho * 1.15, 2); buff_ativado = True
                 elif tipo_mascote == "gorila_prateado":
-                    ganho = round(ganho * 1.25, 2); mascote_msg = "🦍 **Gorila Costas-Prateadas:** +25% de lucro extra!\n"; buff_ativado = True
+                    ganho = round(ganho * 1.25, 2); buff_ativado = True
 
                 if buff_ativado:
+                    bonus_mc    = round(ganho - ganho_antes, 2)
+                    info_pet    = {
+                        "capivara":        ("🦦", "Capivara",                "+10%"),
+                        "preguica":        ("🦥", "Bicho-Preguiça",          "+15%"),
+                        "sapo_boi":        ("🐸", "Sapo-Boi",                "+8%"),
+                        "lobo_guara":      ("🐺", "Lobo-Guará",              "+10%"),
+                        "onca":            ("🐆", "Onça Pintada",            "+15%"),
+                        "gorila_prateado": ("🦍", "Gorila Costas-Prateadas", "+25%"),
+                    }
+                    emoji_p, nome_p, pct_p = info_pet.get(tipo_mascote, ("🐾", "Mascote", "?"))
+                    fome_txt = "*(Não gastou energia!)*" if gasto_fome == 0 else ""
+                    mascote_msg = (
+                        f"{emoji_p} **{nome_p}** ajudou! {pct_p} = **+{formatar_moeda(bonus_mc)} MC** {fome_txt}"
+                    )
+
                     nova_fome = max(0, fome_mascote - gasto_fome)
                     db.set_mascote(user['row'], tipo_mascote, nova_fome)
-                    if nova_fome == 0:    mascote_msg += "💤 *O seu mascote dormiu de fome! Compre Ração na Loja.*"
-                    elif gasto_fome > 0:  mascote_msg += f"🍗 *Fome do mascote caiu para {nova_fome}%*"
+                    if nova_fome == 0:
+                        mascote_msg += "\n💤 *Mascote dormiu de fome! Use `!alimentar` para reativar.*"
+                    elif gasto_fome > 0:
+                        mascote_msg += f"\n🍗 *Fome: {fome_mascote}% → {nova_fome}%*"
 
             # ── IMPOSTOS ──
             if user_id not in self.bot.impostos:
@@ -369,23 +385,31 @@ class Economy(commands.Cog):
 
             tipo_pet_vitima, fome_vitima = db.get_mascote(alvo_data)
             if tipo_pet_vitima and fome_vitima > 0:
+                fome_gasta_vitima = 0
                 if tipo_pet_vitima == "papagaio":
                     chance_sucesso -= 15
+                    fome_gasta_vitima = 10
                     msg_mascotes += f"🦜 **Papagaio** de {vitima.display_name} avisou do perigo (-15% chance)\n"
                 elif tipo_pet_vitima == "jiboia":
                     chance_sucesso -= 10
                     multa_multiplicador = 1.5
+                    fome_gasta_vitima = 10
                     msg_mascotes += f"🐍 **Jiboia** de {vitima.display_name} se enrolou em você (-10% chance, multa aumentada)\n"
                 elif tipo_pet_vitima == "gamba":
                     chance_sucesso -= 20
+                    fome_gasta_vitima = 20
                     msg_mascotes += f"🦔 **Gambá** de {vitima.display_name} soltou um gás tóxico (-20% chance)\n"
-                    db.set_mascote(alvo_data['row'], tipo_pet_vitima, max(0, fome_vitima - 20))
                 elif tipo_pet_vitima == "onca":
                     chance_sucesso -= 15
+                    fome_gasta_vitima = 10
                     msg_mascotes += f"🐆 **Onça Pintada** de {vitima.display_name} rosnou ferozmente (-15% chance)\n"
                 elif tipo_pet_vitima == "dragao_komodo":
                     chance_sucesso -= 25
+                    fome_gasta_vitima = 10
                     msg_mascotes += f"🐉 **Dragão-de-Komodo** de {vitima.display_name} defendeu a área (-25% chance)\n"
+
+                if fome_gasta_vitima > 0:
+                    db.set_mascote(alvo_data['row'], tipo_pet_vitima, max(0, fome_vitima - fome_gasta_vitima))
 
             tipo_pet_ladrao, fome_ladrao = db.get_mascote(ladrao_data)
             if tipo_pet_ladrao and fome_ladrao > 0:
