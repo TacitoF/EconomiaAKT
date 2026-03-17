@@ -448,12 +448,12 @@ class Items(commands.Cog):
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     # ──────────────────────────────────────────────────────────────────────────
-    #  !greve — aplica debuff de -50% no !trabalhar do alvo por 3 turnos
+    #  !greve — aplica debuff de -50% no !trabalhar do alvo por 3 horas
     # ──────────────────────────────────────────────────────────────────────────
 
     @commands.command(aliases=["strike", "paralisacao"])
     async def greve(self, ctx, vitima: disnake.Member = None):
-        """Usa o item Greve para reduzir o salário do alvo em 50% pelos próximos 3 trabalhos."""
+        """Usa o item Greve para reduzir o salário do alvo em 50% por 3 horas."""
         if vitima is None:
             return await ctx.send(f"⚠️ {ctx.author.mention}, uso: `!greve @usuario`")
         if vitima.id == ctx.author.id:
@@ -498,13 +498,13 @@ class Items(commands.Cog):
                 title="🪧 GREVE DECLARADA!",
                 description=(
                     f"{ctx.author.mention} organizou os trabalhadores de {vitima.mention}!\n\n"
-                    f"📉 **Salário reduzido em 50%** pelos próximos **{GREVE_TURNS} trabalhos**.\n"
-                    f"⏳ A greve dura até <t:{int(nova_expira)}:R>."
+                    f"📉 **Salário reduzido em 50%** por **3 horas**.\n"
+                    f"⏳ A greve dura até <t:{int(nova_expira)}:R>.\n"
+                    f"*(Expira pelo tempo — independente de quantos trabalhos fizer.)*"
                 ),
                 color=disnake.Color.orange()
             )
             embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-            embed.set_footer(text="💡 A greve expira automaticamente após o tempo, independente de trabalhos.")
             await ctx.send(embed=embed)
 
         except commands.CommandError:

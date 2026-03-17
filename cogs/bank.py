@@ -20,8 +20,24 @@ class Bank(commands.Cog):
     async def investir(self, ctx, tipo: str = None, valor: float = None):
         if not tipo or tipo.lower() not in ['cripto', 'fixo'] or valor is None or valor <= 0:
             embed = disnake.Embed(title="🏦 Banco da Selva AKTrovão", color=disnake.Color.green())
-            embed.add_field(name="📈 `!investir cripto <valor>`", value="Risco alto! Rende **-25%, -15%, -5%, 0%, +5%, +10% ou +20%**. *Limite: 4x ao dia.*", inline=False)
-            embed.add_field(name="🏛️ `!investir fixo <valor>`",  value="Seguro! Rende **+10%** na hora. *Limite: 5.000 MC por dia.*", inline=False)
+            embed.add_field(
+                name="🏛️ `!investir fixo <valor>`",
+                value=(
+                    "Investimento seguro: rende **+10% na hora**.\n"
+                    "Limite: **5.000 MC por dia** · Cooldown: **24h**."
+                ),
+                inline=False
+            )
+            embed.add_field(
+                name="📈 `!investir cripto <valor>`",
+                value=(
+                    "Alto risco! Resultado sorteado após **30 segundos**:\n"
+                    "`-25%` · `-15%` · `-5%` · `0%` · `+5%` · `+10%` · `+20%`\n"
+                    "Limite: **4 operações por dia**.\n"
+                    "*(🌟 Talismã da Fortuna reduz o prejuízo máximo de 25% para 15%.)*"
+                ),
+                inline=False
+            )
             return await ctx.send(embed=embed)
 
         tipo  = tipo.lower()
@@ -48,9 +64,24 @@ class Bank(commands.Cog):
                     return await ctx.send(f"⏳ {ctx.author.mention}, limite diário esgotado! Volte <t:{int(ultimo_invest + 86400)}:R>.")
 
                 lucro = round(valor * 0.10, 2)
-                db.update_value(user['row'], 3, round(saldo + lucro, 2))
-                db.update_value(user['row'], 8, agora)
-                await ctx.send(f"🏛️ **RENDA FIXA!** Rendimento de 10% aplicado. Você ganhou **+{lucro:.2f} MC**, {ctx.author.mention}!")
+                novo_saldo = round(saldo + lucro, 2)
+                db.update_value(user["row"], 3, novo_saldo)
+                db.update_value(user["row"], 8, agora)
+
+                proximo = int(agora + 86400)
+                embed_fixo = disnake.Embed(
+                    title="🏛️ RENDA FIXA — RENDIMENTO APLICADO!",
+                    description=(
+                        f"{ctx.author.mention} resgatou o rendimento de **10%** na hora!\n\n"
+                        f"💵 Investido: `{valor:.2f} MC`\n"
+                        f"📈 Lucro: **+{lucro:.2f} MC**\n"
+                        f"🏦 Novo saldo: `{novo_saldo:.2f} MC`\n\n"
+                        f"⏳ Próximo investimento fixo: <t:{proximo}:R>"
+                    ),
+                    color=disnake.Color.green()
+                )
+                embed_fixo.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+                await ctx.send(embed=embed_fixo)
 
             elif tipo == 'cripto':
                 # usos persistidos no banco pra não perder entre restarts

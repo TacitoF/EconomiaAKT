@@ -125,7 +125,11 @@ class Pets(commands.Cog):
             embed.add_field(name="Situação", value=status, inline=False)
 
             if alvo.id == ctx.author.id:
-                embed.set_footer(text="A fome diminui com o uso. Use !alimentar para restaurar.")
+                inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
+                inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
+                racoes = inv_list.count("Ração Símia")
+                racoes_txt = f"{racoes}× Ração Símia no inventário" if racoes > 0 else "Sem Ração Símia — compre na !loja!"
+                embed.set_footer(text=f"A fome diminui com o uso. Use !alimentar para restaurar.  ·  {racoes_txt}")
 
             await ctx.send(embed=embed)
 
@@ -176,17 +180,47 @@ class Pets(commands.Cog):
             if not user:
                 return
 
+            tipo, fome = db.get_mascote(user)
+            if not tipo:
+                return await ctx.send(f"🐾 {ctx.author.mention}, você não tem mascote.")
+
+            info = INFO_MASCOTES.get(tipo, {"nome": "Mascote", "raridade": "?", "imagem": "🐾"})
+
+            embed = disnake.Embed(
+                title="🚪 Libertar mascote?",
+                description=(
+                    f"Você está prestes a soltar **{info['imagem']} {info['nome']}** ({info['raridade']}) na selva.\n\n"
+                    f"⚠️ Esta ação é **irreversível**. O mascote será perdido permanentemente.\n"
+                    f"Use `!libertar confirmar` para confirmar."
+                ),
+                color=disnake.Color.orange()
+            )
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            print(f"❌ Erro no !libertar de {ctx.author}: {e}")
+            await ctx.send("⚠️ Ocorreu um erro ao tentar libertar o mascote.")
+
+    @commands.command(name="libertar_confirmar", aliases=["abandonar_confirmar"])
+    async def libertar_confirmar(self, ctx):
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return
+
             tipo, _ = db.get_mascote(user)
             if not tipo:
                 return await ctx.send(f"🐾 {ctx.author.mention}, você não tem mascote.")
 
             info = INFO_MASCOTES.get(tipo, {"nome": "Mascote"})
             db.set_mascote(user['row'], "", 0)
-            
-            await ctx.send(f"🌿 {ctx.author.mention} abriu a gaiola e devolveu a sua **{info['nome']}** para a selva.\nA vaga de mascote está livre novamente!")
-            
+            await ctx.send(
+                f"🌿 {ctx.author.mention} abriu a gaiola e devolveu a sua **{info['nome']}** para a selva.\n"
+                f"A vaga de mascote está livre novamente!"
+            )
+
         except Exception as e:
-            print(f"❌ Erro no !libertar de {ctx.author}: {e}")
+            print(f"❌ Erro no !libertar_confirmar de {ctx.author}: {e}")
             await ctx.send("⚠️ Ocorreu um erro ao tentar libertar o mascote.")
 
     # ── NOVO COMANDO: ENCICLOPÉDIA DE MASCOTES ──

@@ -193,7 +193,7 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: 
         bot.escudo_compras[uid] = (1, agora)
         inv_list.append("Escudo")
         _batch_compra(row, saldo - preco, inv_list, col_extra="L", val_extra="")
-        return f"🛡️ **Escudo** comprado e guardado!\n💸 **-{formatar_moeda(preco)} MC** debitados."
+        return f"🛡️ **Escudo** comprado e guardado!\n💸 **-{formatar_moeda(preco)} MC** debitados.\n💡 Use `!escudo` para ativar e proteger-se contra 3 tentativas de roubo."
 
     if is_cosm:
         chave_inv = f"cosmético:{slug}"
@@ -206,7 +206,8 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: 
     inv_list.extend([nome_item] * quantidade)
     _batch_compra(row, saldo - preco_total, inv_list)
     tend_txt = f"\n{tendencia}" if tendencia else ""
-    return f"{emoji} **×{quantidade} {nome_item}** comprado{'s' if quantidade > 1 else ''}!\n💸 **-{formatar_moeda(preco_total)} MC**.{tend_txt}"
+    dica = f"\n💡 {DICA_ITEM[slug]}" if slug in DICA_ITEM else ""
+    return f"{emoji} **×{quantidade} {nome_item}** comprado{'s' if quantidade > 1 else ''}!\n💸 **-{formatar_moeda(preco_total)} MC**.{tend_txt}{dica}"
 
 class _BotaoQtd(disnake.ui.Button):
     def __init__(self, qtd: int, pode: bool):
@@ -330,7 +331,11 @@ class ViewPortalLoja(disnake.ui.View):
 class Shop(commands.Cog):
     def __init__(self, bot): self.bot = bot
     async def cog_before_invoke(self, ctx):
-        if ctx.channel.name != '🐒・conguitos': raise commands.CommandError("Canal incorreto.")
+        if ctx.channel.name != '🐒・conguitos':
+            canal = disnake.utils.get(ctx.guild.channels, name='🐒・コングイトス')
+            mencao = canal.mention if canal else "#🐒・コングイトス"
+            await ctx.send(f"⚠️ {ctx.author.mention}, a loja fica no canal {mencao}!")
+            raise commands.CommandError("Canal incorreto.")
     @commands.command(aliases=["shop", "mercado", "comprar"])
     async def loja(self, ctx):
         user = db.get_user_data(str(ctx.author.id))

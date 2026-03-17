@@ -279,8 +279,8 @@ class Lootbox(commands.Cog):
                     consolacao = random.randint(300, 800)
                     saldo = db.parse_float(user_atual["data"][2])
                     db.update_value(user_atual["row"], 3, round(saldo + consolacao, 2))
-                    texto_premio = f"`{formatar_moeda(consolacao)} MC` *(cosmético duplicado convertido)*"
-                    footer = "Você já tinha esse cosmético! MC de consolação adicionados."
+                    texto_premio = f"`{formatar_moeda(consolacao)} MC` *(você já tinha esse cosmético — convertido em MC)*"
+                    footer = f"Cosmético duplicado! {formatar_moeda(consolacao)} MC de consolação adicionados ao seu saldo."
                 else:
                     inv_atual.append(chave_inv)
                     db.update_value(user_atual["row"], 6, ", ".join(inv_atual))
@@ -297,10 +297,19 @@ class Lootbox(commands.Cog):
                 inv_atual.append(premio["nome"])
                 db.update_value(user_atual["row"], 6, ", ".join(inv_atual))
                 texto_premio = f"1× **{premio['nome']}**"
-                if premio["nome"] in ("Energético Símio", "Bomba de Fumaça", "Carga de C4", "Imposto do Gorila", "Troca de Nick"):
-                    footer = "Dica: Itens consumíveis são usados através de comandos."
-                else:
-                    footer = "Item adicionado ao inventário."
+                DICAS_USO = {
+                    "Energético Símio":  "Use !energetico para zerar o cooldown do !trabalhar.",
+                    "Bomba de Fumaça":   "Use !fumaca para zerar o cooldown do !roubar.",
+                    "Carga de C4":       "Use !c4 @usuario para destruir o escudo do alvo.",
+                    "Imposto do Gorila": "Use !taxar @usuario para cobrar 25% dos próximos 5 trabalhos.",
+                    "Troca de Nick":     "Use !apelidar @usuario <nick> para trocar o apelido do alvo.",
+                    "Casca de Banana":   "Use !casca @usuario para atrapalhar o próximo trabalho do alvo.",
+                    "Escudo":            "Use !escudo para ativar e proteger-se contra 3 tentativas de roubo.",
+                    "Pé de Cabra":       "O Pé de Cabra é usado automaticamente no próximo !roubar.",
+                    "Seguro":            "O Seguro é acionado automaticamente se você for roubado (reembolsa 60%).",
+                    "Greve":             "Use !greve @usuario para reduzir o salário do alvo em 50% por 3h.",
+                }
+                footer = DICAS_USO.get(premio["nome"], "Item adicionado ao inventário. Veja !inventario.")
 
             # ── MONTA O EMBED FINAL ──
             embed = disnake.Embed(

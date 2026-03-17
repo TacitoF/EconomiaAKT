@@ -25,6 +25,15 @@ class AirdropView(disnake.ui.View):
         if not user:
             return await inter.response.send_message("❌ Você precisa de uma conta! Use `!trabalhar`.", ephemeral=True)
 
+        # Verificação especial para Gaiola: usuário não pode ter mascote ativo
+        if self.caixa_nome == "Gaiola Misteriosa":
+            tipo_atual, _ = db.get_mascote(user)
+            if tipo_atual:
+                return await inter.response.send_message(
+                    "❌ Você já tem um mascote! Use `!libertar` antes de resgatar uma nova gaiola.",
+                    ephemeral=True
+                )
+
         self.reivindicado = True
         self.stop()
 

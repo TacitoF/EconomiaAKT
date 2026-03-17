@@ -604,12 +604,16 @@ class Economy(commands.Cog):
                 db.create_user(str(recebedor.id), recebedor.display_name)
                 rec = db.get_user_data(str(recebedor.id))
 
-            db.update_value(pag['row'], 3, round(saldo_pag - valor, 2))
+            novo_saldo_pag = round(saldo_pag - valor, 2)
+            db.update_value(pag['row'], 3, novo_saldo_pag)
             db.update_value(rec['row'], 3, round(db.parse_float(rec['data'][2]) + valor, 2))
 
             embed = disnake.Embed(
                 title="💸 PIX REALIZADO!",
-                description=f"**{ctx.author.mention}** enviou **{formatar_moeda(valor)} MC** para **{recebedor.mention}**.",
+                description=(
+                    f"**{ctx.author.mention}** enviou **{formatar_moeda(valor)} MC** para **{recebedor.mention}**.\n\n"
+                    f"🏦 Seu saldo restante: `{formatar_moeda(novo_saldo_pag)} MC`"
+                ),
                 color=disnake.Color.green()
             )
             await ctx.send(embed=embed)

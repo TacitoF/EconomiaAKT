@@ -34,9 +34,15 @@ class Bounty(commands.Cog):
             vitima_id = str(vitima.id)
             self.bot.recompensas[vitima_id] = round(self.bot.recompensas.get(vitima_id, 0.0) + valor, 2)
 
+            total = self.bot.recompensas[vitima_id]
             embed = disnake.Embed(
-                title="🚨 CAÇADA ATUALIZADA! 🚨",
-                description=f"**{ctx.author.mention}** investiu na caçada contra **{vitima.mention}**!\n\n💰 **Prêmio Total:** `{self.bot.recompensas[vitima_id]:.2f} MC`",
+                title="🚨 CAÇADA ATUALIZADA!",
+                description=(
+                    f"**{ctx.author.mention}** colocou um prêmio na cabeça de **{vitima.mention}**!\n\n"
+                    f"💰 **Prêmio acumulado:** `{total:.2f} MC`\n\n"
+                    f"🥷 *Quem roubar {vitima.mention} com sucesso embolsa o prêmio inteiro.*\n"
+                    f"⚠️ *Ladrões também geram bounty automático ao roubar — cuidado com a cabeça!*"
+                ),
                 color=disnake.Color.red()
             )
             await ctx.send(embed=embed)
@@ -49,20 +55,31 @@ class Bounty(commands.Cog):
 
     @commands.command(aliases=["procurados", "lista_bounty"])
     async def recompensas(self, ctx):
-        if not self.bot.recompensas:
+        ativos = {u_id: val for u_id, val in self.bot.recompensas.items() if val > 0}
+        if not ativos:
             return await ctx.send("🕊️ Ninguém com a cabeça a prêmio no momento!")
 
-        embed = disnake.Embed(title="📜 Mural de Procurados", color=disnake.Color.dark_red())
-        tem = False
-        for u_id, val in self.bot.recompensas.items():
-            if val > 0:
-                user = self.bot.get_user(int(u_id))
-                nome = user.display_name if user else f"ID: {u_id}"
-                embed.add_field(name=f"Alvo: {nome}", value=f"➡️ **{val:.2f} MC**", inline=False)
-                tem = True
+        ordenados = sorted(ativos.items(), key=lambda x: x[1], reverse=True)
+        total_em_circulacao = sum(ativos.values())
 
-        if not tem:
-            return await ctx.send("🕊️ Ninguém com a cabeça a prêmio no momento!")
+        embed = disnake.Embed(
+            title="📜 Mural de Procurados",
+            description=f"💸 **Total em circulação:** `{total_em_circulacao:.2f} MC`",
+            color=disnake.Color.dark_red()
+        )
+
+        medalhas = ["🥇", "🥈", "🥉"]
+        for i, (u_id, val) in enumerate(ordenados):
+            user = self.bot.get_user(int(u_id))
+            nome = user.display_name if user else f"ID: {u_id}"
+            prefixo = medalhas[i] if i < 3 else f"`#{i+1}`"
+            embed.add_field(
+                name=f"{prefixo} {nome}",
+                value=f"💰 **{val:.2f} MC**",
+                inline=False
+            )
+
+        embed.set_footer(text="Roube um procurado com sucesso para embolsar o prêmio.")
         await ctx.send(embed=embed)
 
 def setup(bot):

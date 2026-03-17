@@ -431,7 +431,7 @@ class Profiles(commands.Cog):
 
     # ── !perfil (Agora unificado, público e completo) ─────────────────────────
 
-    @commands.command(aliases=["p", "status", "conta", "carteira", "saldo", "stats", "dados", "espionar"])
+    @commands.command(aliases=["p", "status", "carteira", "saldo", "stats", "dados", "espionar"])
     @commands.cooldown(1, 4, commands.BucketType.user)
     async def perfil(self, ctx, membro: disnake.Member = None):
         membro  = membro or ctx.author
