@@ -4,6 +4,16 @@ import database as db
 import random
 import asyncio
 
+def get_limite(cargo: str) -> float:
+    limites = {
+        "Lêmure":     500,
+        "Macaco":     1000,
+        "Babuíno":    2000,
+        "Gorila":     5000,
+        "Orangotango": 10000,
+    }
+    return limites.get(cargo, 500) 
+
 class Raspadinha(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
