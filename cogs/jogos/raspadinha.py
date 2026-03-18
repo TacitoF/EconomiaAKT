@@ -48,9 +48,13 @@ class Raspadinha(commands.Cog):
                 return await ctx.send(f"❌ {ctx.author.mention}, conta não encontrada!")
 
             saldo = db.parse_float(user['data'][2])
+            cargo = user['data'][3] if len(user['data']) > 3 else "Lêmure"
+            limite = get_limite(cargo)
 
             if saldo < valor:
                 return await ctx.send(f"❌ {ctx.author.mention}, saldo insuficiente!")
+            if valor > limite:
+                return await ctx.send(f"🚫 {ctx.author.mention}, o limite de aposta para o cargo **{cargo}** é de **{limite} MC**!")
 
             db.update_value(user['row'], 3, round(saldo - valor, 2))
 

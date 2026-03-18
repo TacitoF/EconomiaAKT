@@ -61,9 +61,6 @@ class TesouroGameView(disnake.ui.View):
 
             item = self.board[index]
             button.disabled = True
-            
-            # Resetamos o tempo a cada clique
-            self.timeout = 60
 
             if item == "banana":
                 button.emoji = "🍌"

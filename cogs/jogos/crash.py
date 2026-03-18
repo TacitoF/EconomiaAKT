@@ -64,7 +64,8 @@ class CrashGame(commands.Cog):
                     "Clique em **🪂 SACAR** a qualquer momento para embolsar seus ganhos.\n"
                     "Se o cipó arrebentar antes de você sacar, você perde tudo!\n\n"
                     "**Risco:** Quanto mais tempo esperar, mais ganha — mas o risco aumenta.\n"
-                    "O ponto de crash é sorteado aleatoriamente antes do jogo começar.\n\n"
+                    "O ponto de crash é sorteado aleatoriamente **antes** do jogo começar.\n"
+                    "⚠️ Existe uma chance do cipó arrebentar instantaneamente em **1.0x** — sem tempo de sacar.\n\n"
                     "**Uso:** `!crash <valor>`"
                 ),
                 color=disnake.Color.green()

@@ -247,6 +247,16 @@ class TorneioSimio(commands.Cog):
 
         except Exception as e:
             print(f"❌ Erro ao criar torneio: {e}")
+            # Reembolsa todos os jogadores que entraram em caso de erro crítico
+            try:
+                for p in view.players:
+                    u_db = db.get_user_data(str(p.id))
+                    if u_db:
+                        db.update_value(u_db['row'], 3, round(db.parse_float(u_db['data'][2]) + aposta, 2))
+                await ctx.send("⚠️ Ocorreu um erro crítico no torneio. Todas as entradas foram devolvidas automaticamente.")
+            except Exception as refund_e:
+                print(f"❌ CRÍTICO: falha ao reembolsar torneio: {refund_e}")
+                await ctx.send("🚨 Erro crítico no torneio. Contate um administrador para recuperar as entradas.")
 
     async def iniciar_torneio(self, ctx, players, aposta):
         total_pote = round(len(players) * aposta, 2)
@@ -341,7 +351,6 @@ class TorneioSimio(commands.Cog):
             fase_num += 1
 
         campeao = lutadores_ativos[0]
-
         # ── PAGAMENTOS ──
         try:
             u_camp = db.get_user_data(str(campeao.id))
