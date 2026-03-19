@@ -517,33 +517,31 @@ class Esportes(commands.Cog):
         if not canal_cassino:
             print("⚠️ Canal '🎰・akbet' não encontrado — notificações desativadas.")
 
+        agora   = datetime.utcnow()
+        data_de = (agora - timedelta(days=5)).strftime("%Y-%m-%d")
+        data_at = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
         resultados_api = {}
 
         try:
             async with aiohttp.ClientSession() as session:
-                for mid in match_ids_pendentes:
-                    try:
-                        async with session.get(
-                            f"{self.api_url}/matches/{mid}",
-                            headers=self.headers,
-                            timeout=aiohttp.ClientTimeout(total=15),
-                        ) as resp:
-                            if resp.status == 429:
-                                print("⚠️ Rate limit — tentará no próximo ciclo.")
-                                return
-                            if resp.status == 200:
-                                match_data = await resp.json()
-                                resultados_api[mid] = match_data
-                                print(f"🔍 Match {mid} → status: {match_data.get('status')}")
-                            else:
-                                print(f"⚠️ API retornou {resp.status} para match {mid}.")
-                    except asyncio.TimeoutError:
-                        print(f"⚠️ Timeout ao buscar match {mid} — pulando.")
-                    except Exception as e:
-                        print(f"❌ Erro ao buscar match {mid}: {e}")
-                    await asyncio.sleep(0.5)  # Evita rate limit entre requisições
+                params = {"competitions": "BSA,PL,PD,CL,SA,BL1,PPL", "dateFrom": data_de, "dateTo": data_at}
+                async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params,
+                                       timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    if resp.status == 429:
+                        print("⚠️ Rate limit — tentará no próximo ciclo.")
+                        return
+                    if resp.status != 200:
+                        print(f"⚠️ API retornou {resp.status} — abortando.")
+                        return
+                    for match in (await resp.json()).get("matches", []):
+                        mid = str(match["id"])
+                        if mid in match_ids_pendentes:
+                            resultados_api[mid] = match
+        except asyncio.TimeoutError:
+            print("⚠️ Timeout — tentará no próximo ciclo.")
+            return
         except Exception as e:
-            print(f"❌ Erro geral na sessão HTTP: {e}")
+            print(f"❌ Erro na API: {e}")
             return
 
         print(f"📋 {len(resultados_api)}/{len(match_ids_pendentes)} jogo(s) encontrado(s) na API.")
@@ -663,6 +661,140 @@ class Esportes(commands.Cog):
         except Exception as e:
             print(f"❌ Erro ao limpar apostas: {e}")
             await msg.edit(content="⚠️ Ocorreu um erro ao tentar limpar a planilha. Verifique o console.")
+
+
+    @commands.command(name="pagar_apostas")
+    @commands.has_permissions(administrator=True)
+    async def pagar_apostas_cmd(self, ctx, match_id: str = None):
+        """
+        Força o pagamento das apostas pendentes.
+        Uso:
+          !pagar_apostas            → processa todos os jogos pendentes
+          !pagar_apostas 552079     → força um match_id específico
+        """
+        msg = await ctx.send("⚙️ Iniciando pagamento forçado... Aguarde!")
+
+        apostas_pendentes = db.obter_apostas_pendentes()
+        if not apostas_pendentes:
+            return await msg.edit(content="✅ Nenhuma aposta pendente encontrada.")
+
+        # Filtra por match_id se informado
+        if match_id:
+            apostas_pendentes = [a for a in apostas_pendentes if str(a["match_id"]) == str(match_id)]
+            if not apostas_pendentes:
+                return await msg.edit(content=f"❌ Nenhuma aposta pendente encontrada para o Match ID `{match_id}`.")
+
+        match_ids = set(str(a["match_id"]) for a in apostas_pendentes)
+        canal_cassino = disnake.utils.get(self.bot.get_all_channels(), name="🎰・akbet")
+        resultados_api = {}
+
+        await msg.edit(content=f"🔍 Consultando a API para **{len(match_ids)}** jogo(s)...")
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                for mid in match_ids:
+                    try:
+                        async with session.get(
+                            f"{self.api_url}/matches/{mid}",
+                            headers=self.headers,
+                            timeout=aiohttp.ClientTimeout(total=15),
+                        ) as resp:
+                            if resp.status == 429:
+                                return await msg.edit(content="⚠️ Rate limit da API atingido. Tente novamente em instantes.")
+                            if resp.status == 200:
+                                data = await resp.json()
+                                resultados_api[mid] = data
+                                print(f"🔍 [pagar_apostas] Match {mid} → status: {data.get('status')}")
+                            else:
+                                print(f"⚠️ [pagar_apostas] API retornou {resp.status} para match {mid}.")
+                    except asyncio.TimeoutError:
+                        print(f"⚠️ [pagar_apostas] Timeout ao buscar match {mid}.")
+                    await asyncio.sleep(0.5)
+        except Exception as e:
+            print(f"❌ [pagar_apostas] Erro na sessão HTTP: {e}")
+            return await msg.edit(content="⚠️ Erro ao consultar a API. Verifique o console.")
+
+        processadas = 0
+        ignoradas   = 0
+        resumo      = []
+
+        for mid, match_data in resultados_api.items():
+            status = match_data.get("status")
+            if status not in ("FINISHED", "AWARDED"):
+                ignoradas += 1
+                resumo.append(f"⏳ Match `{mid}` → status `{status}` (não finalizado, ignorado)")
+                continue
+
+            gols_casa = match_data.get("score", {}).get("fullTime", {}).get("home")
+            gols_fora = match_data.get("score", {}).get("fullTime", {}).get("away")
+            if gols_casa is None or gols_fora is None:
+                ignoradas += 1
+                resumo.append(f"❓ Match `{mid}` → placar indisponível, ignorado")
+                continue
+
+            home_nome = match_data["homeTeam"]["name"]
+            away_nome = match_data["awayTeam"]["name"]
+            placar    = f"{gols_casa} x {gols_fora}"
+            liga_nome = match_data.get("competition", {}).get("name", "")
+            liga_code = match_data.get("competition", {}).get("code", "")
+
+            if gols_casa > gols_fora:   resultado_real = "casa"
+            elif gols_fora > gols_casa: resultado_real = "fora"
+            else:                       resultado_real = "empate"
+
+            LABEL = {"casa": home_nome, "fora": away_nome, "empate": "Empate"}
+            apostas_deste_jogo = [a for a in apostas_pendentes if str(a["match_id"]) == mid]
+
+            lista_vencedores = []
+            lista_perdedores = []
+            mencoes_unicas   = set()
+
+            for aposta in apostas_deste_jogo:
+                palpite_key = aposta["palpite"].lower()
+                se_venceu   = (palpite_key == resultado_real)
+                mencoes_unicas.add(f"<@{aposta['user_id']}>")
+                processadas += 1
+
+                if se_venceu:
+                    db.atualizar_status_aposta(aposta["row"], "Venceu")
+                    user_db = db.get_user_data(str(aposta["user_id"]))
+                    if user_db:
+                        saldo_atual = db.parse_float(user_db["data"][2])
+                        premio      = round(aposta["valor"] * aposta["odd"], 2)
+                        db.update_value(user_db["row"], 3, round(saldo_atual + premio, 2))
+                        lista_vencedores.append(f"<@{aposta['user_id']}>: `+{formatar_moeda(premio)} MC`")
+                else:
+                    db.atualizar_status_aposta(aposta["row"], "Perdeu")
+                    lista_perdedores.append(f"<@{aposta['user_id']}>: `-{formatar_moeda(aposta['valor'])} MC`")
+
+            resumo.append(f"✅ Match `{mid}` — {home_nome} {placar} {away_nome} → {len(apostas_deste_jogo)} aposta(s) liquidada(s)")
+
+            if canal_cassino:
+                embed = disnake.Embed(
+                    title=f"🏁 FIM DE JOGO: {home_nome} vs {away_nome}",
+                    description=f"{LIGAS_EMOJI.get(liga_code,'🏆')} **{liga_nome}**\n**Placar Final:** `{placar}`\n**Resultado:** {LABEL.get(resultado_real, resultado_real)}\n*(Pagamento forçado por admin)*",
+                    color=disnake.Color.blurple()
+                )
+                if lista_vencedores:
+                    texto_v = "\n".join(lista_vencedores)
+                    embed.add_field(name="🏆 Vencedores", value=texto_v[:1020] + ("..." if len(texto_v) > 1020 else ""), inline=False)
+                if lista_perdedores:
+                    texto_p = "\n".join(lista_perdedores)
+                    embed.add_field(name="💀 Perdedores", value=texto_p[:1020] + ("..." if len(texto_p) > 1020 else ""), inline=False)
+                embed.set_footer(text="Apostas liquidadas manualmente pelo admin.")
+                try:
+                    texto_mencoes = " ".join(mencoes_unicas)[:2000]
+                    await canal_cassino.send(content=texto_mencoes, embed=embed)
+                except Exception as e:
+                    print(f"⚠️ [pagar_apostas] Falha ao enviar resumo: {e}")
+
+        linhas_resumo = "\n".join(resumo) if resumo else "Nenhum jogo processado."
+        await msg.edit(content=(
+            f"**📊 Pagamento forçado concluído!**\n"
+            f"✅ Apostas liquidadas: `{processadas}`\n"
+            f"⏳ Jogos ignorados (não finalizados): `{ignoradas}`\n\n"
+            f"{linhas_resumo}"
+        )[:2000])
 
 
 def setup(bot):
