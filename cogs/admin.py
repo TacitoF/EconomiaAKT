@@ -213,25 +213,30 @@ class Admin(commands.Cog):
         api_key = os.getenv("FOOTBALL_API_KEY") or ""
         headers = {"X-Auth-Token": api_key}
         processadas = 0
-
-        agora    = datetime.utcnow()
-        data_de  = (agora - timedelta(days=5)).strftime("%Y-%m-%d")
-        data_at  = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
         resultados_api = {}
+
+        await msg.edit(content=f"🔍 Consultando a API individualmente para **{len(match_ids_pendentes)}** jogo(s)...")
 
         try:
             async with aiohttp.ClientSession() as session:
-                params = {"competitions": "BSA,PL,PD,CL,SA,BL1,PPL", "dateFrom": data_de, "dateTo": data_at}
-                async with session.get(f"{api_url}/matches", headers=headers, params=params, timeout=30) as resp:
-                    if resp.status == 429:
-                        return await msg.edit(content="⚠️ Erro: Rate limit da API atingido. Tente novamente em 1 minuto.")
-                    if resp.status != 200:
-                        return await msg.edit(content=f"⚠️ API retornou código de erro {resp.status}.")
-
-                    for match in (await resp.json()).get("matches", []):
-                        mid = str(match["id"])
-                        if mid in match_ids_pendentes:
-                            resultados_api[mid] = match
+                for mid in match_ids_pendentes:
+                    try:
+                        async with session.get(
+                            f"{api_url}/matches/{mid}",
+                            headers=headers,
+                            timeout=aiohttp.ClientTimeout(total=15),
+                        ) as resp:
+                            if resp.status == 429:
+                                return await msg.edit(content="⚠️ Rate limit da API atingido. Tente novamente em 1 minuto.")
+                            if resp.status == 200:
+                                data = await resp.json()
+                                resultados_api[mid] = data
+                                print(f"🔍 [pagarapostas] Match {mid} → status: {data.get('status')}")
+                            else:
+                                print(f"⚠️ [pagarapostas] API retornou {resp.status} para match {mid}.")
+                    except asyncio.TimeoutError:
+                        print(f"⚠️ [pagarapostas] Timeout ao buscar match {mid}.")
+                    await asyncio.sleep(0.5)
         except Exception as e:
             return await msg.edit(content=f"❌ Erro ao conectar com a API: {e}")
 
