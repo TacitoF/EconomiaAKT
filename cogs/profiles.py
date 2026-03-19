@@ -83,10 +83,13 @@ class ViewVisuais(disnake.ui.View):
         self.itens_normais = list(itens_normais)
         self.cosm_inv      = list(cosm_inv)
         self.cosm_atual    = dict(cosm_atual)
+        # Captura os botões já adicionados pelo super().__init__() (via decorators)
+        # para poder re-adicioná-los depois do clear_items() no _rebuild_select
+        self._fixed_buttons = list(self.children)
         self._rebuild_select()
 
     def _rebuild_select(self):
-        self.children = [c for c in self.children if not isinstance(c, disnake.ui.StringSelect)]
+        self.clear_items()
         if self.cosm_inv:
             options = []
             for item in self.cosm_inv:
@@ -108,6 +111,9 @@ class ViewVisuais(disnake.ui.View):
             )
             select.callback = self._on_equipar
             self.add_item(select)
+        # Re-adiciona os botões fixos
+        for btn in self._fixed_buttons:
+            self.add_item(btn)
 
     async def _salvar(self):
         inv_completo = self.itens_normais + self.cosm_inv

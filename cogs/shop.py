@@ -256,9 +256,10 @@ class SelectCategoria(disnake.ui.StringSelect):
         ]
         super().__init__(placeholder="🛒 Escolha uma categoria...", options=opts)
     async def callback(self, inter: disnake.MessageInteraction):
+        await inter.response.defer()
         cat = self.values[0]
         embed, view = _build_categoria(self.author_id, self.saldo, cat)
-        await inter.response.edit_message(embed=embed, view=view)
+        await inter.edit_original_response(embed=embed, view=view)
 
 def _build_categoria(author_id, saldo, cat):
     is_cosm = False
@@ -332,8 +333,8 @@ class Shop(commands.Cog):
     def __init__(self, bot): self.bot = bot
     async def cog_before_invoke(self, ctx):
         if ctx.channel.name != '🐒・conguitos':
-            canal = disnake.utils.get(ctx.guild.channels, name='🐒・コングイトス')
-            mencao = canal.mention if canal else "#🐒・コングイトス"
+            canal = disnake.utils.get(ctx.guild.channels, name='🐒・conguitos')
+            mencao = canal.mention if canal else "#🐒・conguitos"
             await ctx.send(f"⚠️ {ctx.author.mention}, a loja fica no canal {mencao}!")
             raise commands.CommandError("Canal incorreto.")
     @commands.command(aliases=["shop", "mercado", "comprar"])
