@@ -577,12 +577,10 @@ class Esportes(commands.Cog):
 
             lista_vencedores = []
             lista_perdedores = []
-            mencoes_unicas = set()
 
             for aposta in apostas_deste_jogo:
                 palpite_key = aposta["palpite"].lower()
                 se_venceu   = (palpite_key == resultado_real)
-                mencoes_unicas.add(f"<@{aposta['user_id']}>")
                 processadas += 1
 
                 if se_venceu:
@@ -603,20 +601,18 @@ class Esportes(commands.Cog):
                     description=f"{LIGAS_EMOJI.get(liga_code,'🏆')} **{liga_nome}**\n**Placar Final:** `{placar}`\n**Resultado:** {LABEL.get(resultado_real, resultado_real)}",
                     color=disnake.Color.blurple()
                 )
-                
+
                 if lista_vencedores:
                     texto_v = "\n".join(lista_vencedores)
                     embed.add_field(name="🏆 Vencedores", value=texto_v[:1020] + ("..." if len(texto_v) > 1020 else ""), inline=False)
-                
+
                 if lista_perdedores:
                     texto_p = "\n".join(lista_perdedores)
                     embed.add_field(name="💀 Perdedores", value=texto_p[:1020] + ("..." if len(texto_p) > 1020 else ""), inline=False)
 
                 embed.set_footer(text="Apostas liquidadas! O saldo foi atualizado automaticamente.")
-                
-                texto_mencoes = " ".join(mencoes_unicas)[:2000]
                 try:
-                    await canal_cassino.send(content=texto_mencoes, embed=embed)
+                    await canal_cassino.send(embed=embed)
                 except Exception as e:
                     print(f"⚠️ Falha ao enviar resumo da partida: {e}")
 
