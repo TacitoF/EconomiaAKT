@@ -517,29 +517,27 @@ class Esportes(commands.Cog):
         if not canal_cassino:
             print("⚠️ Canal '🎰・akbet' não encontrado — notificações desativadas.")
 
-        agora   = datetime.utcnow()
-        data_de = (agora - timedelta(days=5)).strftime("%Y-%m-%d")
-        data_at = (agora + timedelta(days=1)).strftime("%Y-%m-%d")
         resultados_api = {}
 
         try:
             async with aiohttp.ClientSession() as session:
-                params = {"competitions": "BSA,PL,PD,CL,SA,BL1,PPL", "dateFrom": data_de, "dateTo": data_at}
-                async with session.get(f"{self.api_url}/matches", headers=self.headers, params=params,
-                                       timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                    if resp.status == 429:
-                        print("⚠️ Rate limit — tentará no próximo ciclo.")
-                        return
-                    if resp.status != 200:
-                        print(f"⚠️ API retornou {resp.status} — abortando.")
-                        return
-                    for match in (await resp.json()).get("matches", []):
-                        mid = str(match["id"])
-                        if mid in match_ids_pendentes:
-                            resultados_api[mid] = match
-        except asyncio.TimeoutError:
-            print("⚠️ Timeout — tentará no próximo ciclo.")
-            return
+                for mid in match_ids_pendentes:
+                    try:
+                        async with session.get(
+                            f"{self.api_url}/matches/{mid}",
+                            headers=self.headers,
+                            timeout=aiohttp.ClientTimeout(total=15),
+                        ) as resp:
+                            if resp.status == 429:
+                                print("⚠️ Rate limit no loop — abortando ciclo.")
+                                return
+                            if resp.status == 200:
+                                resultados_api[mid] = await resp.json()
+                            else:
+                                print(f"⚠️ API retornou {resp.status} para match {mid}.")
+                    except asyncio.TimeoutError:
+                        print(f"⚠️ Timeout ao buscar match {mid} — pulando.")
+                    await asyncio.sleep(0.5)
         except Exception as e:
             print(f"❌ Erro na API: {e}")
             return

@@ -241,7 +241,7 @@ class Admin(commands.Cog):
             return await msg.edit(content=f"❌ Erro ao conectar com a API: {e}")
 
         if not resultados_api:
-            return await msg.edit(content="✅ Varredura concluída! Nenhum jogo pendente foi finalizado na vida real ainda.")
+            return await msg.edit(content="✅ Varredura concluída! Nenhum jogo pendente foi encontrado na API.")
 
         for match_id, match_data in resultados_api.items():
             status = match_data.get('status')
@@ -250,14 +250,14 @@ class Admin(commands.Cog):
 
             gols_casa = match_data.get('score', {}).get('fullTime', {}).get('home')
             gols_fora = match_data.get('score', {}).get('fullTime', {}).get('away')
-
             if gols_casa is None or gols_fora is None:
                 continue
 
-            home_nome = match_data['homeTeam']['name']
-            away_nome = match_data['awayTeam']['name']
+            home_nome = sanitizar(match_data['homeTeam']['name'])
+            away_nome = sanitizar(match_data['awayTeam']['name'])
             placar    = f"{gols_casa} x {gols_fora}"
-            liga_nome = match_data.get('competition', {}).get('name', '')
+            liga_nome = sanitizar(match_data.get('competition', {}).get('name', ''))
+            liga_code = match_data.get('competition', {}).get('code', '')
 
             if gols_casa > gols_fora:   resultado_real = "casa"
             elif gols_fora > gols_casa: resultado_real = "fora"
@@ -265,19 +265,15 @@ class Admin(commands.Cog):
 
             LABEL = {"casa": home_nome, "fora": away_nome, "empate": "Empate"}
             apostas_deste_jogo = [a for a in apostas_pendentes if str(a['match_id']) == match_id]
+            if not apostas_deste_jogo:
+                continue
+
+            lista_vencedores = []
+            lista_perdedores = []
 
             for aposta in apostas_deste_jogo:
                 palpite_key = aposta['palpite'].lower()
-                palpite_fmt = LABEL.get(palpite_key, aposta['palpite'])
-
-                jogador = self.bot.get_user(int(aposta["user_id"]))
-                if jogador is None:
-                    try:
-                        jogador = await self.bot.fetch_user(int(aposta["user_id"]))
-                    except Exception:
-                        jogador = None
-
-                se_venceu = (palpite_key == resultado_real)
+                se_venceu   = (palpite_key == resultado_real)
                 processadas += 1
 
                 if se_venceu:
@@ -287,33 +283,32 @@ class Admin(commands.Cog):
                         saldo_atual = db.parse_float(user_db['data'][2])
                         premio      = round(aposta['valor'] * aposta['odd'], 2)
                         db.update_value(user_db['row'], 3, round(saldo_atual + premio, 2))
-
-                        if canal_cassino and jogador:
-                            embed = disnake.Embed(title="🏆 APOSTA VENCEDORA!", color=disnake.Color.green())
-                            embed.set_author(name=jogador.display_name, icon_url=jogador.display_avatar.url)
-                            embed.add_field(name="⚽ Partida",  value=f"**{home_nome}** vs **{away_nome}**", inline=False)
-                            embed.add_field(name="🏆 Liga",     value=liga_nome or "—",                      inline=True)
-                            embed.add_field(name="📊 Placar",   value=f"**{placar}**",                       inline=True)
-                            embed.add_field(name="\u200b",      value="\u200b",                              inline=True)
-                            embed.add_field(name="🎯 Palpite",  value=palpite_fmt,                           inline=True)
-                            embed.add_field(name="💸 Apostado", value=f"`{formatar_moeda(aposta['valor'])} MC`", inline=True)
-                            embed.add_field(name="💰 Prêmio",   value=f"**{formatar_moeda(premio)} MC**",        inline=True)
-                            embed.set_footer(text="O saldo já foi creditado na sua conta!")
-                            await canal_cassino.send(content=f"🎉 {jogador.mention}", embed=embed)
+                        lista_vencedores.append(f"<@{aposta['user_id']}>: `+{formatar_moeda(premio)} MC` ({aposta['odd']}x)")
                 else:
                     db.atualizar_status_aposta(aposta['row'], 'Perdeu')
-                    if canal_cassino and jogador:
-                        embed = disnake.Embed(title="💀 APOSTA PERDIDA", color=disnake.Color.red())
-                        embed.set_author(name=jogador.display_name, icon_url=jogador.display_avatar.url)
-                        embed.add_field(name="⚽ Partida",     value=f"**{home_nome}** vs **{away_nome}**", inline=False)
-                        embed.add_field(name="🏆 Liga",        value=liga_nome or "—",                      inline=True)
-                        embed.add_field(name="📊 Placar",      value=f"**{placar}**",                       inline=True)
-                        embed.add_field(name="\u200b",         value="\u200b",                              inline=True)
-                        embed.add_field(name="✅ Resultado",   value=LABEL.get(resultado_real, resultado_real), inline=True)
-                        embed.add_field(name="❌ Seu Palpite", value=palpite_fmt,                           inline=True)
-                        embed.add_field(name="💸 Perdido",     value=f"`{formatar_moeda(aposta['valor'])} MC`", inline=True)
-                        embed.set_footer(text="Veja jogos com !futebol")
-                        await canal_cassino.send(content=f"{jogador.mention}", embed=embed)
+                    lista_perdedores.append(f"<@{aposta['user_id']}>: `-{formatar_moeda(aposta['valor'])} MC`")
+
+            if canal_cassino:
+                embed = disnake.Embed(
+                    title=f"🏁 FIM DE JOGO: {home_nome} vs {away_nome}",
+                    description=(
+                        f"{LIGAS_EMOJI.get(liga_code, '🏆')} **{liga_nome}**\n"
+                        f"**Placar Final:** `{placar}`\n"
+                        f"**Resultado:** {LABEL.get(resultado_real, resultado_real)}"
+                    ),
+                    color=disnake.Color.blurple()
+                )
+                if lista_vencedores:
+                    texto_v = "\n".join(lista_vencedores)
+                    embed.add_field(name="🏆 Vencedores", value=texto_v[:1020] + ("..." if len(texto_v) > 1020 else ""), inline=False)
+                if lista_perdedores:
+                    texto_p = "\n".join(lista_perdedores)
+                    embed.add_field(name="💀 Perdedores", value=texto_p[:1020] + ("..." if len(texto_p) > 1020 else ""), inline=False)
+                embed.set_footer(text="Apostas liquidadas! O saldo foi atualizado automaticamente.")
+                try:
+                    await canal_cassino.send(embed=embed)
+                except Exception as e:
+                    print(f"⚠️ Falha ao enviar resumo de {home_nome} vs {away_nome}: {e}")
 
         await msg.edit(content=f"✅ **Varredura concluída!** {processadas} aposta(s) finalizada(s) e paga(s) aos jogadores.")
 
