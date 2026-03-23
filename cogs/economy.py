@@ -32,6 +32,9 @@ PASSIVOS_EFEITOS = {
     "Escudo de Sangue":     {"devolve_roubo": +0.05},
     "Manto das Sombras":    {"chance_roubo": +12},
     "Talismã da Fortuna":   {"cripto_piso": -0.10},         # reduz prejuízo máximo
+
+    # ── Prêmio de Temporada (concedido pelo !resetar_economia) ──
+    "Troféu do Campeão":    {"bonus_trabalho": +0.20},      # +20% no !trabalhar por 7 dias
 }
 
 def get_efeitos_passivos(passivos: list[str]) -> dict:
@@ -81,10 +84,24 @@ class Economy(commands.Cog):
             agora = time.time()
 
             # ── Passivos do usuário ──
-            passivos      = db.get_passivos(user)
-            fx            = get_efeitos_passivos(passivos)
-            reducao_cd    = fx.get("reducao_cd_trabalho", 0)   # segundos a menos no CD
-            bonus_trab    = fx.get("bonus_trabalho", 0.0)       # multiplicador extra
+            passivos = db.get_passivos(user)
+
+            # ── BUFF TEMPORÁRIO DO CAMPEÃO — verificar expiração ──
+            trofeu_msg = ""
+            if "Troféu do Campeão" in passivos:
+                expira_buff = db.get_buff_temp_expira(user)
+                if expira_buff > 0 and agora > expira_buff:
+                    # Buff expirou: remove o passivo e limpa o timestamp
+                    passivos.remove("Troféu do Campeão")
+                    db.set_passivos(user['row'], passivos)
+                    db.set_buff_temp_expira(user['row'], 0)
+                elif expira_buff > agora:
+                    dias_restantes = max(1, int((expira_buff - agora) // 86400))
+                    trofeu_msg = f"👑 **Troféu do Campeão** ativo! (+20% — expira em {dias_restantes}d)"
+
+            fx         = get_efeitos_passivos(passivos)
+            reducao_cd = fx.get("reducao_cd_trabalho", 0)   # segundos a menos no CD
+            bonus_trab = fx.get("bonus_trabalho", 0.0)       # multiplicador extra
 
             cd_efetivo = max(0, 3600 - reducao_cd)
             ultimo_work = db.parse_float(user['data'][4] if len(user['data']) > 4 else None)
@@ -125,12 +142,14 @@ class Economy(commands.Cog):
                     f"*A greve termina <t:{int(greve_expira)}:R>.*"
                 )
 
-            # ── PASSIVO: bônus de trabalho ──
+            # ── PASSIVO: bônus de trabalho (inclui Troféu do Campeão se ativo) ──
             passivo_trab_msg = ""
             if bonus_trab > 0:
                 ganho_antes = ganho
                 ganho = round(ganho * (1 + bonus_trab), 2)
                 passivo_trab_msg = f"🔰 **Passivo:** +{int(bonus_trab * 100)}% no ganho (`+{formatar_moeda(ganho - ganho_antes)} MC`)"
+                if trofeu_msg:
+                    passivo_trab_msg += f"\n{trofeu_msg}"
 
             # ── MASCOTE (Buff de Trabalho) ──
             mascote_msg = ""
@@ -510,7 +529,7 @@ class Economy(commands.Cog):
                     corte_saldo = max(0, valor_roubado - devolvido)
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - corte_saldo, 2))
                     escudo_sangue_msg = f"🔰 **Escudo de Sangue:** {vitima.mention} recuperou **{formatar_moeda(devolvido)} MC** do roubo!"
-                
+
                 seguro_msg = ""
                 if "Seguro" in inv_alvo:
                     recuperado = round(valor_roubado * 0.6, 2)

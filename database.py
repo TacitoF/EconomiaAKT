@@ -19,12 +19,33 @@ if not sheet_id:
 sheet = client.open_by_key(sheet_id).sheet1
 sheet_apostas = client.open_by_key(sheet_id).worksheet("Apostas_Esportivas")
 
+# ──────────────────────────────────────────────────────────────────────────────
+#  SISTEMA DE RETENTATIVA (ANTI-ERRO 503 / 429)
+# ──────────────────────────────────────────────────────────────────────────────
+def call_with_retry(func, *args, **kwargs):
+    """
+    Executa uma função da API do Google Sheets. 
+    Se o Google estiver instável (erro 503, 502, 500) ou rate-limited (429), tenta de novo até 3 vezes.
+    """
+    for i in range(3):
+        try:
+            return func(*args, **kwargs)
+        except gspread.exceptions.APIError as e:
+            status_code = getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None
+            # Tenta novamente em caso de erros temporários do servidor do Google
+            if status_code in [429, 500, 502, 503, 504] and i < 2:
+                print(f"⚠️ [Retry] Instabilidade no Google (Erro {status_code}). Tentando novamente em 2s ({i+1}/3)...")
+                time.sleep(2)
+                continue
+            raise # Passa o erro pra frente se acabarem as tentativas ou for outro tipo de erro
+
+
 def _get_or_create_config_sheet():
     try:
         return client.open_by_key(sheet_id).worksheet("Config")
     except gspread.exceptions.WorksheetNotFound:
         ws = client.open_by_key(sheet_id).add_worksheet(title="Config", rows=10, cols=2)
-        ws.update("A1:B1", [["chave", "valor"]])
+        call_with_retry(ws.update, "A1:B1", [["chave", "valor"]])
         return ws
 
 sheet_config = _get_or_create_config_sheet()
@@ -46,12 +67,12 @@ def handle_db_error(e):
 
 def get_user_data(user_id):
     try:
-        col_a = sheet.col_values(1)
+        col_a = call_with_retry(sheet.col_values, 1)
         try:
             row_index = col_a.index(str(user_id)) + 1
         except ValueError:
             return None
-        row = sheet.row_values(row_index)
+        row = call_with_retry(sheet.row_values, row_index)
         return {"row": row_index, "data": row}
     except commands.CommandError:
         raise
@@ -62,7 +83,7 @@ def update_value(row, col, value):
     try:
         if isinstance(value, float):
             value = str(value).replace('.', ',')
-        sheet.update_cell(row, col, value)
+        call_with_retry(sheet.update_cell, row, col, value)
     except Exception as e:
         handle_db_error(e)
 
@@ -75,18 +96,18 @@ def create_user(user_id, name):
       13 - cosmeticos    | 14 - mascote      | 15 - greve_ts   | 16 - passivos
     """
     try:
-        all_rows = sheet.get_all_values()
+        all_rows = call_with_retry(sheet.get_all_values)
         next_row = len(all_rows) + 1
         dados = [str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", "", "", "", ""]
-        sheet.batch_update([{'range': f'A{next_row}', 'values': [dados]}])
+        call_with_retry(sheet.batch_update, [{'range': f'A{next_row}', 'values': [dados]}])
     except Exception as e:
         handle_db_error(e)
 
 def wipe_database():
     try:
-        rows = sheet.get_all_values()
+        rows = call_with_retry(sheet.get_all_values)
         if len(rows) > 1:
-            sheet.delete_rows(2, len(rows))
+            call_with_retry(sheet.delete_rows, 2, len(rows))
     except Exception as e:
         handle_db_error(e)
 
@@ -115,19 +136,19 @@ def get_imposto(user_data: dict) -> tuple:
 def set_imposto(row: int, cobrador_id: str, cargas: int):
     try:
         valor = f"{cobrador_id}|{cargas}" if cargas > 0 else ""
-        sheet.update_cell(row, 11, valor)
+        call_with_retry(sheet.update_cell, row, 11, valor)
     except Exception as e:
         handle_db_error(e)
 
 def set_imposto_cooldown(row: int, timestamp: float):
     try:
-        sheet.update_cell(row, 11, f"cd|{timestamp}")
+        call_with_retry(sheet.update_cell, row, 11, f"cd|{timestamp}")
     except Exception as e:
         handle_db_error(e)
 
 def clear_imposto(row: int):
     try:
-        sheet.update_cell(row, 11, "")
+        call_with_retry(sheet.update_cell, row, 11, "")
     except Exception as e:
         handle_db_error(e)
 
@@ -158,7 +179,7 @@ def set_escudo_data(row: int, cargas: int, quebra_ts: float = 0.0):
             valor = f"0|{quebra_ts}"
         else:
             valor = ""
-        sheet.update_cell(row, 12, valor)
+        call_with_retry(sheet.update_cell, row, 12, valor)
     except Exception as e:
         handle_db_error(e)
 
@@ -181,7 +202,7 @@ def get_cripto_usos(user_data: dict) -> tuple[int, float]:
 def set_cripto_usos(row: int, quantidade: int, timestamp_inicio: float):
     try:
         valor = f"{quantidade}|{timestamp_inicio}"
-        sheet.update_cell(row, 9, valor)
+        call_with_retry(sheet.update_cell, row, 9, valor)
     except Exception as e:
         handle_db_error(e)
 
@@ -211,7 +232,7 @@ def set_cosmetico(row: int, user_data: dict, chave: str, valor: str):
         cosm.pop(chave, None)
     serializado = "|".join(f"{k}:{v}" for k, v in cosm.items())
     try:
-        sheet.update_cell(row, 13, serializado)
+        call_with_retry(sheet.update_cell, row, 13, serializado)
     except Exception as e:
         handle_db_error(e)
 
@@ -238,15 +259,13 @@ def get_mascote(user_data: dict) -> tuple[str, int]:
 def set_mascote(row: int, slug_mascote: str, fome: int):
     try:
         valor = f"{slug_mascote}|{fome}" if slug_mascote else ""
-        sheet.update_cell(row, 14, valor)
+        call_with_retry(sheet.update_cell, row, 14, valor)
     except Exception as e:
         handle_db_error(e)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  GREVE (coluna 15)
-#  Formato: timestamp_expira  (float)
-#  Enquanto time.time() < timestamp_expira, o !trabalhar rende 50% menos
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_greve(user_data: dict) -> float:
@@ -263,21 +282,19 @@ def get_greve(user_data: dict) -> float:
 def set_greve(row: int, timestamp_expira: float):
     """Salva o timestamp de expiração da greve na coluna 15."""
     try:
-        sheet.update_cell(row, 15, str(timestamp_expira) if timestamp_expira > 0 else "")
+        call_with_retry(sheet.update_cell, row, 15, str(timestamp_expira) if timestamp_expira > 0 else "")
     except Exception as e:
         handle_db_error(e)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  PASSIVOS (coluna 16)
-#  Formato: "Amuleto da Sorte,Cinto de Ferramentas,Segurança Particular"
-#  Lista simples separada por vírgula — máx 3 itens
 # ──────────────────────────────────────────────────────────────────────────────
 
 MAX_PASSIVOS = 3
 
 def get_passivos(user_data: dict) -> list[str]:
-    """Retorna lista de slugs de passivos equipados. Ex: ['Amuleto da Sorte', 'Cinto de Ferramentas']"""
+    """Retorna lista de slugs de passivos equipados."""
     raw = str(user_data["data"][15]) if len(user_data["data"]) > 15 else ""
     raw = raw.strip()
     if not raw:
@@ -288,7 +305,7 @@ def set_passivos(row: int, passivos: list[str]):
     """Salva a lista de passivos equipados na coluna 16."""
     try:
         valor = ", ".join(passivos[:MAX_PASSIVOS]) if passivos else ""
-        sheet.update_cell(row, 16, valor)
+        call_with_retry(sheet.update_cell, row, 16, valor)
     except Exception as e:
         handle_db_error(e)
 
@@ -306,15 +323,15 @@ def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
             str(user_id), str(match_id), palpite, valor_str, odd_str, "Pendente",
             str(time_casa), str(time_fora), str(liga), str(horario)
         ]
-        all_rows = sheet_apostas.get_all_values()
+        all_rows = call_with_retry(sheet_apostas.get_all_values)
         next_row = len(all_rows) + 1
-        sheet_apostas.batch_update([{'range': f'A{next_row}', 'values': [dados]}])
+        call_with_retry(sheet_apostas.batch_update, [{'range': f'A{next_row}', 'values': [dados]}])
     except Exception as e:
         handle_db_error(e)
 
 def obter_apostas_pendentes():
     try:
-        rows = sheet_apostas.get_all_values()
+        rows = call_with_retry(sheet_apostas.get_all_values)
         apostas = []
         for i, row in enumerate(rows):
             if i == 0: continue
@@ -339,13 +356,13 @@ def obter_apostas_pendentes():
 
 def atualizar_status_aposta(row, status):
     try:
-        sheet_apostas.update_cell(row, 6, status)
+        call_with_retry(sheet_apostas.update_cell, row, 6, status)
     except Exception as e:
         handle_db_error(e)
 
 def atualizar_valor_aposta(row: int, novo_valor: float):
     try:
-        sheet_apostas.update_cell(row, 4, str(round(novo_valor, 2)).replace('.', ','))
+        call_with_retry(sheet_apostas.update_cell, row, 4, str(round(novo_valor, 2)).replace('.', ','))
     except Exception as e:
         handle_db_error(e)
 
@@ -355,7 +372,7 @@ def get_apostas_pendentes_usuario(user_id: str) -> list:
 
 def limpar_apostas_finalizadas() -> int:
     try:
-        all_rows = sheet_apostas.get_all_values()
+        all_rows = call_with_retry(sheet_apostas.get_all_values)
         if len(all_rows) <= 1:
             return 0
         header = all_rows[0]
@@ -372,9 +389,9 @@ def limpar_apostas_finalizadas() -> int:
                 rows_to_keep.append(row)
         deleted_count = len(data_rows) - len(rows_to_keep)
         if deleted_count > 0:
-            sheet_apostas.clear()
+            call_with_retry(sheet_apostas.clear)
             nova_planilha = [header] + rows_to_keep
-            sheet_apostas.batch_update([{'range': 'A1', 'values': nova_planilha}])
+            call_with_retry(sheet_apostas.batch_update, [{'range': 'A1', 'values': nova_planilha}])
         return deleted_count
     except Exception as e:
         handle_db_error(e)
@@ -387,7 +404,7 @@ def limpar_apostas_finalizadas() -> int:
 
 def _config_row(chave: str) -> int | None:
     try:
-        col = sheet_config.col_values(1)
+        col = call_with_retry(sheet_config.col_values, 1)
         idx = col.index(chave)
         return idx + 1
     except ValueError:
@@ -397,10 +414,11 @@ def set_instancia_ativa(instance_id: str):
     try:
         row = _config_row("instancia_ativa")
         if row:
-            sheet_config.update_cell(row, 2, instance_id)
+            call_with_retry(sheet_config.update_cell, row, 2, instance_id)
         else:
-            next_row = len(sheet_config.col_values(1)) + 1
-            sheet_config.update(f"A{next_row}:B{next_row}", [["instancia_ativa", instance_id]])
+            col_vals = call_with_retry(sheet_config.col_values, 1)
+            next_row = len(col_vals) + 1
+            call_with_retry(sheet_config.update, f"A{next_row}:B{next_row}", [["instancia_ativa", instance_id]])
     except Exception as e:
         handle_db_error(e)
 
@@ -409,7 +427,8 @@ def get_instancia_ativa() -> str | None:
         row = _config_row("instancia_ativa")
         if not row:
             return None
-        return sheet_config.cell(row, 2).value
+        celula = call_with_retry(sheet_config.cell, row, 2)
+        return celula.value
     except Exception:
         return None
 
@@ -423,14 +442,14 @@ def _get_or_create_mercado_sheet():
         return client.open_by_key(sheet_id).worksheet("Mercado")
     except gspread.exceptions.WorksheetNotFound:
         ws = client.open_by_key(sheet_id).add_worksheet(title="Mercado", rows=50, cols=3)
-        ws.update("A1:C1", [["item_id", "compras_hoje", "ultimo_reset"]])
+        call_with_retry(ws.update, "A1:C1", [["item_id", "compras_hoje", "ultimo_reset"]])
         return ws
 
 sheet_mercado = _get_or_create_mercado_sheet()
 
 def _mercado_row(item_id: str) -> int | None:
     try:
-        col = sheet_mercado.col_values(1)
+        col = call_with_retry(sheet_mercado.col_values, 1)
         idx = col.index(item_id)
         return idx + 1
     except ValueError:
@@ -441,11 +460,11 @@ def get_compras_item(item_id: str) -> int:
         row = _mercado_row(item_id)
         if not row:
             return 0
-        valores = sheet_mercado.row_values(row)
+        valores = call_with_retry(sheet_mercado.row_values, row)
         compras = int(valores[1]) if len(valores) > 1 and valores[1] else 0
         ultimo_reset = float(valores[2]) if len(valores) > 2 and valores[2] else 0.0
         if time.time() - ultimo_reset >= 86400:
-            sheet_mercado.update(f"B{row}:C{row}", [[0, time.time()]])
+            call_with_retry(sheet_mercado.update, f"B{row}:C{row}", [[0, time.time()]])
             return 0
         return compras
     except Exception:
@@ -456,15 +475,16 @@ def incrementar_compras(item_id: str, quantidade: int = 1):
         row = _mercado_row(item_id)
         agora = time.time()
         if not row:
-            next_row = len(sheet_mercado.col_values(1)) + 1
-            sheet_mercado.update(f"A{next_row}:C{next_row}", [[item_id, quantidade, agora]])
+            col_vals = call_with_retry(sheet_mercado.col_values, 1)
+            next_row = len(col_vals) + 1
+            call_with_retry(sheet_mercado.update, f"A{next_row}:C{next_row}", [[item_id, quantidade, agora]])
         else:
-            valores = sheet_mercado.row_values(row)
+            valores = call_with_retry(sheet_mercado.row_values, row)
             compras_atuais = int(valores[1]) if len(valores) > 1 and valores[1] else 0
             ultimo_reset = float(valores[2]) if len(valores) > 2 and valores[2] else 0.0
             if agora - ultimo_reset >= 86400:
                 compras_atuais = 0
                 ultimo_reset = agora
-            sheet_mercado.update(f"B{row}:C{row}", [[compras_atuais + quantidade, ultimo_reset]])
+            call_with_retry(sheet_mercado.update, f"B{row}:C{row}", [[compras_atuais + quantidade, ultimo_reset]])
     except Exception as e:
         print(f"⚠️ Erro ao incrementar compras de {item_id}: {e}")
