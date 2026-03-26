@@ -311,6 +311,56 @@ def set_passivos(row: int, passivos: list[str]):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+#  BUFF TEMPORÁRIO (coluna 17 — timestamp de expiração do Troféu do Campeão)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_buff_temp_expira(user_data: dict) -> float:
+    """Retorna o timestamp de expiração do buff temporário. 0.0 se não houver."""
+    raw = str(user_data["data"][16]) if len(user_data["data"]) > 16 else ""
+    raw = raw.strip()
+    if not raw:
+        return 0.0
+    try:
+        return float(raw)
+    except ValueError:
+        return 0.0
+
+def set_buff_temp_expira(row: int, timestamp_expira: float):
+    """Salva o timestamp de expiração do buff temporário na coluna 17."""
+    try:
+        valor = str(timestamp_expira) if timestamp_expira > 0 else ""
+        call_with_retry(sheet.update_cell, row, 17, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  BUSCA EM MASSA (usado pelo reset de economia)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_all_users() -> list[dict]:
+    """
+    Retorna todos os usuários cadastrados na planilha principal.
+    Cada item é um dict {'row': int, 'data': list} — mesmo formato de get_user_data().
+    Pula a linha 1 caso ela seja um cabeçalho (célula A1 não numérica).
+    """
+    try:
+        all_rows = call_with_retry(sheet.get_all_values)
+        usuarios = []
+        for i, row in enumerate(all_rows):
+            # Pula linhas vazias ou cabeçalho
+            if not row or not str(row[0]).strip():
+                continue
+            if i == 0 and not str(row[0]).strip().isdigit():
+                continue  # linha de cabeçalho
+            usuarios.append({"row": i + 1, "data": row})
+        return usuarios
+    except Exception as e:
+        handle_db_error(e)
+        return []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 #  FUNÇÕES DE APOSTAS ESPORTIVAS
 # ──────────────────────────────────────────────────────────────────────────────
 

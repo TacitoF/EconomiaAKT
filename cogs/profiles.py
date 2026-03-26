@@ -235,6 +235,10 @@ class Profiles(commands.Cog):
         "mestre_sombras":    "🥷 Mestre das Sombras",
         "proletario":        "⚒️ Proletário Padrão",
         "detetive":          "🕵️ Detetive",
+        # ── Conquistas de Temporada (concedidas pelo !resetar_economia) ──
+        "campeao_era":       "👑 Campeão da Era",
+        "vice_era":          "🥈 Vice da Era",
+        "bronze_era":        "🥉 Bronze da Era",
     }
 
     _CORES = {

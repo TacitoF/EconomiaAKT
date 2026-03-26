@@ -174,7 +174,7 @@ class Pets(commands.Cog):
             await ctx.send("⚠️ Ocorreu um erro ao tentar alimentar o mascote.")
 
     @commands.command(aliases=["abandonar"])
-    async def libertar(self, ctx):
+    async def libertar(self, ctx, confirmacao: str = None):
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
@@ -184,8 +184,17 @@ class Pets(commands.Cog):
             if not tipo:
                 return await ctx.send(f"🐾 {ctx.author.mention}, você não tem mascote.")
 
-            info = INFO_MASCOTES.get(tipo, {"nome": "Mascote", "raridade": "?", "imagem": "🐾"})
+            # Se passou "confirmar" como argumento, executa a liberação
+            if confirmacao and confirmacao.lower() == "confirmar":
+                info = INFO_MASCOTES.get(tipo, {"nome": "Mascote", "imagem": "🐾"})
+                db.set_mascote(user['row'], "", 0)
+                return await ctx.send(
+                    f"🌿 {ctx.author.mention} abriu a gaiola e devolveu a sua **{info['imagem']} {info['nome']}** para a selva.\n"
+                    f"A vaga de mascote está livre novamente!"
+                )
 
+            # Sem argumento, mostra o aviso de confirmação
+            info = INFO_MASCOTES.get(tipo, {"nome": "Mascote", "raridade": "?", "imagem": "🐾"})
             embed = disnake.Embed(
                 title="🚪 Libertar mascote?",
                 description=(
@@ -201,29 +210,7 @@ class Pets(commands.Cog):
             print(f"❌ Erro no !libertar de {ctx.author}: {e}")
             await ctx.send("⚠️ Ocorreu um erro ao tentar libertar o mascote.")
 
-    @commands.command(name="libertar_confirmar", aliases=["abandonar_confirmar"])
-    async def libertar_confirmar(self, ctx):
-        try:
-            user = db.get_user_data(str(ctx.author.id))
-            if not user:
-                return
-
-            tipo, _ = db.get_mascote(user)
-            if not tipo:
-                return await ctx.send(f"🐾 {ctx.author.mention}, você não tem mascote.")
-
-            info = INFO_MASCOTES.get(tipo, {"nome": "Mascote"})
-            db.set_mascote(user['row'], "", 0)
-            await ctx.send(
-                f"🌿 {ctx.author.mention} abriu a gaiola e devolveu a sua **{info['nome']}** para a selva.\n"
-                f"A vaga de mascote está livre novamente!"
-            )
-
-        except Exception as e:
-            print(f"❌ Erro no !libertar_confirmar de {ctx.author}: {e}")
-            await ctx.send("⚠️ Ocorreu um erro ao tentar libertar o mascote.")
-
-    # ── NOVO COMANDO: ENCICLOPÉDIA DE MASCOTES ──
+    # ── ENCICLOPÉDIA DE MASCOTES ──
     @commands.command(aliases=["guia_mascotes", "zoologico", "lista_pets"])
     async def mascotes(self, ctx):
         embed = disnake.Embed(

@@ -195,7 +195,7 @@ async def shutdown_task():
 @bot.listen('on_message')
 async def auto_kill_old_instance(message):
     """Lê o canal de status. Se um bot NOVO mandar mensagem, o bot VELHO se desliga na hora."""
-    if message.author.id != bot.user.id or message.channel.name != NOME_CANAL_STATUS:
+    if message.author.id != bot.user.id or not isinstance(message.channel, disnake.TextChannel) or message.channel.name != NOME_CANAL_STATUS:
         return
 
     if message.embeds:
@@ -286,4 +286,4 @@ if __name__ == "__main__":
     if token:
         bot.run(token)
     else:
-        print("❌ TOKEN não encontrado!")
+        print("❌ TOKEN não encontrado!")   

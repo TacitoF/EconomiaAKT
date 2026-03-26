@@ -134,9 +134,10 @@ class Items(commands.Cog):
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
             db.set_imposto(vitima_db['row'], str(ctx.author.id), 5)
 
+            cargo_cobrador = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
             await ctx.send(
                 f"🦍 **DECRETO ASSINADO!** {ctx.author.mention} cobrou o **Imposto do Gorila** a {vitima.mention}!\n"
-                f"Durante os próximos **5 trabalhos** dele, **25%** do suor vai direto para você!"
+                f"Durante os próximos **5 trabalhos** dele, o valor do seu cargo (**{cargo_cobrador}**) será descontado do ganho dele e enviado para você!"
             )
 
         except commands.CommandError:

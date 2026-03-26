@@ -209,15 +209,33 @@ class Economy(commands.Cog):
             imposto_msg = ""
             if user_id in self.bot.impostos:
                 imposto_data = self.bot.impostos[user_id]
-                taxa  = round(ganho * 0.25, 2)
-                ganho = round(ganho - taxa, 2)
 
                 cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
-                if cobrador_db:
-                    db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
-
                 cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
                 nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
+
+                # Taxa baseada no cargo do cobrador (mesmo range salarial do !trabalhar)
+                if cobrador_db:
+                    cargo_cobrador = cobrador_db['data'][3] if len(cobrador_db['data']) > 3 and cobrador_db['data'][3] else "Lêmure"
+                else:
+                    cargo_cobrador = "Lêmure"
+
+                salarios_imposto = {
+                    "Lêmure":      (40,    80),
+                    "Macaquinho":  (130,   230),
+                    "Babuíno":     (320,   530),
+                    "Chimpanzé":   (780,   1320),
+                    "Orangutango": (1900,  3200),
+                    "Gorila":      (4700,  7800),
+                    "Ancestral":   (11500, 19000),
+                    "Rei Símio":   (27000, 45000),
+                }
+                min_imp, max_imp = salarios_imposto.get(cargo_cobrador, (40, 80))
+                taxa  = round(min(random.uniform(min_imp, max_imp), ganho), 2)
+                ganho = round(ganho - taxa, 2)
+
+                if cobrador_db:
+                    db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
 
                 imposto_data['cargas'] -= 1
                 cargas_restantes = imposto_data['cargas']

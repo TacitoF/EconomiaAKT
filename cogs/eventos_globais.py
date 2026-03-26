@@ -129,7 +129,7 @@ class EventosGlobais(commands.Cog):
 
         layout_visual = (
             f"```py\n"
-            f"航 {header} 航\n"
+            f"{header}\n"
             f"STATUS: CARGA EM QUEDA\n"
             f"```\n"
             f"☁️ ☁️ ☁️ ☁️ ☁️ ☁️ ☁️\n"
