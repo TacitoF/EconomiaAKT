@@ -72,6 +72,13 @@ class Economy(commands.Cog):
     @commands.command(aliases=["work"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def trabalhar(self, ctx):
+        # 🚨 SISTEMA DO PURGE 🚨
+        if getattr(self.bot, 'purge_ativo', False):
+            return await ctx.send(
+                "🚨 **A HORA DO PURGE ESTÁ ATIVA!**\n"
+                "O trabalho honesto não existe agora. O mercado fechou, vá roubar ou se esconder!"
+            )
+
         user_id = str(ctx.author.id)
         try:
             user = db.get_user_data(user_id)
@@ -209,33 +216,15 @@ class Economy(commands.Cog):
             imposto_msg = ""
             if user_id in self.bot.impostos:
                 imposto_data = self.bot.impostos[user_id]
-
-                cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
-                cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
-                nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
-
-                # Taxa baseada no cargo do cobrador (mesmo range salarial do !trabalhar)
-                if cobrador_db:
-                    cargo_cobrador = cobrador_db['data'][3] if len(cobrador_db['data']) > 3 and cobrador_db['data'][3] else "Lêmure"
-                else:
-                    cargo_cobrador = "Lêmure"
-
-                salarios_imposto = {
-                    "Lêmure":      (40,    80),
-                    "Macaquinho":  (130,   230),
-                    "Babuíno":     (320,   530),
-                    "Chimpanzé":   (780,   1320),
-                    "Orangutango": (1900,  3200),
-                    "Gorila":      (4700,  7800),
-                    "Ancestral":   (11500, 19000),
-                    "Rei Símio":   (27000, 45000),
-                }
-                min_imp, max_imp = salarios_imposto.get(cargo_cobrador, (40, 80))
-                taxa  = round(min(random.uniform(min_imp, max_imp), ganho), 2)
+                taxa  = round(ganho * 0.25, 2)
                 ganho = round(ganho - taxa, 2)
 
+                cobrador_db = db.get_user_data(imposto_data['cobrador_id'])
                 if cobrador_db:
                     db.update_value(cobrador_db['row'], 3, round(db.parse_float(cobrador_db['data'][2]) + taxa, 2))
+
+                cobrador_user = self.bot.get_user(int(imposto_data['cobrador_id']))
+                nome_c = cobrador_user.mention if cobrador_user else "Um Gorila"
 
                 imposto_data['cargas'] -= 1
                 cargas_restantes = imposto_data['cargas']
@@ -374,8 +363,13 @@ class Economy(commands.Cog):
             vitima_id = str(vitima.id)
 
             ultimo_roubo = db.parse_float(ladrao_data['data'][6] if len(ladrao_data['data']) > 6 else None)
-            if agora - ultimo_roubo < 7200:
-                return await ctx.send(f"👮 Só pode roubar novamente <t:{int(ultimo_roubo + 7200)}:R>.")
+            
+            # 🚨 SISTEMA DO PURGE - COOLDOWN 🚨
+            is_purge = getattr(self.bot, 'purge_ativo', False)
+            cd_efetivo = 300 if is_purge else 7200 # 5 Minutos no Purge, 2h normal
+
+            if agora - ultimo_roubo < cd_efetivo:
+                return await ctx.send(f"👮 Só pode roubar novamente <t:{int(ultimo_roubo + cd_efetivo)}:R>.")
 
             if ladrao_id in self.bot.cascas:
                 self.bot.cascas.remove(ladrao_id)
@@ -581,7 +575,13 @@ class Economy(commands.Cog):
 
                 titulo_s = "🥷 SUCESSO (com pena)..." if is_pobre else "🥷 SUCESSO!"
                 desc_s   = f"{vitima.mention} estava quase na miséria." if is_pobre else f"Você saqueou **{vitima.mention}** e sumiu na escuridão."
-                emb_s = disnake.Embed(title=titulo_s, description=desc_s, color=0x2ECC71)
+                
+                # 🚨 ALERTA VISUAL SE FOR PURGE 🚨
+                if is_purge:
+                    titulo_s = "💀 SAQUE DE PURGE!"
+                    desc_s = f"Em plena anarquia, você devastou a carteira de **{vitima.mention}**!"
+
+                emb_s = disnake.Embed(title=titulo_s, description=desc_s, color=0x2ECC71 if not is_purge else 0x8B0000)
                 emb_s.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
                 emb_s.add_field(name="💸 Roubado", value=f"**+{formatar_moeda(valor_roubado)} MC**", inline=True)
                 emb_s.add_field(name="🎯 Alvo",    value=vitima.mention,                             inline=True)
@@ -599,34 +599,56 @@ class Economy(commands.Cog):
                 await ctx.send(embed=emb_s)
 
             else:
-                pct_multa  = random.uniform(0.05, 0.10)
-                multa_base = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
-                # Passivo Cão de Guarda da vítima aumenta a multa
-                multa = round(multa_base * multa_multiplicador * (1 + multa_bonus_alvo), 2)
+                # 🚨 SISTEMA DO PURGE - SEM MULTA 🚨
+                if is_purge:
+                    db.update_value(ladrao_data['row'], 7, agora)
+                    self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
 
-                db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
-                db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))
-                db.update_value(ladrao_data['row'], 7, agora)
-                self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
+                    emb_f = disnake.Embed(
+                        title="💀 EXPULSO! O roubo falhou.",
+                        description=f"{vitima.mention} repeliu o seu ataque! Felizmente, durante o Purge, **não há multas** na anarquia.",
+                        color=0x808080
+                    )
+                    emb_f.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+                    emb_f.add_field(name="💸 Multa paga",     value="**0 MC (Anarquia)**", inline=True)
+                    emb_f.add_field(name="👮 Alvo Defendido", value=vitima.mention,        inline=True)
+                    
+                    if usou_pe_de_cabra: emb_f.add_field(name="🕵️ Pé de Cabra",   value="Usou mas deu azar",          inline=True)
+                    if msg_passivos:     emb_f.add_field(name="🔰 Passivos",        value=msg_passivos.strip(),         inline=False)
+                    if msg_mascotes:     emb_f.add_field(name="🐾 Interferência",   value=msg_mascotes.strip(),         inline=False)
+                    if msg_escudo:       emb_f.add_field(name="🛡️ Escudo",           value=msg_escudo,                   inline=False)
+                    await ctx.send(embed=emb_f)
 
-                cao_guarda_msg = ""
-                if multa_bonus_alvo > 0:
-                    cao_guarda_msg = f"🔰 **Cão de Guarda** de {vitima.display_name} aumentou a multa em +{int(multa_bonus_alvo*100)}%!"
+                else:
+                    # MULTA NORMAL
+                    pct_multa  = random.uniform(0.05, 0.10)
+                    multa_base = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
+                    # Passivo Cão de Guarda da vítima aumenta a multa
+                    multa = round(multa_base * multa_multiplicador * (1 + multa_bonus_alvo), 2)
 
-                emb_f = disnake.Embed(
-                    title="👮 PRESO! O roubo falhou.",
-                    description=f"Você foi pego e pagou uma multa de **{formatar_moeda(multa)} MC** a {vitima.mention}.",
-                    color=0xE74C3C
-                )
-                emb_f.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
-                emb_f.add_field(name="💸 Multa paga",     value=f"**-{formatar_moeda(multa)} MC**", inline=True)
-                emb_f.add_field(name="👮 Denunciado por", value=vitima.mention,                     inline=True)
-                if usou_pe_de_cabra: emb_f.add_field(name="🕵️ Pé de Cabra",   value="Usou mas deu azar",          inline=True)
-                if msg_passivos:     emb_f.add_field(name="🔰 Passivos",        value=msg_passivos.strip(),         inline=False)
-                if cao_guarda_msg:   emb_f.add_field(name="🔰 Cão de Guarda",   value=cao_guarda_msg,               inline=False)
-                if msg_mascotes:     emb_f.add_field(name="🐾 Interferência",   value=msg_mascotes.strip(),         inline=False)
-                if msg_escudo:       emb_f.add_field(name="🛡️ Escudo",           value=msg_escudo,                   inline=False)
-                await ctx.send(embed=emb_f)
+                    db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
+                    db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))
+                    db.update_value(ladrao_data['row'], 7, agora)
+                    self.bot.tracker_emblemas['roubos_falha'][ladrao_id] = self.bot.tracker_emblemas['roubos_falha'].get(ladrao_id, 0) + 1
+
+                    cao_guarda_msg = ""
+                    if multa_bonus_alvo > 0:
+                        cao_guarda_msg = f"🔰 **Cão de Guarda** de {vitima.display_name} aumentou a multa em +{int(multa_bonus_alvo*100)}%!"
+
+                    emb_f = disnake.Embed(
+                        title="👮 PRESO! O roubo falhou.",
+                        description=f"Você foi pego e pagou uma multa de **{formatar_moeda(multa)} MC** a {vitima.mention}.",
+                        color=0xE74C3C
+                    )
+                    emb_f.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+                    emb_f.add_field(name="💸 Multa paga",     value=f"**-{formatar_moeda(multa)} MC**", inline=True)
+                    emb_f.add_field(name="👮 Denunciado por", value=vitima.mention,                     inline=True)
+                    if usou_pe_de_cabra: emb_f.add_field(name="🕵️ Pé de Cabra",   value="Usou mas deu azar",          inline=True)
+                    if msg_passivos:     emb_f.add_field(name="🔰 Passivos",        value=msg_passivos.strip(),         inline=False)
+                    if cao_guarda_msg:   emb_f.add_field(name="🔰 Cão de Guarda",   value=cao_guarda_msg,               inline=False)
+                    if msg_mascotes:     emb_f.add_field(name="🐾 Interferência",   value=msg_mascotes.strip(),         inline=False)
+                    if msg_escudo:       emb_f.add_field(name="🛡️ Escudo",           value=msg_escudo,                   inline=False)
+                    await ctx.send(embed=emb_f)
 
         except commands.CommandError:
             raise

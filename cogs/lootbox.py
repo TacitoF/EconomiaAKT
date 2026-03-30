@@ -251,11 +251,21 @@ class Lootbox(commands.Cog):
             inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
 
-            if caixa_alvo not in inv_list:
+            # ── VERIFICAÇÃO SE A CAIXA ESTÁ NO INVENTÁRIO E SE TEM 🔒 ──
+            caixa_encontrada = None
+            for item in inv_list:
+                item_limpo = item.replace("🔒", "").strip()
+                if item_limpo == caixa_alvo:
+                    caixa_encontrada = item
+                    break
+
+            if not caixa_encontrada:
                 return await ctx.send(f"❌ Você não tem nenhum(a) **{caixa_alvo}** no inventário!")
 
-            inv_list.remove(caixa_alvo)
-            db.update_value(user["row"], 6, ", ".join(inv_list))
+            esta_vinculada = "🔒" in caixa_encontrada
+
+            inv_list.remove(caixa_encontrada)
+            db.update_value(user["row"], 6, ", ".join(inv_list) if inv_list else "Nenhum")
 
             premio = sorteio_func()
 
@@ -272,7 +282,7 @@ class Lootbox(commands.Cog):
             # ── 2. COSMÉTICOS ──
             elif premio["tipo"] == "cosmetico":
                 user_atual = db.get_user_data(str(ctx.author.id))
-                inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip()]
+                inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip() and i.strip() != "Nenhum"]
                 chave_inv  = f"cosmético:{premio['slug']}"
 
                 if chave_inv in inv_atual:
@@ -293,23 +303,34 @@ class Lootbox(commands.Cog):
             # ── 3. ITENS NORMAIS ──
             else:
                 user_atual = db.get_user_data(str(ctx.author.id))
-                inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip()]
-                inv_atual.append(premio["nome"])
+                inv_atual  = [i.strip() for i in str(user_atual["data"][5]).split(",") if i.strip() and i.strip() != "Nenhum"]
+                
+                # Aplica o cadeado ao item caso a caixa seja vinculada
+                nome_item = premio["nome"]
+                if esta_vinculada:
+                    nome_item += " 🔒"
+                
+                inv_atual.append(nome_item)
                 db.update_value(user_atual["row"], 6, ", ".join(inv_atual))
-                texto_premio = f"1× **{premio['nome']}**"
-                DICAS_USO = {
-                    "Energético Símio":  "Use !energetico para zerar o cooldown do !trabalhar.",
-                    "Bomba de Fumaça":   "Use !fumaca para zerar o cooldown do !roubar.",
-                    "Carga de C4":       "Use !c4 @usuario para destruir o escudo do alvo.",
-                    "Imposto do Gorila": "Use !taxar @usuario para cobrar 25% dos próximos 5 trabalhos.",
-                    "Troca de Nick":     "Use !apelidar @usuario <nick> para trocar o apelido do alvo.",
-                    "Casca de Banana":   "Use !casca @usuario para atrapalhar o próximo trabalho do alvo.",
-                    "Escudo":            "Use !escudo para ativar e proteger-se contra 3 tentativas de roubo.",
-                    "Pé de Cabra":       "O Pé de Cabra é usado automaticamente no próximo !roubar.",
-                    "Seguro":            "O Seguro é acionado automaticamente se você for roubado (reembolsa 60%).",
-                    "Greve":             "Use !greve @usuario para reduzir o salário do alvo em 50% por 3h.",
-                }
-                footer = DICAS_USO.get(premio["nome"], "Item adicionado ao inventário. Veja !inventario.")
+                
+                texto_premio = f"1× **{nome_item}**"
+                
+                if esta_vinculada:
+                    footer = "🔒 Item vinculado! Este item não pode ser negociado ou vendido."
+                else:
+                    DICAS_USO = {
+                        "Energético Símio":  "Use !energetico para zerar o cooldown do !trabalhar.",
+                        "Bomba de Fumaça":   "Use !fumaca para zerar o cooldown do !roubar.",
+                        "Carga de C4":       "Use !c4 @usuario para destruir o escudo do alvo.",
+                        "Imposto do Gorila": "Use !taxar @usuario para cobrar 25% dos próximos 5 trabalhos.",
+                        "Troca de Nick":     "Use !apelidar @usuario <nick> para trocar o apelido do alvo.",
+                        "Casca de Banana":   "Use !casca @usuario para atrapalhar o próximo trabalho do alvo.",
+                        "Escudo":            "Use !escudo para ativar e proteger-se contra 3 tentativas de roubo.",
+                        "Pé de Cabra":       "O Pé de Cabra é usado automaticamente no próximo !roubar.",
+                        "Seguro":            "O Seguro é acionado automaticamente se você for roubado (reembolsa 60%).",
+                        "Greve":             "Use !greve @usuario para reduzir o salário do alvo em 50% por 3h.",
+                    }
+                    footer = DICAS_USO.get(premio["nome"], "Item adicionado ao inventário. Veja !inventario.")
 
             # ── MONTA O EMBED FINAL ──
             embed = disnake.Embed(

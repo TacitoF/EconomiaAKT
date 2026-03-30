@@ -1,0 +1,26 @@
+{
+    "757752617722970243": {
+        "data": "2026-03-26",
+        "missoes": {
+            "sabotador": {
+                "atual": 0,
+                "meta": 2,
+                "desc": "😈 Sabote ou engane (`!casca`, `!c4`, `!imposto`, `!impostor`)",
+                "concluida": false
+            },
+            "abridor": {
+                "atual": 0,
+                "meta": 2,
+                "desc": "📦 Abra caixas ou gaiolas do inventário (`!abrir`)",
+                "concluida": false
+            },
+            "desafiante": {
+                "atual": 0,
+                "meta": 2,
+                "desc": "⚔️ Desafie alguém (`!truco`, `!cipo`, `!gatilho`, `!jokenpo`, `!rinha`, `!tesouro`)",
+                "concluida": false
+            }
+        },
+        "resgatado": false
+    }
+}

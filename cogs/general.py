@@ -17,11 +17,11 @@ def _pagina_inicio(author: disnake.Member) -> disnake.Embed:
         color=disnake.Color.green()
     )
     embed.add_field(name="📋 Seções disponíveis", inline=False, value=(
-        "💵 **Economia** — trabalhar, perfil, rank\n"
+        "💵 **Economia** — trabalhar, missões, perfil, rank\n"
         "📦 **Mercado** — loja, inventário, lootboxes, airdrops\n"
         "🔰 **Passivos** — itens equipáveis e bônus permanentes\n"
         "🐾 **Mascotes** — gaiolas, buffs e cuidados\n"
-        "😈 **Roubos** — roubar, sabotar, se defender\n"
+        "😈 **Roubos** — assaltar, evento purge, sabotagens\n"
         "🏦 **Banco** — renda fixa e cripto\n"
         "🎲 **Jogos** — cassino, duelos e torneios\n"
         "✨ **Cosméticos** — visuais, bio, títulos\n"
@@ -36,6 +36,9 @@ def _pagina_economia(author: disnake.Member) -> disnake.Embed:
     embed.add_field(inline=False, name="💰 `!trabalhar`", value=(
         "Trabalhe a cada **1 hora** para ganhar MC e ter chance de encontrar caixas, gaiolas e passivos.\n"
         "*(O Sindicato passivo reduz o cooldown em 10 min.)*"
+    ))
+    embed.add_field(inline=False, name="📜 `!missoes`", value=(
+        "Abre o seu Quadro de Caçadas Diárias! Complete as 3 tarefas para ganhar uma bolada em MC e um Item Aleatório (reseta à meia-noite)."
     ))
     embed.add_field(inline=False, name="👤 `!perfil [@usuario]`", value=(
         "Exibe o cartão público de qualquer jogador: cargo, bio, cosméticos e conquistas.\n"
@@ -69,7 +72,7 @@ def _pagina_mercado(author: disnake.Member) -> disnake.Embed:
         "O comprador tem **60 segundos** para aceitar ou recusar.\n"
         "**Intransferíveis:** Escudo · Pé de Cabra · Seguro"
     ))
-    embed.add_field(inline=False, name="♻️ `!vender <item>` *(sem @)*  ·  `!reembolso <item>`", value=(
+    embed.add_field(inline=False, name="♻️ `!vender <item>` *(sem @)* ·  `!reembolso <item>`", value=(
         "`!vender <item>` — Vende o item de volta ao sistema pelo **preço base** (100% de retorno).\n"
         "`!reembolso <item>` — Mesmo efeito, com tela de confirmação antes de executar.\n"
         "*Cosméticos, cargos e caixas não são reembolsáveis.*"
@@ -153,7 +156,13 @@ def _pagina_roubos(author: disnake.Member) -> disnake.Embed:
         "Tenta roubar entre 5% e 10% do saldo da vítima. Cooldown: **2 horas**.\n"
         "Chance base de sucesso: **45%**. Se falhar, você paga uma multa à vítima.\n"
         "**Se roubar com sucesso**, um bounty é colocado automaticamente na sua cabeça.\n"
-        "🔑 **Pé de Cabra** (item): aumenta a chance para 65% e perfura o escudo (consome 1 carga)."
+        "🔑 **Pé de Cabra** (item): aumenta a chance para 65% e perfura o escudo."
+    ))
+    embed.add_field(inline=False, name="🚨 Evento Global: A Hora do Purge", value=(
+        "Pode acontecer aleatoriamente a qualquer momento! Durante 30 minutos de anarquia pura:\n"
+        "› `!trabalhar` **não funciona**.\n"
+        "› O cooldown do `!roubar` cai para apenas **5 minutos**.\n"
+        "› **Não há multas** caso o roubo falhe!"
     ))
     embed.add_field(inline=False, name="🛡️ `!escudo [@usuario]`  ·  🧨 `!c4 @usuario`", value=(
         "`!escudo` — Ativa o Escudo do inventário (**3 cargas**) ou checa o status.\n"

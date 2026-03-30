@@ -86,7 +86,10 @@ class ViewConfirmarCompra(disnake.ui.View):
         # 1. Remove item do vendedor e desequipa se for passivo equipado
         inv_vendedor.remove(item)
         db.update_value(vendedor_db["row"], 6, ", ".join(inv_vendedor) if inv_vendedor else "Nenhum")
-        if item in PASSIVOS_NOMES:
+        
+        # Limpa nome caso o passivo tenha 🔒 para poder desequipar corretamente
+        item_base = item.replace("🔒", "").strip()
+        if item_base in PASSIVOS_NOMES:
             passivos_v = db.get_passivos(vendedor_db)
             if item in passivos_v:
                 passivos_v.remove(item)
@@ -145,8 +148,6 @@ class ViewConfirmarCompra(disnake.ui.View):
 # ──────────────────────────────────────────────────────────────────────────────
 
 class ViewConfirmarTroca(disnake.ui.View):
-    """View enviada ao alvo da troca para ele aceitar ou recusar."""
-
     def __init__(self, troca_id: str):
         super().__init__(timeout=90)
         self.troca_id = troca_id
@@ -202,7 +203,8 @@ class ViewConfirmarTroca(disnake.ui.View):
         # Remove itens do proponente (e desequipa passivos se necessário)
         for it in itens_prop:
             inv_prop.remove(it)
-            if it in PASSIVOS_NOMES:
+            item_base = it.replace("🔒", "").strip()
+            if item_base in PASSIVOS_NOMES:
                 passivos_p = db.get_passivos(prop_db)
                 if it in passivos_p:
                     passivos_p.remove(it)
@@ -210,7 +212,8 @@ class ViewConfirmarTroca(disnake.ui.View):
 
         # Remove item do alvo (e desequipa passivo se necessário)
         inv_alvo.remove(item_alvo)
-        if item_alvo in PASSIVOS_NOMES:
+        item_alvo_base = item_alvo.replace("🔒", "").strip()
+        if item_alvo_base in PASSIVOS_NOMES:
             passivos_a = db.get_passivos(alvo_db)
             if item_alvo in passivos_a:
                 passivos_a.remove(item_alvo)
@@ -324,7 +327,8 @@ class ViewConfirmarReembolso(disnake.ui.View):
         db.update_value(user_db["row"], 6, ", ".join(inv_atual) if inv_atual else "Nenhum")
 
         # Se for passivo equipado, desequipa automaticamente
-        if self.item in PASSIVOS_NOMES:
+        item_base = self.item.replace("🔒", "").strip()
+        if item_base in PASSIVOS_NOMES:
             passivos = db.get_passivos(user_db)
             if self.item in passivos:
                 passivos.remove(self.item)
@@ -370,12 +374,13 @@ class ViewConfirmarReembolso(disnake.ui.View):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _inv_transferivel(inv_list: list) -> list:
-    """Retorna apenas itens que podem ser negociados."""
+    """Retorna apenas itens que podem ser negociados (ignora cosméticos, intransferíveis e vinculados com 🔒)."""
     return [
         i for i in inv_list
         if not i.startswith("cosmético:")
         and not i.startswith("cosmetico:")
         and i not in ITENS_INTRANSFERÍVEIS
+        and "🔒" not in i
     ]
 
 def _embed_troca(
@@ -507,6 +512,12 @@ class Trade(commands.Cog):
                         f"❌ **{item_encontrado}** não pode ser vendido entre jogadores pois tem lógica de estado ativo."
                     )
 
+                # 🔒 TRAVA DE VINCULAÇÃO DE ITEM
+                if "🔒" in item_encontrado:
+                    return await ctx.send(
+                        f"❌ **{item_encontrado}** está vinculado à sua conta e não pode ser negociado!"
+                    )
+
                 comprador_db = db.get_user_data(str(comprador.id))
                 if not comprador_db:
                     return await ctx.send(f"❌ {comprador.mention} não tem conta registrada!")
@@ -580,6 +591,12 @@ class Trade(commands.Cog):
                 return await ctx.send(
                     f"❌ **{item}** não encontrado no seu inventário!\n\n"
                     f"**Seus itens:**\n{itens_fmt}"
+                )
+
+            # 🔒 TRAVA DE VINCULAÇÃO DE ITEM
+            if "🔒" in item_encontrado:
+                return await ctx.send(
+                    f"❌ **{item_encontrado}** está vinculado à sua conta e não pode ser devolvido ao sistema!"
                 )
 
             if item_encontrado not in ITENS_REEMBOLSAVEIS:
@@ -712,6 +729,11 @@ class Trade(commands.Cog):
                 else:
                     if encontrado in ITENS_INTRANSFERÍVEIS:
                         return await ctx.send(f"❌ **{encontrado}** não pode ser negociado (item intransferível).")
+                    
+                    # 🔒 TRAVA DE VINCULAÇÃO DE ITEM
+                    if "🔒" in encontrado:
+                        return await ctx.send(f"❌ **{encontrado}** está vinculado à sua conta e não pode ser trocado!")
+
                     itens_prop_resolvidos.append(encontrado)
                     inv_prop_temp.remove(encontrado)
 
@@ -739,6 +761,10 @@ class Trade(commands.Cog):
 
             if item_alvo_resolvido in ITENS_INTRANSFERÍVEIS:
                 return await ctx.send(f"❌ **{item_alvo_resolvido}** não pode ser negociado (item intransferível).")
+            
+            # 🔒 TRAVA DE VINCULAÇÃO DE ITEM
+            if "🔒" in item_alvo_resolvido:
+                return await ctx.send(f"❌ **{item_alvo_resolvido}** está vinculado à conta de {alvo.mention} e não pode ser trocado!")
 
             # Registra proposta de troca
             troca_id = str(uuid.uuid4())[:8]
@@ -806,6 +832,12 @@ class Trade(commands.Cog):
                     f"❌ {ctx.author.mention}, **{item}** não encontrado no inventário.\n"
                     f"Use `!inventario` para ver seus itens."
                 )
+                
+            # 🔒 TRAVA DE VINCULAÇÃO DE ITEM
+            if "🔒" in item_encontrado:
+                return await ctx.send(
+                    f"❌ **{item_encontrado}** está vinculado à sua conta e não pode ser devolvido ao sistema!"
+                )
 
             if item_encontrado not in ITENS_REEMBOLSAVEIS:
                 return await ctx.send(
@@ -871,12 +903,12 @@ class Trade(commands.Cog):
 
             # Agrupa itens repetidos
             contagem: dict[str, int] = {}
-            for i in inv_list:
-                contagem[i] = contagem.get(i, 0) + 1
+            for item in inv_list:
+                contagem[item] = contagem.get(item, 0) + 1
 
             linhas = []
             for item, qtd in contagem.items():
-                if item in ITENS_INTRANSFERÍVEIS:
+                if item in ITENS_INTRANSFERÍVEIS or "🔒" in item:
                     icone = "🔒"
                 elif item in passivos_equipados:
                     icone = "🔰"   # passivo ativo

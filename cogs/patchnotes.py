@@ -25,86 +25,71 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="📜 REGISTRO DE ATUALIZAÇÕES: v10.0 — O MERCADO VIVO",
+            title="📜 ATUALIZAÇÃO v11.0: A NOVA ERA & O CAOS 💀",
             description=(
-                "A economia da selva nunca mais será a mesma. 💹\n"
-                "Esta atualização transforma o mercado em um sistema **vivo e dinâmico**, "
-                "onde os preços flutuam com a demanda e os jogadores podem negociar diretamente entre si."
+                "A temporada passada chegou ao fim e a poeira baixou. "
+                "Saldos, inventários e mascotes **voltaram ao pó**.\n\n"
+                "Iniciamos agora uma **Nova Era** na selva! Todos começam do zero, "
+                "mas trouxemos grandes novidades para recompensar os macacos mais ativos "
+                "e aterrorizar os mais ricos."
             ),
-            color=0x00C853
+            color=disnake.Color.dark_red()
         )
 
         embed.add_field(
-            name="💹 PREÇOS DINÂMICOS NO MERCADO",
+            name="📜 NOVO SISTEMA: Missões Diárias",
             inline=False,
             value=(
-                "Os itens de poder agora têm **preço variável** — a oferta e a demanda mandam!\n\n"
-                "📈 **Alta demanda:** Cada compra empurra o preço **+3%** para cima (teto: **+80%**)\n"
-                "📉 **Baixa demanda:** Se ninguém comprar, o preço cai gradualmente (piso: **-40%**)\n"
-                "🔄 O contador de compras **reseta todo dia**, então os preços oscilam diariamente\n\n"
-                "A loja exibe o indicador de tendência ao lado de cada item:\n"
-                "`🔥 Alta demanda` · `📈 Em alta` · `📉 Pouca procura`"
+                "Ganhar dinheiro só trabalhando ficou no passado! Use o comando **`!missoes`**.\n"
+                "• Todo dia, o bot sorteará **3 tarefas aleatórias** para você (trabalhar, assaltar, jogar cassino, duelar, etc.).\n"
+                "• Ao completar as 3 missões, você ganha de **300 a 900 MC** e um **Item Aleatório** garantido (Caixas, Gaiolas, Rações ou até Relíquias Lendárias!).\n"
+                "• O quadro de missões é resetado todos os dias à meia-noite."
             )
         )
 
         embed.add_field(
-            name="⚖️ IMPOSTO PROGRESSIVO POR CARGO",
+            name="🚨 NOVO EVENTO: A Hora do Purge",
             inline=False,
             value=(
-                "Rico paga mais, pobre paga menos — simples assim.\n\n"
-                "🐭 **Lêmure** → preço base (100%)\n"
-                "🐒 **Macaquinho** → +10%\n"
-                "🦍 **Babuíno** → +22%\n"
-                "🐵 **Chimpanzé** → +38%\n"
-                "🦧 **Orangutango** → +58%\n"
-                "🦾 **Gorila** → +82%\n"
-                "🗿 **Ancestral** → +110%\n"
-                "👑 **Rei Símio** → +145%\n\n"
-                "*Cosméticos e upgrades de cargo sempre têm preço fixo.*"
+                "De tempos em tempos, a sirene vai tocar e as leis da selva serão suspensas por **30 minutos** de anarquia pura!\n"
+                "🔨 **Trabalho inútil:** O comando `!trabalhar` é bloqueado.\n"
+                "🥷 **Assaltos frenéticos:** O cooldown do `!roubar` cai de 2 horas para apenas **5 minutos**.\n"
+                "💀 **Sem leis:** Se você falhar em um roubo, a multa é **ZERADA**. Não há punições.\n"
+                "*Preparem seus escudos, estoquem C4 e protejam as carteiras!*"
             )
         )
 
         embed.add_field(
-            name="🤝 COMÉRCIO ENTRE JOGADORES",
+            name="🔒 NOVA MECÂNICA: Itens Vinculados",
             inline=False,
             value=(
-                "Agora é possível **vender itens do inventário** diretamente para outros jogadores!\n\n"
-                "🛒 `!vender @usuario <item> <preço>` — Cria uma proposta de venda\n"
-                "✅ O comprador recebe uma notificação e tem **60 segundos** para aceitar ou recusar\n"
-                "🔒 O bot revalida o item e o saldo no momento do aceite — sem golpes possíveis\n\n"
-                "**Itens intransferíveis** (têm lógica de estado ativo):\n"
-                "`Escudo` · `Pé de Cabra` · `Seguro`"
+                "Para manter a economia do Dia 1 justa e competitiva, introduzimos os itens vinculados.\n"
+                "• Se um item no seu inventário possuir um cadeado (`🔒`), significa que ele está **preso à sua conta**.\n"
+                "• **Efeito:** Você **não pode** vender para o sistema, e nem trocar ou vender para outros jogadores. Você é obrigado a usar o item e aproveitar seus benefícios para dominar a selva!"
             )
         )
 
         embed.add_field(
-            name="🎒 NOVO COMANDO: !inventario",
+            name="♻️ O Grande Reset",
             inline=False,
             value=(
-                "`!inventario` — Mostra seus itens vendíveis de forma organizada\n"
-                "✅ Indica quais podem ser negociados e quais são intransferíveis\n"
-                "🔒 O inventário de outros jogadores continua sendo **dado privado** — "
-                "use `!perfil @usuario` para espionar (500 MC)"
+                "• A economia foi nivelada. Todos os jogadores voltaram ao cargo inicial.\n"
+                "• Os campeões do Top 3 da Era passada receberam seus Pacotes de Fundação com itens exclusivos (que estão vinculados com `🔒`).\n"
+                "• Os preços da `!loja` foram resetados.\n"
+                "Que a corrida para o Top 1 recomece!"
             )
         )
 
-        embed.add_field(
-            name="⚠️ O QUE NÃO MUDOU",
-            inline=False,
-            value=(
-                "• Preços de **cargos** e **cosméticos** continuam fixos\n"
-                "• Jogadores com cargos baixos **nunca são prejudicados** pela inflação\n"
-                "• Toda a lógica de roubos, escudo e imposto continua igual"
-            )
-        )
-
-        embed.set_footer(text="Koba: O mercado pune os ingênuos e recompensa os espertos. 🦍")
+        embed.set_footer(text="A selva pune os lentos e recompensa os cruéis. Boa sorte! 🦍")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        await canal_patchnotes.send(content="@everyone", embed=embed)
-        await ctx.author.send("✅ Patchnotes v10.0 enviado com sucesso!")
+        try:
+            await canal_patchnotes.send(content="@everyone", embed=embed)
+            await ctx.author.send("✅ Patchnotes publicado com sucesso!")
+        except Exception as e:
+            await ctx.author.send(f"❌ Erro ao enviar as notas de atualização: {e}")
 
 def setup(bot):
     bot.add_cog(Patchnotes(bot))

@@ -3,9 +3,10 @@ from disnake.ext import commands, tasks
 import database as db
 import random
 import asyncio
+import time
 
-# canais onde o airdrop pode cair — adicione mais IDs se precisar
-CANAIS_AIRDROP = [1474153029690200105]
+# canais onde os eventos (airdrop e purge) podem cair
+CANAIS_EVENTOS = [1474153029690200105]
 
 class AirdropView(disnake.ui.View):
     def __init__(self, caixa_nome: str):
@@ -27,10 +28,10 @@ class AirdropView(disnake.ui.View):
 
         # Verificação especial para Gaiola: usuário não pode ter mascote ativo
         if self.caixa_nome == "Gaiola Misteriosa":
-            tipo_atual, _ = db.get_mascote(user)
-            if tipo_atual:
+            tipo_mascote, fome = db.get_mascote(user)
+            if tipo_mascote:
                 return await inter.response.send_message(
-                    "❌ Você já tem um mascote! Use `!libertar` antes de resgatar uma nova gaiola.",
+                    "❌ Você já tem um mascote! Liberte-o antes de pegar outra gaiola.",
                     ephemeral=True
                 )
 
@@ -42,9 +43,7 @@ class AirdropView(disnake.ui.View):
         inv_list.append(self.caixa_nome)
         db.update_value(user['row'], 6, ", ".join(inv_list))
 
-        nome_curto = self.caixa_nome.split()[0]  # pega só a primeira palavra pra usar no !abrir
-        
-        # Se for a Gaiola, ajusta o nome curto para o comando funcionar perfeitamente
+        nome_curto = self.caixa_nome.split()[0].lower()
         if self.caixa_nome == "Gaiola Misteriosa":
             nome_curto = "gaiola"
 
@@ -91,18 +90,27 @@ class AirdropView(disnake.ui.View):
 class EventosGlobais(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # Variáveis globais do Purge
+        self.bot.purge_ativo = False
+        self.bot.purge_end_time = 0
+        
         self.airdrop_loop.start()
+        self.purge_loop.start()
 
     def cog_unload(self):
         self.airdrop_loop.cancel()
+        self.purge_loop.cancel()
 
+    # ── EVENTO 1: AIRDROP ──────────────────────────────────────────────────
     @tasks.loop(minutes=30.0)
     async def airdrop_loop(self):
+        if getattr(self.bot, 'purge_ativo', False): return # Sem airdrops durante o Purge
+        
         # 20% de chance de passar o avião a cada 30 minutos
         if random.random() > 0.20:
             return
 
-        canal = self.bot.get_channel(random.choice(CANAIS_AIRDROP))
+        canal = self.bot.get_channel(random.choice(CANAIS_EVENTOS))
         if not canal: return
 
         sorteio = random.random()
@@ -116,7 +124,7 @@ class EventosGlobais(commands.Cog):
             cor    = disnake.Color.blue()
             header = "🔷 [ RARO ] 🔷"
             visual = "⛓️ 🪙 ⛓️"
-        elif sorteio <= 0.17:  # 5% — NOVO: Gaiola Misteriosa!
+        elif sorteio <= 0.17:  # 5% — mascote
             caixa  = "Gaiola Misteriosa"
             cor    = disnake.Color.dark_theme()
             header = "🐾 [ MASCOTE ] 🐾"
@@ -163,6 +171,60 @@ class EventosGlobais(commands.Cog):
 
         view         = AirdropView(caixa)
         view.message = await ctx.send(f"⚠️ **ADMIN:** Forçando queda de **{caixa}**!", view=view)
+
+    # ── EVENTO 2: A HORA DO PURGE ──────────────────────────────────────────
+    @tasks.loop(minutes=60.0)
+    async def purge_loop(self):
+        # 10% de chance de acontecer a cada hora
+        if random.random() > 0.10: return
+        if getattr(self.bot, 'purge_ativo', False): return
+        await self._iniciar_purge()
+
+    @purge_loop.before_loop
+    async def before_purge(self):
+        await self.bot.wait_until_ready()
+        await asyncio.sleep(random.randint(60, 300))
+
+    @commands.command(name="forcar_purge")
+    @commands.has_permissions(administrator=True)
+    async def forcar_purge(self, ctx):
+        if getattr(self.bot, 'purge_ativo', False):
+            return await ctx.send("❌ O Purge já está ativo!")
+        await ctx.send("⚠️ **ADMIN:** Iniciando A Hora do Purge manualmente!")
+        await self._iniciar_purge(ctx.channel)
+
+    async def _iniciar_purge(self, canal_forçado=None):
+        self.bot.purge_ativo = True
+        self.bot.purge_end_time = time.time() + 1800  # Dura 30 minutos
+
+        canal = canal_forçado or self.bot.get_channel(random.choice(CANAIS_EVENTOS))
+        
+        if canal:
+            embed = disnake.Embed(
+                title="🚨 💀 A HORA DO PURGE COMEÇOU! 💀 🚨",
+                description=(
+                    "**As leis da selva foram suspensas por 30 minutos!**\n\n"
+                    "🔨 `!trabalhar` **está bloqueado.** O trabalho honesto não rende nada agora.\n"
+                    "🥷 `!roubar` **tem cooldown de apenas 5 minutos** e a multa por falha foi zerada!\n\n"
+                    "Protejam as suas carteiras, comprem escudos e rezem pelos seus pets. "
+                    "Que o caos comece!"
+                ),
+                color=disnake.Color.dark_red()
+            )
+            await canal.send(content="@everyone", embed=embed)
+
+        # Espera 30 minutos sem travar o bot
+        await asyncio.sleep(1800)
+
+        # Encerra o Purge
+        self.bot.purge_ativo = False
+        if canal:
+            embed_fim = disnake.Embed(
+                title="🌅 O SOL NASCEU NA SELVA",
+                description="A Hora do Purge terminou. As leis voltaram ao normal. Recolham os feridos e voltem ao trabalho honesto.",
+                color=disnake.Color.green()
+            )
+            await canal.send(embed=embed_fim)
 
 def setup(bot):
     bot.add_cog(EventosGlobais(bot))
