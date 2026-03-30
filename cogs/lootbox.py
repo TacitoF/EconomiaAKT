@@ -352,14 +352,5 @@ class Lootbox(commands.Cog):
                 "Seu item está seguro, tente novamente!"
             )
 
-    @abrir_caixa.error
-    async def abrir_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(
-                f"⏳ Calma, macaco! Você está mexendo muito rápido. "
-                f"Tente novamente em {error.retry_after:.1f}s.",
-                delete_after=5
-            )
-
 def setup(bot):
     bot.add_cog(Lootbox(bot))

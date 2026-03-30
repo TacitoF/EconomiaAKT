@@ -494,9 +494,7 @@ class Profiles(commands.Cog):
 
     @perfil.error
     async def perfil_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"⏳ Não faça spam, macaco! Tente novamente em {error.retry_after:.1f}s.", delete_after=5)
-        elif isinstance(error, commands.MemberNotFound):
+        if isinstance(error, commands.MemberNotFound):
             await ctx.send(f"❌ Jogador não encontrado! Use `!perfil @usuario`.", delete_after=8)
 
 
