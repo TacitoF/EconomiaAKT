@@ -244,7 +244,7 @@ class Lootbox(commands.Cog):
                 if tipo_atual:
                     return await ctx.send(
                         f"❌ {ctx.author.mention}, você já tem um mascote acompanhando-o!\n"
-                        f"Use o comando `!libertar` para soltá-lo na selva antes de abrir uma nova gaiola."
+                        f"Use o comando `!guardar` para o enviar para a fazenda, ou `!libertar` para o soltar na selva antes de abrir uma nova gaiola."
                     )
 
             inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
