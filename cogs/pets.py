@@ -96,40 +96,56 @@ class Pets(commands.Cog):
                 return await ctx.send(f"❌ Conta não encontrada!")
 
             tipo, fome = db.get_mascote(user)
+            faz_tipo, faz_fome = db.get_fazenda(user)
             
-            if not tipo or tipo not in INFO_MASCOTES:
+            if not tipo and not faz_tipo:
                 if alvo.id == ctx.author.id:
                     return await ctx.send(
-                        f"🐾 {ctx.author.mention}, você não tem nenhum mascote!\n"
+                        f"🐾 {ctx.author.mention}, você não tem nenhum mascote ativo nem na fazenda!\n"
                         f"Trabalhe na selva e torça para resgatar uma **Gaiola Misteriosa**."
                     )
                 else:
                     return await ctx.send(f"🐾 {alvo.display_name} não possui nenhum mascote no momento.")
 
-            info = INFO_MASCOTES[tipo]
+            embed = disnake.Embed(color=disnake.Color.dark_theme())
 
-            if fome > 0:
-                status = f"✅ **Ativo e Alerta!**\nOs buffs estão aplicados."
-                cor = disnake.Color.green()
+            if tipo:
+                info = INFO_MASCOTES.get(tipo, {"nome": "Desconhecido", "imagem": "🐾", "raridade": "?", "emoji": "🐾", "buffs": "Nenhum"})
+                if fome > 0:
+                    status = f"✅ **Ativo e Alerta!**\nOs buffs estão aplicados."
+                    embed.color = disnake.Color.green()
+                else:
+                    status = f"💤 **Dormindo (Fome a 0%)**\nOs buffs estão **desativados**! Alimente-o."
+                    embed.color = disnake.Color.dark_grey()
+
+                embed.title = f"{info['imagem']} Mascote Ativo de {alvo.display_name}"
+                embed.add_field(name="Espécie", value=f"{info['emoji']} **{info['nome']}** ({info['raridade']})", inline=True)
+                embed.add_field(name="🍗 Fome", value=self.gerar_barra_fome(fome), inline=True)
+                embed.add_field(name="✨ Vantagens", value=info['buffs'], inline=False)
+                embed.add_field(name="Situação", value=status, inline=False)
             else:
-                status = f"💤 **Dormindo (Fome a 0%)**\nOs buffs estão **desativados**! Alimente-o."
-                cor = disnake.Color.dark_grey()
+                embed.title = f"🐾 Mascote Ativo de {alvo.display_name}"
+                embed.description = "Nenhum mascote ativo no momento. O slot principal está livre!"
 
-            embed = disnake.Embed(
-                title=f"{info['imagem']} Mascote de {alvo.display_name}",
-                color=cor
-            )
-            embed.add_field(name="Espécie", value=f"{info['emoji']} **{info['nome']}** ({info['raridade']})", inline=True)
-            embed.add_field(name="🍗 Fome", value=self.gerar_barra_fome(fome), inline=True)
-            embed.add_field(name="✨ Vantagens", value=info['buffs'], inline=False)
-            embed.add_field(name="Situação", value=status, inline=False)
+            # Adiciona o status da fazenda no perfil
+            if faz_tipo:
+                info_faz = INFO_MASCOTES.get(faz_tipo, {"nome": "Desconhecido", "imagem": "🐾"})
+                embed.add_field(
+                    name="🏡 Na Fazenda", 
+                    value=f"{info_faz['imagem']} **{info_faz['nome']}** (Fome: {faz_fome}%)\n*Os buffs deste mascote estão pausados.*", 
+                    inline=False
+                )
 
             if alvo.id == ctx.author.id:
                 inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
                 inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
                 racoes = inv_list.count("Ração Símia")
                 racoes_txt = f"{racoes}× Ração Símia no inventário" if racoes > 0 else "Sem Ração Símia — compre na !loja!"
-                embed.set_footer(text=f"A fome diminui com o uso. Use !alimentar para restaurar.  ·  {racoes_txt}")
+                
+                texto_dica = f"A fome diminui com o uso. Use !alimentar para restaurar.  ·  {racoes_txt}"
+                if faz_tipo: texto_dica += "\nUse !trocarpet para trazer o mascote da fazenda de volta!"
+                
+                embed.set_footer(text=texto_dica)
 
             await ctx.send(embed=embed)
 
@@ -137,7 +153,7 @@ class Pets(commands.Cog):
             print(f"❌ Erro no !mascote de {ctx.author}: {e}")
             await ctx.send("⚠️ Ocorreu um erro ao carregar o mascote.")
 
-    @commands.command(aliases=["dar_comida"])
+    @commands.command(aliases=["darcomida", "comida"])
     async def alimentar(self, ctx):
         try:
             user = db.get_user_data(str(ctx.author.id))
@@ -146,7 +162,7 @@ class Pets(commands.Cog):
 
             tipo, fome = db.get_mascote(user)
             if not tipo:
-                return await ctx.send(f"🐾 {ctx.author.mention}, você não tem nenhum mascote para alimentar!")
+                return await ctx.send(f"🐾 {ctx.author.mention}, você não tem nenhum mascote **ativo** para alimentar!\n*(Mascotes na fazenda não perdem fome e não precisam ser alimentados)*")
 
             if fome >= 100:
                 return await ctx.send(f"🍗 {ctx.author.mention}, o seu mascote já está de barriga cheia!")
@@ -173,8 +189,109 @@ class Pets(commands.Cog):
             print(f"❌ Erro no !alimentar de {ctx.author}: {e}")
             await ctx.send("⚠️ Ocorreu um erro ao tentar alimentar o mascote.")
 
+    # ── COMANDOS DA FAZENDA ──
+
+    @commands.command(aliases=["farm"])
+    async def fazenda(self, ctx):
+        """Verifica qual mascote está guardado na fazenda."""
+        user = db.get_user_data(str(ctx.author.id))
+        if not user: return await ctx.send("❌ Conta não encontrada.")
+
+        faz_tipo, faz_fome = db.get_fazenda(user)
+
+        if not faz_tipo:
+            embed = disnake.Embed(
+                title="🏡 Fazenda de Mascotes",
+                description=(
+                    "Sua fazenda está **vazia**!\n"
+                    "Use `!guardar` para enviar o seu mascote ativo para cá. "
+                    "Isso deixará o seu slot principal livre para poder abrir uma nova **Gaiola Misteriosa**!"
+                ),
+                color=disnake.Color.green()
+            )
+            return await ctx.send(embed=embed)
+
+        info = INFO_MASCOTES.get(faz_tipo, {"nome": "Desconhecido", "imagem": "🐾", "raridade": "?"})
+
+        embed = disnake.Embed(
+            title=f"🏡 Fazenda de {ctx.author.display_name}",
+            description="Este mascote está a descansar tranquilamente. Ele não perde fome e os seus buffs estão pausados.",
+            color=disnake.Color.green()
+        )
+        embed.add_field(name="Hóspede", value=f"{info.get('imagem', '🐾')} **{info.get('nome', faz_tipo)}** ({info.get('raridade', '?')})", inline=True)
+        embed.add_field(name="🍗 Fome Congelada", value=self.gerar_barra_fome(faz_fome), inline=True)
+        embed.set_footer(text="Use !trocarpet para trazer este mascote de volta à ação!")
+        
+        await ctx.send(embed=embed)
+
+    @commands.command(aliases=["estacionar", "guardarpet"])
+    async def guardar(self, ctx):
+        """Envia o mascote ativo para a fazenda, desocupando o slot principal."""
+        user = db.get_user_data(str(ctx.author.id))
+        if not user: return await ctx.send("❌ Conta não encontrada.")
+
+        tipo_ativo, fome_ativo = db.get_mascote(user)
+        faz_tipo, _ = db.get_fazenda(user)
+        
+        if not tipo_ativo:
+            return await ctx.send("🐾 Você não tem um mascote ativo para poder guardar!")
+
+        if faz_tipo:
+            return await ctx.send(
+                "🏡 A sua fazenda já está ocupada por outro mascote!\n"
+                "Use `!trocarpet` para alternar entre eles."
+            )
+
+        # Move o mascote atual para a fazenda
+        db.set_fazenda(user['row'], tipo_ativo, fome_ativo)
+
+        # Limpa o slot ativo no banco de dados
+        db.set_mascote(user['row'], "", 0)
+
+        info = INFO_MASCOTES.get(tipo_ativo, {"nome": "Mascote", "imagem": "🐾"})
+        await ctx.send(
+            f"🏡 {ctx.author.mention} enviou **{info['imagem']} {info['nome']}** para descansar na fazenda!\n"
+            f"O seu slot principal está agora vazio. Já pode abrir uma nova **Gaiola Misteriosa**!"
+        )
+
+    @commands.command(aliases=["trocar", "resgatar"])
+    async def trocarpet(self, ctx):
+        """Troca o mascote da fazenda com o mascote ativo."""
+        user = db.get_user_data(str(ctx.author.id))
+        if not user: return await ctx.send("❌ Conta não encontrada.")
+
+        faz_tipo, faz_fome = db.get_fazenda(user)
+
+        if not faz_tipo:
+            return await ctx.send("🏡 A sua fazenda está vazia! Não há nenhum mascote para resgatar.")
+
+        tipo_ativo, fome_ativo = db.get_mascote(user)
+
+        # O mascote da fazenda passa a ser o ativo
+        db.set_mascote(user['row'], faz_tipo, faz_fome)
+
+        # O mascote ativo passa para a fazenda (se houver algum)
+        if tipo_ativo:
+            db.set_fazenda(user['row'], tipo_ativo, fome_ativo)
+            info_antigo = INFO_MASCOTES.get(tipo_ativo, {"nome": "Mascote", "imagem": "🐾"})
+            msg_extra = f"e enviou **{info_antigo['imagem']} {info_antigo['nome']}** para descansar na fazenda"
+        else:
+            db.set_fazenda(user['row'], "", 0)
+            msg_extra = "e a fazenda ficou vazia"
+
+        info_novo = INFO_MASCOTES.get(faz_tipo, {"nome": "Mascote", "imagem": "🐾"})
+        
+        embed = disnake.Embed(
+            title="🔄 TROCA DE MASCOTES CONCLUÍDA",
+            description=f"Você resgatou **{info_novo['imagem']} {info_novo['nome']}** para o slot ativo {msg_extra}!",
+            color=disnake.Color.blue()
+        )
+        await ctx.send(embed=embed)
+
+
     @commands.command(aliases=["abandonar"])
     async def libertar(self, ctx, confirmacao: str = None):
+        """Liberta APENAS o mascote ativo na natureza."""
         try:
             user = db.get_user_data(str(ctx.author.id))
             if not user:
@@ -182,25 +299,29 @@ class Pets(commands.Cog):
 
             tipo, fome = db.get_mascote(user)
             if not tipo:
-                return await ctx.send(f"🐾 {ctx.author.mention}, você não tem mascote.")
+                return await ctx.send(
+                    f"🐾 {ctx.author.mention}, você não tem nenhum mascote **ativo** no momento.\n"
+                    f"*(Use `!fazenda` para verificar se você guardou o seu mascote)*"
+                )
 
-            # Se passou "confirmar" como argumento, executa a liberação
+            # Se passou "confirmar" como argumento, executa a liberação do pet ativo
             if confirmacao and confirmacao.lower() == "confirmar":
                 info = INFO_MASCOTES.get(tipo, {"nome": "Mascote", "imagem": "🐾"})
                 db.set_mascote(user['row'], "", 0)
                 return await ctx.send(
-                    f"🌿 {ctx.author.mention} abriu a gaiola e devolveu a sua **{info['imagem']} {info['nome']}** para a selva.\n"
-                    f"A vaga de mascote está livre novamente!"
+                    f"🌿 {ctx.author.mention} abriu a gaiola e devolveu o seu mascote ATIVO (**{info['imagem']} {info['nome']}**) para a selva.\n"
+                    f"A vaga de mascote principal está livre novamente!"
                 )
 
             # Sem argumento, mostra o aviso de confirmação
             info = INFO_MASCOTES.get(tipo, {"nome": "Mascote", "raridade": "?", "imagem": "🐾"})
             embed = disnake.Embed(
-                title="🚪 Libertar mascote?",
+                title="🚪 Libertar Mascote Ativo?",
                 description=(
-                    f"Você está prestes a soltar **{info['imagem']} {info['nome']}** ({info['raridade']}) na selva.\n\n"
+                    f"Você está prestes a soltar o seu mascote **ATIVO** (**{info['imagem']} {info['nome']}**) na selva.\n\n"
                     f"⚠️ Esta ação é **irreversível**. O mascote será perdido permanentemente.\n"
-                    f"Use `!libertar confirmar` para confirmar."
+                    f"*(Mascotes guardados na fazenda não serão afetados).*\n\n"
+                    f"Use `!libertar confirmar` para confirmar e limpar o slot."
                 ),
                 color=disnake.Color.orange()
             )
@@ -211,7 +332,7 @@ class Pets(commands.Cog):
             await ctx.send("⚠️ Ocorreu um erro ao tentar libertar o mascote.")
 
     # ── ENCICLOPÉDIA DE MASCOTES ──
-    @commands.command(aliases=["guia_mascotes", "zoologico", "lista_pets"])
+    @commands.command(aliases=["guiamascotes", "zoologico", "listapets"])
     async def mascotes(self, ctx):
         embed = disnake.Embed(
             title="🐾 GUIA DE MASCOTES DA SELVA",

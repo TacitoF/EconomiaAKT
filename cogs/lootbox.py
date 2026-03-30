@@ -92,7 +92,6 @@ class Lootbox(commands.Cog):
             return _sortear_cosmetico(COSM_COMUNS)
 
     def sortear_lendario(self):
-        """Relíquia Ancestral — itens de alto impacto + cosméticos épicos/lendários."""
         chance = random.randint(1, 100)
         if chance <= 20:
             return {"tipo": "item", "nome": "Imposto do Gorila", "emoji": "🦍"}

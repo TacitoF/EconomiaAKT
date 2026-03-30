@@ -18,7 +18,7 @@ class Patchnotes(commands.Cog):
             return
 
         # Canal onde o anúncio será postado
-        canal_id = 1475606959247065118
+        canal_id = 1476042364090060912
         canal_patchnotes = self.bot.get_channel(canal_id)
 
         if not canal_patchnotes:

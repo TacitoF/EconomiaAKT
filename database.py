@@ -37,7 +37,7 @@ def call_with_retry(func, *args, **kwargs):
                 print(f"⚠️ [Retry] Instabilidade no Google (Erro {status_code}). Tentando novamente em 2s ({i+1}/3)...")
                 time.sleep(2)
                 continue
-            raise # Passa o erro pra frente se acabarem as tentativas ou for outro tipo de erro
+            raise
 
 
 def _get_or_create_config_sheet():
@@ -94,11 +94,12 @@ def create_user(user_id, name):
       5  - trab_ts       | 6  - inventario   | 7  - roubo_ts   | 8  - invest_ts
       9  - cripto_usos   | 10 - conquistas   | 11 - imposto/CD | 12 - escudo/CD
       13 - cosmeticos    | 14 - mascote      | 15 - greve_ts   | 16 - passivos
+      17 - buff_temp     | 18 - fazenda_pet
     """
     try:
         all_rows = call_with_retry(sheet.get_all_values)
         next_row = len(all_rows) + 1
-        dados = [str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", "", "", "", ""]
+        dados = [str(user_id), str(name), "0", "Lêmure", "0", "Nenhum", "0", "", "", "", "", "", "", "", "", "", "", ""]
         call_with_retry(sheet.batch_update, [{'range': f'A{next_row}', 'values': [dados]}])
     except Exception as e:
         handle_db_error(e)
@@ -335,6 +336,31 @@ def set_buff_temp_expira(row: int, timestamp_expira: float):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+#  FAZENDA DE MASCOTES (coluna 18)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_fazenda(user_data: dict) -> tuple[str, int]:
+    """Retorna o mascote guardado na fazenda: (slug_fazenda, nivel_fome)."""
+    raw = str(user_data["data"][17]) if len(user_data["data"]) > 17 else ""
+    raw = raw.strip()
+    if not raw:
+        return None, 0
+    try:
+        partes = raw.split("|")
+        return partes[0], int(partes[1])
+    except (IndexError, ValueError):
+        return None, 0
+
+def set_fazenda(row: int, slug_mascote: str, fome: int):
+    """Salva o mascote guardado na fazenda na coluna 18."""
+    try:
+        valor = f"{slug_mascote}|{fome}" if slug_mascote else ""
+        call_with_retry(sheet.update_cell, row, 18, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 #  BUSCA EM MASSA (usado pelo reset de economia)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -361,11 +387,10 @@ def get_all_users() -> list[dict]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  FUNÇÕES DE APOSTAS ESPORTIVAS
+#  FUNÇÕES DE APOSTAS ESPORTIVAS E OUTROS
 # ──────────────────────────────────────────────────────────────────────────────
 
-def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd,
-                               time_casa="", time_fora="", liga="", horario=""):
+def registrar_aposta_esportiva(user_id, match_id, palpite, valor, odd, time_casa="", time_fora="", liga="", horario=""):
     try:
         valor_str = str(valor).replace('.', ',')
         odd_str = str(odd).replace('.', ',')

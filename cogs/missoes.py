@@ -22,8 +22,7 @@ TIPOS_MISSOES = {
     "generoso":    {"meta": 2, "desc": "💸 Transfira dinheiro a alguém (`!pagar`)", "comandos": ["pagar", "pix", "transferir", "pay"]},
     "cacador":     {"meta": 1, "desc": "🎯 Coloque uma recompensa num alvo (`!recompensa`)", "comandos": ["recompensa", "bounty", "cacada"]},
     "cuidador":    {"meta": 1, "desc": "🍗 Alimente seu mascote (`!alimentar`)", "comandos": ["alimentar", "dar_comida"]},
-    "abridor":     {"meta": 2, "desc": "📦 Abra caixas ou gaiolas do inventário (`!abrir`)", "comandos": ["abrir", "abrir_caixa"]}, # <--- CORRIGIDO
-    "esportista":  {"meta": 2, "desc": "⚽ Use a casa de apostas esportivas (`!futebol`)", "comandos": ["futebol"]},
+    "abridor":     {"meta": 2, "desc": "📦 Abra caixas ou gaiolas do inventário (`!abrir`)", "comandos": ["abrir", "abrir_caixa"]},
     "comerciante": {"meta": 1, "desc": "🛒 Coloque um item à venda (`!vender`)", "comandos": ["vender", "sell", "negociar"]},
     "ditador":     {"meta": 1, "desc": "🔇 Aplique um castigo de voz (`!castigo`, `!desconectar`)", "comandos": ["castigo", "desconectar"]},
     "blackjack":   {"meta": 2, "desc": "🃏 Sente-se à mesa de Blackjack (`!21`)", "comandos": ["blackjack", "bj", "21"]},
