@@ -307,11 +307,6 @@ class Profiles(commands.Cog):
         embed.set_footer(text="Apenas os astutos dominarão a selva. 🐒")
         await ctx.send(embed=embed)
 
-    @conquistas.error
-    async def conquistas_error(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"⏳ Tente novamente em {error.retry_after:.1f}s.", delete_after=3)
-
     # ── helpers de embed unificado ────────────────────────────────────────────
 
     def _build_embed_perfil(self, membro: disnake.Member, user: dict, user_id: str) -> disnake.Embed:

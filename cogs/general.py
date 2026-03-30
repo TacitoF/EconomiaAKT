@@ -20,13 +20,13 @@ def _pagina_inicio(author: disnake.Member) -> disnake.Embed:
         "💵 **Economia** — trabalhar, missões, perfil, rank\n"
         "📦 **Mercado** — loja, inventário, lootboxes, airdrops\n"
         "🔰 **Passivos** — itens equipáveis e bônus permanentes\n"
-        "🐾 **Mascotes** — gaiolas, buffs e cuidados\n"
+        "🐾 **Mascotes** — gaiolas, fazenda, buffs e cuidados\n"
         "😈 **Roubos** — assaltar, evento purge, sabotagens\n"
         "🏦 **Banco** — renda fixa e cripto\n"
         "🎲 **Jogos** — cassino, duelos e torneios\n"
         "✨ **Cosméticos** — visuais, bio, títulos\n"
         "🤐 **Castigos** — mudo, surdo, expulsar da call\n"
-        "🌍 **Eventos** — World Boss e A Hora do Purge"
+        "🌍 **Eventos** — World Boss e Hora do Purge"
     ))
     embed.set_footer(text="Selecione uma seção abaixo")
     return embed
@@ -66,12 +66,12 @@ def _pagina_mercado(author: disnake.Member) -> disnake.Embed:
         "Mercado negro com **preços dinâmicos** — cada compra empurra o preço +3% (teto: +80%).\n"
         "O preço cai gradualmente se ninguém comprar (piso: -40%) e reseta todo dia.\n"
         "⚠️ **Jogadores com cargos altos pagam mais** (imposto progressivo por cargo).\n"
-        "Cosméticos e upgrades de cargo têm preço fixo."
+        "Cosméticos, patrimônios e upgrades de cargo têm preço fixo."
     ))
     embed.add_field(inline=False, name="🤝 `!vender @usuario <item> <preço>`", value=(
         "Vende um item do seu inventário para outro jogador.\n"
         "O comprador tem **60 segundos** para aceitar ou recusar.\n"
-        "**Intransferíveis:** Escudo · Pé de Cabra · Seguro"
+        "**Intransferíveis:** Escudo · Pé de Cabra · Seguro · Itens Vinculados (🔒)"
     ))
     embed.add_field(inline=False, name="♻️ `!vender <item>` *(sem @)* ·  `!reembolso <item>`", value=(
         "`!vender <item>` — Vende o item de volta ao sistema pelo **preço base** (100% de retorno).\n"
@@ -98,7 +98,7 @@ def _pagina_mercado(author: disnake.Member) -> disnake.Embed:
 def _pagina_passivos(author: disnake.Member) -> disnake.Embed:
     embed = disnake.Embed(title="🔰 Passivos", color=disnake.Color.purple())
     embed.add_field(inline=False, name="O que são passivos?", value=(
-        "Itens raros que caem do `!trabalhar`. Ficam no inventário e precisam ser **equipados** para ativar.\n"
+        "Itens raros que ficam no inventário e precisam ser **equipados** para ativar.\n"
         "Você pode ter até **3 passivos simultâneos**."
     ))
     embed.add_field(inline=False, name="🔰 `!equipar <item>`  ·  ❌ `!desequipar <item>`  ·  📋 `!passivos [@usuario]`", value=(
@@ -106,22 +106,26 @@ def _pagina_passivos(author: disnake.Member) -> disnake.Embed:
         "`!desequipar` — remove do slot, mas mantém no inventário.\n"
         "`!passivos` — mostra seus slots equipados e os disponíveis."
     ))
-    embed.add_field(inline=False, name="⚫ Tier Comum *(~3% drop)*", value=(
+    embed.add_field(inline=False, name="⚫ Tier Comum *(~3% drop do trabalho)*", value=(
         "🍀 **Amuleto da Sorte** — +3% chance de sucesso no roubo\n"
         "🔧 **Cinto de Ferramentas** — +4% ganho no trabalho\n"
         "👛 **Carteira Velha** — reduz o % máximo que podem te roubar"
     ))
-    embed.add_field(inline=False, name="🔵 Tier Raro *(~1.5% drop)*", value=(
+    embed.add_field(inline=False, name="🔵 Tier Raro *(~1.5% drop do trabalho)*", value=(
         "🔒 **Segurança Particular** — -8% chance do ladrão ter sucesso\n"
         "🧤 **Luvas de Seda** — +3% no máximo que você pode roubar\n"
         "🏛️ **Sindicato** — -10 min de cooldown no trabalho\n"
         "🐕 **Cão de Guarda** — +10% na multa do ladrão se falhar contra você"
     ))
-    embed.add_field(inline=False, name="🟣 Tier Épico *(~0.5% drop)*", value=(
+    embed.add_field(inline=False, name="🟣 Tier Épico *(~0.5% drop do trabalho)*", value=(
         "🏺 **Relíquia do Ancião** — +10% ganho no trabalho\n"
         "🩸 **Escudo de Sangue** — recupera 5% do valor roubado de você\n"
         "🌑 **Manto das Sombras** — +12% chance de sucesso no roubo\n"
         "🌟 **Talismã da Fortuna** — reduz prejuízo máximo no cripto de 25% → 15%"
+    ))
+    embed.add_field(inline=False, name="🏠 Tier Patrimônio *(Compráveis)*", value=(
+        "Adquiridos na `!loja` (18k a 600k MC). Fornecem bônus massivos permanentes!\n"
+        "Exemplos: Bicicleta, Moto, Kitnet, Mansão, Iate, Ilha Privada."
     ))
     embed.set_footer(text="🔰 Passivos  ·  Clique em Início para voltar")
     return embed
@@ -134,18 +138,19 @@ def _pagina_mascotes(author: disnake.Member) -> disnake.Embed:
         "Gaiolas caem do `!trabalhar` (1,5% de chance) ou em airdrops raros."
     ))
     embed.add_field(inline=False, name="🐶 `!mascote [@usuario]`  ·  📖 `!mascotes`", value=(
-        "`!mascote` — Vê o mascote atual e o nível de fome.\n"
+        "`!mascote` — Vê o mascote ativo, a fazenda e o nível de fome.\n"
         "`!mascotes` — Enciclopédia com todos os animais, raridades e poderes."
     ))
-    embed.add_field(inline=False, name="🍗 `!alimentar`  ·  🚪 `!libertar`", value=(
-        "`!alimentar` — Usa uma **Ração Símia** do inventário para restaurar +50% de fome.\n"
-        "`!libertar` — Liberta o mascote para poder abrir outra gaiola.\n\n"
-        "⚠️ **Mascote com fome zerada tem buffs desativados!**\n"
-        "Ração Símia pode ser comprada na `!loja`."
+    embed.add_field(inline=False, name="🏡 Fazenda de Mascotes", value=(
+        "`!fazenda` — Veja o mascote que está descansando na sua fazenda.\n"
+        "`!guardar` — Envia o mascote ativo para a fazenda, liberando o slot principal.\n"
+        "`!trocarpet` — Troca o mascote ativo pelo que está guardado na fazenda."
     ))
-    embed.add_field(inline=False, name="Como os mascotes ajudam?", value=(
-        "Interferem no `!trabalhar` e no `!roubar` (tanto do ladrão quanto da vítima).\n"
-        "Cada uso em combate ou trabalho **consome fome**. Use `!mascotes` para ver os buffs de cada animal."
+    embed.add_field(inline=False, name="🍗 `!alimentar`  ·  🚪 `!libertar`", value=(
+        "`!alimentar` — Usa **Ração Símia** para restaurar +50% de fome do mascote ativo.\n"
+        "`!libertar` — Liberta **apenas** o mascote ativo na selva (o da fazenda fica seguro).\n\n"
+        "⚠️ **Mascotes na fazenda não perdem fome e têm os buffs pausados.**\n"
+        "Ração Símia pode ser comprada na `!loja`."
     ))
     embed.set_footer(text="🐾 Mascotes  ·  Clique em Início para voltar")
     return embed
@@ -158,12 +163,6 @@ def _pagina_roubos(author: disnake.Member) -> disnake.Embed:
         "Chance base de sucesso: **45%**. Se falhar, você paga uma multa à vítima.\n"
         "**Se roubar com sucesso**, um bounty é colocado automaticamente na sua cabeça.\n"
         "🔑 **Pé de Cabra** (item): aumenta a chance para 65% e perfura o escudo."
-    ))
-    embed.add_field(inline=False, name="🚨 Evento Global: A Hora do Purge", value=(
-        "Pode acontecer aleatoriamente a qualquer momento! Durante 30 minutos de anarquia pura:\n"
-        "› `!trabalhar` **não funciona**.\n"
-        "› O cooldown do `!roubar` cai para apenas **5 minutos**.\n"
-        "› **Não há multas** caso o roubo falhe!"
     ))
     embed.add_field(inline=False, name="🛡️ `!escudo [@usuario]`  ·  🧨 `!c4 @usuario`", value=(
         "`!escudo` — Ativa o Escudo do inventário (**3 cargas**) ou checa o status.\n"
@@ -252,22 +251,20 @@ def _pagina_eventos(author: disnake.Member) -> disnake.Embed:
         "Um Gorila Mutante com **10.000 HP** invade a selva — derrote-o antes que fuja em **1 hora**!\n\n"
         "**Ataques disponíveis** *(botões na mensagem do evento)*:\n"
         "› 👊 **Soco** — 80–150 de dano. Grátis!\n"
-        "› 🐾 **Usar Pet** — 200–350 de dano. Consome **-20% de fome** do mascote.\n"
-        "› 🕵️ **Pé de Cabra** — 400–600 de dano. **Consome o item** do inventário.\n"
-        "› 🧨 **Jogar C4** — 1.500–2.500 de dano. **Consome o item** do inventário.\n\n"
+        "› 🐾 **Usar Pet** — 200–350 de dano. Consome **-20% de fome**.\n"
+        "› 🕵️ **Pé de Cabra** — 400–600 de dano. **Consome o item**.\n"
+        "› 🧨 **Jogar C4** — 1.500–2.500 de dano. **Consome o item**.\n\n"
         "⏱️ Cooldown entre ataques: **2 minutos**.\n\n"
         "**Recompensas (se o grupo vencer):**\n"
-        "› 🥇 MVP (maior dano): `Relíquia Ancestral 🔒`\n"
-        "› 🏅 Participantes: `Baú do Caçador 🔒`\n"
-        "› Todos os prêmios são **vinculados** — não podem ser vendidos nem trocados.\n\n"
-        "⚠️ Se o Boss fugir, a selva sofre as consequências. Trabalhem em equipe!"
+        "› 🥇 MVP (maior dano): `Relíquia Ancestral 🔒` e `Gaiola Misteriosa 🔒`\n"
+        "› 🏅 Participantes: `Baú do Caçador 🔒` e `Caixote de Madeira 🔒`\n"
+        "› Todos os prêmios são **vinculados** — não podem ser vendidos nem trocados."
     ))
     embed.add_field(inline=False, name="🚨 A Hora do Purge", value=(
         "Evento aleatório que pode acontecer a qualquer momento! Dura **30 minutos** de anarquia total.\n\n"
         "› `!trabalhar` **fica bloqueado** durante o Purge.\n"
         "› Cooldown do `!roubar` cai para apenas **5 minutos**.\n"
-        "› **Sem multas** caso o roubo falhe — risco zero para o ladrão!\n\n"
-        "*Estoque C4, compre Escudos e proteja a sua carteira antes que a sirene toque.*"
+        "› **Sem multas** caso o roubo falhe — risco zero para o ladrão!"
     ))
     embed.set_footer(text="🌍 Eventos Globais  ·  Clique em Início para voltar")
     return embed

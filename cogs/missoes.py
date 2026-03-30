@@ -135,14 +135,33 @@ class Missoes(commands.Cog):
             
             if cmd_usado in comandos_validos:
                 
-                # ── VALIDAÇÕES ANTI-ESPERTINHOS ──
-                # Removi a checagem manual do inventário pois quebrava quando o jogador gastava o último item.
-                # O interceptor acima já bloqueia as tentativas inválidas com precisão.
+                # ── VALIDAÇÕES ANTI-ESPERTINHOS (CORRIGIDAS) ──
+                
+                # Extrai o alvo real do comando a partir dos argumentos (kwargs ou args)
+                alvo = None
+                for arg in list(ctx.args) + list(ctx.kwargs.values()):
+                    if isinstance(arg, (disnake.Member, disnake.User)):
+                        alvo = arg
+                        break
+
                 if chave_missao == "cuidador":
                     if not user_db: continue
-                    tipo, _ = db.get_mascote(user_db)
-                    if not tipo: continue 
-                # ──────────────────────────────────
+                    tipo, fome = db.get_mascote(user_db)
+                    # Se não tem pet ou ele já está com fome 100, não conta (não gastou ração)
+                    if not tipo or fome >= 100: 
+                        continue 
+
+                if chave_missao == "cacador":
+                    # Se não houver um alvo nos argumentos, significa que a pessoa só abriu o mural
+                    if not alvo:
+                        continue
+                        
+                if chave_missao in ["sabotador", "generoso", "comerciante", "desafiante"]:
+                    if alvo:
+                        # Se tentou sabotar/pagar a si mesmo ou a um bot
+                        if alvo.bot or alvo.id == ctx.author.id:
+                            continue
+                # ─────────────────────────────────────────────
 
                 info["atual"] += 1
                 houve_progresso = True
