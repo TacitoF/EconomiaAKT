@@ -254,7 +254,7 @@ class Pets(commands.Cog):
             f"O seu slot principal está agora vazio. Já pode abrir uma nova **Gaiola Misteriosa**!"
         )
 
-    @commands.command(aliases=["trocar", "resgatar"])
+    @commands.command(aliases=["resgatar"])
     async def trocarpet(self, ctx):
         """Troca o mascote da fazenda com o mascote ativo."""
         user = db.get_user_data(str(ctx.author.id))
