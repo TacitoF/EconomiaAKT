@@ -196,6 +196,7 @@ class EventosGlobais(commands.Cog):
     async def _iniciar_purge(self, canal_forçado=None):
         self.bot.purge_ativo = True
         self.bot.purge_end_time = time.time() + 1800  # Dura 30 minutos
+        ts_fim_purge = int(self.bot.purge_end_time)
 
         canal = canal_forçado or self.bot.get_channel(random.choice(CANAIS_EVENTOS))
         
@@ -203,11 +204,12 @@ class EventosGlobais(commands.Cog):
             embed = disnake.Embed(
                 title="🚨 💀 A HORA DO PURGE COMEÇOU! 💀 🚨",
                 description=(
-                    "**As leis da selva foram suspensas por 30 minutos!**\n\n"
+                    "**As leis da selva foram suspensas!**\n\n"
                     "🔨 `!trabalhar` **está bloqueado.** O trabalho honesto não rende nada agora.\n"
                     "🥷 `!roubar` **tem cooldown de apenas 5 minutos** e a multa por falha foi zerada!\n\n"
                     "Protejam as suas carteiras, comprem escudos e rezem pelos seus pets. "
-                    "Que o caos comece!"
+                    "Que o caos comece!\n\n"
+                    f"⏰ **O purge termina** <t:{ts_fim_purge}:R>."
                 ),
                 color=disnake.Color.dark_red()
             )

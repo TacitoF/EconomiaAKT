@@ -25,7 +25,8 @@ def _pagina_inicio(author: disnake.Member) -> disnake.Embed:
         "🏦 **Banco** — renda fixa e cripto\n"
         "🎲 **Jogos** — cassino, duelos e torneios\n"
         "✨ **Cosméticos** — visuais, bio, títulos\n"
-        "🤐 **Castigos** — mudo, surdo, expulsar da call"
+        "🤐 **Castigos** — mudo, surdo, expulsar da call\n"
+        "🌍 **Eventos** — World Boss e A Hora do Purge"
     ))
     embed.set_footer(text="Selecione uma seção abaixo")
     return embed
@@ -223,10 +224,6 @@ def _pagina_jogos(author: disnake.Member) -> disnake.Embed:
     embed.add_field(inline=False, name="🎮 Multiplayer", value=(
         "`!21` · `!roleta` · `!mentira` · `!torneio` · `!coco`"
     ))
-    embed.add_field(inline=False, name="⚽ Futebol", value=(
-        "`!futebol` — Apostar em partidas.\n"
-        "`!pule` — Ver seus bilhetes ativos e cancelar apostas."
-    ))
     embed.set_footer(text="🎲 Jogos & Apostas  ·  Clique em Início para voltar")
     return embed
 
@@ -245,6 +242,34 @@ def _pagina_cosmeticos(author: disnake.Member) -> disnake.Embed:
         "⚫ Comuns · 🔵 Raros · 🟣 Épicos · 🌟 Lendários *(só nas Relíquias Ancestrais)*"
     ))
     embed.set_footer(text="✨ Cosméticos & Perfil  ·  Clique em Início para voltar")
+    return embed
+
+
+def _pagina_eventos(author: disnake.Member) -> disnake.Embed:
+    embed = disnake.Embed(title="🌍 Eventos Globais", color=disnake.Color.dark_red())
+    embed.add_field(inline=False, name="🦍 World Boss: Gorila Mutante", value=(
+        "Aparece **uma vez por dia**, entre 13h e 18h (horário de Brasília).\n"
+        "Um Gorila Mutante com **10.000 HP** invade a selva — derrote-o antes que fuja em **1 hora**!\n\n"
+        "**Ataques disponíveis** *(botões na mensagem do evento)*:\n"
+        "› 👊 **Soco** — 80–150 de dano. Grátis!\n"
+        "› 🐾 **Usar Pet** — 200–350 de dano. Consome **-20% de fome** do mascote.\n"
+        "› 🕵️ **Pé de Cabra** — 400–600 de dano. **Consome o item** do inventário.\n"
+        "› 🧨 **Jogar C4** — 1.500–2.500 de dano. **Consome o item** do inventário.\n\n"
+        "⏱️ Cooldown entre ataques: **2 minutos**.\n\n"
+        "**Recompensas (se o grupo vencer):**\n"
+        "› 🥇 MVP (maior dano): `Relíquia Ancestral 🔒`\n"
+        "› 🏅 Participantes: `Baú do Caçador 🔒`\n"
+        "› Todos os prêmios são **vinculados** — não podem ser vendidos nem trocados.\n\n"
+        "⚠️ Se o Boss fugir, a selva sofre as consequências. Trabalhem em equipe!"
+    ))
+    embed.add_field(inline=False, name="🚨 A Hora do Purge", value=(
+        "Evento aleatório que pode acontecer a qualquer momento! Dura **30 minutos** de anarquia total.\n\n"
+        "› `!trabalhar` **fica bloqueado** durante o Purge.\n"
+        "› Cooldown do `!roubar` cai para apenas **5 minutos**.\n"
+        "› **Sem multas** caso o roubo falhe — risco zero para o ladrão!\n\n"
+        "*Estoque C4, compre Escudos e proteja a sua carteira antes que a sirene toque.*"
+    ))
+    embed.set_footer(text="🌍 Eventos Globais  ·  Clique em Início para voltar")
     return embed
 
 
@@ -282,10 +307,11 @@ PAGINAS = {
     "jogos":      ("🎲 Jogos",      _pagina_jogos),
     "cosmeticos": ("✨ Cosméticos", _pagina_cosmeticos),
     "castigos":   ("🤐 Castigos",   _pagina_castigos),
+    "eventos":    ("🌍 Eventos",    _pagina_eventos),
 }
 
 # Ordem fixa para distribuição nas linhas de botões
-ORDEM = ["inicio", "economia", "mercado", "passivos", "mascotes", "roubos", "banco", "jogos", "cosmeticos", "castigos"]
+ORDEM = ["inicio", "economia", "mercado", "passivos", "mascotes", "roubos", "banco", "jogos", "cosmeticos", "castigos", "eventos"]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -310,7 +336,7 @@ class AjudaView(disnake.ui.View):
                 style=disnake.ButtonStyle.success if is_atual else disnake.ButtonStyle.primary,
                 disabled=is_atual,
                 custom_id=f"ajuda_{slug}",
-                row=i // 5  # 5 botões por linha → linha 0 e linha 1
+                row=i // 4  # 4 botões por linha → até 3 linhas para 11 itens
             )
             btn.callback = self._fazer_callback(slug)
             self.add_item(btn)

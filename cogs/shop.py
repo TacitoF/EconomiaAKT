@@ -108,6 +108,36 @@ COSMETICOS_LOJA = {
     "titulo:Senhor do Caos":     (7000,  "Título: Senhor do Caos",    "🏷️", "Épico"),
 }
 
+# ── Catálogo de Patrimônio ────────────────────────────────────────────────────
+# Passivos compráveis com bônus relevantes. Formato: slug -> (preco, label, emoji, descricao)
+# Preços mid-game (Raro) e end-game (Lendário).
+CATALOGO_PATRIMONIO = {
+    # ── Tier Raro (mid-game) ─────────────────────────────
+    "pat:bicicleta":  (18_000.0,  "Bicicleta Elétrica", "🚲", "-15min cooldown no !trabalhar"),
+    "pat:trailer":    (22_000.0,  "Trailer",             "🚐", "-5% no máximo que podem te roubar"),
+    "pat:moto":       (30_000.0,  "Moto",                "🏍️", "+6% chance de sucesso no !roubar"),
+    "pat:kitnet":     (40_000.0,  "Kitnet",              "🏠", "+8% ganho no !trabalhar"),
+    # ── Tier Lendário (end-game) ─────────────────────────
+    "pat:carro":      (120_000.0, "Carro Esportivo",     "🏎️", "+10% roubar e -15% multa se falhar"),
+    "pat:mansao":     (200_000.0, "Mansão",              "🏰", "+20% ganho no !trabalhar"),
+    "pat:iate":       (280_000.0, "Iate",                "🛥️", "-30min cooldown no !trabalhar"),
+    "pat:helicoptero":(380_000.0, "Helicóptero",         "🚁", "-20% chance de ser roubado"),
+    "pat:ilha":       (600_000.0, "Ilha Privada",        "🏝️", "+15% trabalhar e -10% chance de roubo"),
+}
+
+# Mapa slug → nome do passivo (igual ao PASSIVOS_INFO em items.py)
+NOME_PATRIMONIO = {
+    "pat:bicicleta":   "Bicicleta Elétrica",
+    "pat:trailer":     "Trailer",
+    "pat:moto":        "Moto",
+    "pat:kitnet":      "Kitnet",
+    "pat:carro":       "Carro Esportivo",
+    "pat:mansao":      "Mansão",
+    "pat:iate":        "Iate",
+    "pat:helicoptero": "Helicóptero",
+    "pat:ilha":        "Ilha Privada",
+}
+
 NOME_ITEM = {
     "item:escudo":      "Escudo",
     "item:pe_de_cabra": "Pé de Cabra",
@@ -202,6 +232,20 @@ async def processar_compra(inter: disnake.MessageInteraction, slug: str, itens: 
         _batch_compra(row, saldo - preco, inv_list)
         return f"✨ **{emoji} {label}** comprado!\n💸 **-{formatar_moeda(preco)} MC**."
 
+    if slug.startswith("pat:"):
+        nome_pat = NOME_PATRIMONIO[slug]
+        # Passivos de patrimônio são únicos — não pode comprar duas vezes
+        if nome_pat in inv_list:
+            return f"❌ Você já possui **{emoji} {nome_pat}**!\nUse `!equipar {nome_pat}` para ativá-lo."
+        inv_list.append(nome_pat)
+        _batch_compra(row, saldo - preco, inv_list)
+        tier = "🏅 Raro" if preco < 100_000 else "👑 Lendário"
+        return (
+            f"{emoji} **{nome_pat}** adquirido! *({tier})*\n"
+            f"💸 **-{formatar_moeda(preco)} MC** debitados.\n"
+            f"💡 Use `!equipar {nome_pat}` para ativar o bônus passivo."
+        )
+
     nome_item = NOME_ITEM.get(slug, label)
     inv_list.extend([nome_item] * quantidade)
     _batch_compra(row, saldo - preco_total, inv_list)
@@ -250,6 +294,7 @@ class SelectCategoria(disnake.ui.StringSelect):
             disnake.SelectOption(label="📈 Progressão (Cargos)",   value="cargos",       emoji="📈", description="Evolua o cargo"),
             disnake.SelectOption(label="🛡️ Equipamentos e Defesa",  value="equipamentos", emoji="🛡️", description="Escudo, Pé de Cabra"),
             disnake.SelectOption(label="😈 Sabotagem & Pets",       value="consumiveis",  emoji="😈", description="Casca, Imposto, Ração"),
+            disnake.SelectOption(label="🏠 Patrimônio",             value="patrimonio",   emoji="🏠", description="Casas, carros e mais · 18k–600k MC"),
             disnake.SelectOption(label="✨ Cosméticos — Comuns",    value="cosm_comum",   emoji="⚪", description="500–1.500 MC"),
             disnake.SelectOption(label="✨ Cosméticos — Raros",     value="cosm_raro",    emoji="🔵", description="2.000–2.500 MC"),
             disnake.SelectOption(label="✨ Cosméticos — Épicos",    value="cosm_epico",   emoji="🟣", description="6.000–8.000 MC"),
@@ -266,6 +311,19 @@ def _build_categoria(author_id, saldo, cat):
     if cat == "cargos": itens, emb = CATALOGO_CARGOS, disnake.Embed(title="📈 CARGOS", color=disnake.Color.gold())
     elif cat == "equipamentos": itens, emb = CATALOGO_EQUIPAMENTOS, disnake.Embed(title="🛡️ EQUIPAMENTOS", color=disnake.Color.blue())
     elif cat == "consumiveis": itens, emb = CATALOGO_CONSUMIVEIS, disnake.Embed(title="😈 SABOTAGEM & MASCOTES", color=disnake.Color.red())
+    elif cat == "patrimonio":
+        itens = CATALOGO_PATRIMONIO
+        emb = disnake.Embed(
+            title="🏠 PATRIMÔNIO",
+            description=(
+                "Passivos permanentes que concedem bônus consideráveis.\n"
+                "Cada item é **único** — não é possível comprar duas vezes.\n"
+                "Após comprar, use `!equipar <nome>` para ativar.\n\n"
+                "🏅 **Raro** — 18k a 40k MC · bônus sólidos\n"
+                "👑 **Lendário** — 120k a 600k MC · bônus expressivos\n"
+            ),
+            color=0xE8A400
+        )
     else:
         rm = {"cosm_comum": "Comum", "cosm_raro": "Raro", "cosm_epico": "Épico"}
         raridade = rm.get(cat, "Comum")
@@ -288,10 +346,11 @@ def _build_categoria(author_id, saldo, cat):
 
 def _embed_inicio(saldo: float) -> disnake.Embed:
     embed = disnake.Embed(title="🛒 MERCADO NEGRO", description=f"💰 Seu saldo: **{formatar_moeda(saldo)} MC**\nEscolha uma categoria!", color=disnake.Color.dark_theme())
-    embed.add_field(name="📈 Progressão",   value="Cargos que aumentam salário e limite de apostas", inline=False)
-    embed.add_field(name="🛡️ Equipamentos", value="Escudo · Pé de Cabra · Seguro", inline=False)
-    embed.add_field(name="😈 Sabotagem & Pets",value="Casca · Imposto · Troca de Nick · Ração Símia", inline=False)
-    embed.add_field(name="✨ Cosméticos",   value="Cores, molduras e títulos", inline=False)
+    embed.add_field(name="📈 Progressão",       value="Cargos que aumentam salário e limite de apostas", inline=False)
+    embed.add_field(name="🛡️ Equipamentos",     value="Escudo · Pé de Cabra · Seguro", inline=False)
+    embed.add_field(name="😈 Sabotagem & Pets", value="Casca · Imposto · Troca de Nick · Ração Símia", inline=False)
+    embed.add_field(name="🏠 Patrimônio",       value="Passivos permanentes mid/end-game · 18k–600k MC\nKitnet · Moto · Mansão · Iate · Ilha Privada e mais", inline=False)
+    embed.add_field(name="✨ Cosméticos",       value="Cores, molduras e títulos", inline=False)
     return embed
 
 class ViewItens(disnake.ui.View):

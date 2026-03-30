@@ -261,17 +261,6 @@ class Eventos(commands.Cog):
             inline = False,
         )
 
-        embed.add_field(
-            name  = "⚽ APOSTAS ESPORTIVAS",
-            value = (
-                "⚽ **`!futebol`**\n"
-                "└ *Veja os próximos jogos e aposte pelo menu interativo.*\n"
-                "🎟️ **`!pule`**\n"
-                "└ *Veja seus bilhetes pendentes (Odd fixa 2.0x e auto-pagamento).*"
-            ),
-            inline = False,
-        )
-
         embed.set_footer(text="💡 Dica: use !perfil para ver seus MC antes de apostar.")
         await ctx.send(embed=embed)
 

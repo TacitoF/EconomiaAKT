@@ -2,44 +2,66 @@ import disnake
 from disnake.ext import commands
 import database as db
 import time
+from collections import Counter
 
 OWNER_ID = 757752617722970243
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  PRÊMIOS DO PÓDIO
 #
-#  🥇 1º lugar → Relíquia Ancestral + Baú do Caçador + Gaiola Misteriosa
-#                + 500 MC iniciais + buff_trabalho_temp: +20% por 7 dias
-#  🥈 2º lugar → Baú do Caçador + Gaiola Misteriosa + 300 MC iniciais
-#  🥉 3º lugar → Caixote de Madeira + Gaiola Misteriosa + 150 MC iniciais
+#  Todos os itens são gravados com 🔒 (vinculados) — não podem ser vendidos
+#  nem negociados. Passivos são equipados direto na coluna de passivos.
+#
+#  🥇 1º lugar → Título: Lenda da Selva (cosmético exclusivo)
+#                Passivo: Troféu do Campeão (+20% trabalho por 7 dias)
+#                2× Relíquias Ancestrais 🔒 + 2× Gaiolas Misteriosas 🔒
+#                Conquista permanente: campeao_era
+#
+#  🥈 2º lugar → Passivo: Sindicato (-10min cooldown !trabalhar)
+#                3× Baús do Caçador 🔒 + 1× Gaiola Misteriosa 🔒
+#                Conquista permanente: vice_era
+#
+#  🥉 3º lugar → Passivo: Cinto de Ferramentas (+4% !trabalhar)
+#                5× Caixotes de Madeira 🔒 + 1× Gaiola Misteriosa 🔒
+#                Conquista permanente: bronze_era
 # ──────────────────────────────────────────────────────────────────────────────
+
+# Sufixo de cadeado aplicado em todos os itens do pódio
+_L = " 🔒"
 
 PODIO = {
     1: {
-        "mc":       1000.0,
-        "itens":    ["Relíquia Ancestral", "Baú do Caçador", "Gaiola Misteriosa"],
-        "buff":     True,                        # Troféu do Campeão +20% trabalho por 7 dias
+        "mc":       0.0,
+        # 2× Relíquias Ancestrais + 2× Gaiolas Misteriosas, todas vinculadas
+        "itens":    [f"Relíquia Ancestral{_L}", f"Relíquia Ancestral{_L}",
+                     f"Gaiola Misteriosa{_L}",  f"Gaiola Misteriosa{_L}"],
+        "buff":     True,                        # Troféu do Campeão +20% por 7 dias
         "passivo":  None,                        # buff já é o Troféu do Campeão
-        "titulo":   "cosmético:titulo:Lenda da Selva",  # título lendário exclusivo no inventário
-        "conquista": "campeao_era",              # slug gravado na coluna de conquistas
+        "titulo":   "cosmético:titulo:Lenda da Selva",  # título exclusivo no inventário
+        "conquista": "campeao_era",
         "label":    "🥇 1º lugar",
         "cor":      disnake.Color.gold(),
     },
     2: {
-        "mc":       500.0,
-        "itens":    ["Relíquia Ancestral", "Gaiola Misteriosa"],
+        "mc":       0.0,
+        # 3× Baús do Caçador + 1× Gaiola Misteriosa, todos vinculados
+        "itens":    [f"Baú do Caçador{_L}", f"Baú do Caçador{_L}", f"Baú do Caçador{_L}",
+                     f"Gaiola Misteriosa{_L}"],
         "buff":     False,
-        "passivo":  "Sindicato",                 # -10min no cooldown do !trabalhar permanente
+        "passivo":  "Sindicato",                 # -10min no cooldown do !trabalhar
         "titulo":   None,
         "conquista": "vice_era",
         "label":    "🥈 2º lugar",
         "cor":      disnake.Color.light_grey(),
     },
     3: {
-        "mc":       250.0,
-        "itens":    ["Baú do Caçador", "Gaiola Misteriosa"],
+        "mc":       0.0,
+        # 5× Caixotes de Madeira + 1× Gaiola Misteriosa, todos vinculados
+        "itens":    [f"Caixote de Madeira{_L}", f"Caixote de Madeira{_L}",
+                     f"Caixote de Madeira{_L}", f"Caixote de Madeira{_L}",
+                     f"Caixote de Madeira{_L}", f"Gaiola Misteriosa{_L}"],
         "buff":     False,
-        "passivo":  "Cinto de Ferramentas",      # +4% no !trabalhar permanente
+        "passivo":  "Cinto de Ferramentas",      # +4% no !trabalhar
         "titulo":   None,
         "conquista": "bronze_era",
         "label":    "🥉 3º lugar",
@@ -188,8 +210,9 @@ class ResetEconomia(commands.Cog):
                 premio = PODIO[posicao]
                 row = user['row']
 
-                # MC iniciais (coluna 3)
-                db.update_value(row, 3, premio['mc'])
+                # Sem MC iniciais nesta era (mc = 0.0)
+                if premio['mc'] > 0:
+                    db.update_value(row, 3, premio['mc'])
 
                 # Monta inventário: itens funcionais + título cosmético (se houver)
                 itens_inv = list(premio['itens'])
@@ -238,8 +261,6 @@ class ResetEconomia(commands.Cog):
             discord_user = self.bot.get_user(int(uid))
             nome = discord_user.mention if discord_user else f"ID {uid}"
             premio = PODIO[posicao]
-            itens_fmt = " · ".join(f"`{it}`" for it in premio['itens'])
-
             extras = []
             if premio['buff']:
                 extras.append(f"👑 **Troféu do Campeão** (+20% `!trabalhar` por {BUFF_DURACAO_DIAS} dias)")
@@ -261,12 +282,19 @@ class ResetEconomia(commands.Cog):
 
             extras_txt = "\n".join(f"└ {e}" for e in extras if e)
 
+            # Formata itens agrupando duplicatas e exibindo o cadeado
+            contagem_itens = Counter(premio['itens'])
+            itens_fmt_lista = []
+            for nome_item, qtd in contagem_itens.items():
+                prefixo = f"{qtd}× " if qtd > 1 else ""
+                itens_fmt_lista.append(f"`{prefixo}{nome_item}`")
+            itens_fmt = " · ".join(itens_fmt_lista)
+
             embed_reset.add_field(
                 name=f"{medalhas[posicao]} {posicao}º lugar — {saldo_antigo:,.2f} MC acumulados",
                 value=(
                     f"👤 {nome}\n"
                     f"🎁 **Itens:** {itens_fmt}\n"
-                    f"💰 **MC iniciais:** `{premio['mc']:.0f} MC`\n"
                     f"{extras_txt}"
                 ),
                 inline=False

@@ -15,6 +15,8 @@ PASSIVOS_NOMES = {
     "Amuleto da Sorte", "Cinto de Ferramentas", "Carteira Velha",
     "Segurança Particular", "Luvas de Seda", "Sindicato", "Cão de Guarda",
     "Relíquia do Ancião", "Escudo de Sangue", "Manto das Sombras", "Talismã da Fortuna",
+    "Bicicleta Elétrica", "Trailer", "Moto", "Kitnet",
+    "Carro Esportivo", "Mansão", "Iate", "Helicóptero", "Ilha Privada",
 }
 
 def formatar_moeda(valor: float) -> str:
@@ -290,6 +292,15 @@ ITENS_REEMBOLSAVEIS = {
     "Escudo de Sangue":     ("passivo:esangue",   5000.0),
     "Manto das Sombras":    ("passivo:manto",     5000.0),
     "Talismã da Fortuna":   ("passivo:talismo",   5000.0),
+    "Bicicleta Elétrica":   ("pat:bicicleta",    18000.0),
+    "Trailer":              ("pat:trailer",      22000.0),
+    "Moto":                 ("pat:moto",         30000.0),
+    "Kitnet":               ("pat:kitnet",       40000.0),
+    "Carro Esportivo":      ("pat:carro",       120000.0),
+    "Mansão":               ("pat:mansao",      200000.0),
+    "Iate":                 ("pat:iate",        280000.0),
+    "Helicóptero":          ("pat:helicoptero", 380000.0),
+    "Ilha Privada":         ("pat:ilha",        600000.0),
 }
 TAXA_REEMBOLSO = 1.0
 
@@ -830,7 +841,7 @@ class Trade(commands.Cog):
             if not item_encontrado:
                 return await ctx.send(
                     f"❌ {ctx.author.mention}, **{item}** não encontrado no inventário.\n"
-                    f"Use `!inventario` para ver seus itens."
+                    f"Use `!inventario` para ver seus items."
                 )
                 
             # 🔒 TRAVA DE VINCULAÇÃO DE ITEM

@@ -25,62 +25,71 @@ class Patchnotes(commands.Cog):
             return await ctx.author.send("❌ Erro: Canal de patchnotes não encontrado.")
 
         embed = disnake.Embed(
-            title="📜 ATUALIZAÇÃO v11.0: A NOVA ERA & O CAOS 💀",
+            title="🦍 v11.0 — A Nova Era",
             description=(
-                "A temporada passada chegou ao fim e a poeira baixou. "
-                "Saldos, inventários e mascotes **voltaram ao pó**.\n\n"
-                "Iniciamos agora uma **Nova Era** na selva! Todos começam do zero, "
-                "mas trouxemos grandes novidades para recompensar os macacos mais ativos "
-                "e aterrorizar os mais ricos."
+                "A temporada anterior chegou ao fim. Saldos, inventários e mascotes **voltaram ao pó**.\n"
+                "Todos começam do zero — mas a selva ficou muito mais interessante.\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━"
             ),
             color=disnake.Color.dark_red()
         )
 
         embed.add_field(
-            name="📜 NOVO SISTEMA: Missões Diárias",
+            name="🆕 O QUE HÁ DE NOVO",
             inline=False,
             value=(
-                "Ganhar dinheiro só trabalhando ficou no passado! Use o comando **`!missoes`**.\n"
-                "• Todo dia, o bot sorteará **3 tarefas aleatórias** para você (trabalhar, assaltar, jogar cassino, duelar, etc.).\n"
-                "• Ao completar as 3 missões, você ganha de **300 a 900 MC** e um **Item Aleatório** garantido (Caixas, Gaiolas, Rações ou até Relíquias Lendárias!).\n"
-                "• O quadro de missões é resetado todos os dias à meia-noite."
+                "**📜 Missões Diárias** → `!missoes`\n"
+                "Receba **3 tarefas** novas todo dia (trabalhar, roubar, duelar…). Complete todas e ganhe **300–900 MC** + **1 item garantido**. Reseta à meia-noite.\n\n"
+                "**🚨 A Hora do Purge**\n"
+                "Evento surpresa de **30 minutos** onde as leis somem: `!trabalhar` bloqueado, cooldown do `!roubar` cai pra **5 min** e roubo fracassado não gera multa. Fique esperto.\n\n"
+                "**🦍 World Boss — Gorila Mutante**\n"
+                "Aparece uma vez por dia entre **13h–18h** com **10.000 HP**. Ataque em grupo com Soco 👊, Pet 🐾, Pé de Cabra 🕵️ ou C4 🧨.\n"
+                "› MVP leva uma `Relíquia Ancestral 🔒` · Participantes ganham `Baú do Caçador 🔒`\n"
+                "› Se fugir em 1h, a selva toda paga o preço.\n\n"
+                "**🔒 Itens Vinculados**\n"
+                "Itens com `🔒` ficam presos à sua conta — não podem ser vendidos ou trocados. Só restam os benefícios. Use bem."
             )
         )
 
         embed.add_field(
-            name="🚨 NOVO EVENTO: A Hora do Purge",
+            name="♻️ RESET & TEMPORADA",
             inline=False,
             value=(
-                "De tempos em tempos, a sirene vai tocar e as leis da selva serão suspensas por **30 minutos** de anarquia pura!\n"
-                "🔨 **Trabalho inútil:** O comando `!trabalhar` é bloqueado.\n"
-                "🥷 **Assaltos frenéticos:** O cooldown do `!roubar` cai de 2 horas para apenas **5 minutos**.\n"
-                "💀 **Sem leis:** Se você falhar em um roubo, a multa é **ZERADA**. Não há punições.\n"
-                "*Preparem seus escudos, estoquem C4 e protejam as carteiras!*"
+                "› Todos os jogadores voltaram ao cargo inicial\n"
+                "› Top 3 da Era passada recebeu **Pacotes de Fundação** exclusivos (`🔒`)\n"
+                "› Preços da `!loja` foram resetados\n"
+                "› A corrida para o Topo 1 recomeça agora"
             )
         )
 
         embed.add_field(
-            name="🔒 NOVA MECÂNICA: Itens Vinculados",
+            name="🐛 CORREÇÃO CRÍTICA",
             inline=False,
             value=(
-                "Para manter a economia do Dia 1 justa e competitiva, introduzimos os itens vinculados.\n"
-                "• Se um item no seu inventário possuir um cadeado (`🔒`), significa que ele está **preso à sua conta**.\n"
-                "• **Efeito:** Você **não pode** vender para o sistema, e nem trocar ou vender para outros jogadores. Você é obrigado a usar o item e aproveitar seus benefícios para dominar a selva!"
+                "**Bug do Imposto resolvido.**\n"
+                "O imposto estava confiscando valores absurdos — chegando a limpar saldos inteiros em cargos altos. "
+                "Agora cada cargo tem um **teto máximo** de imposto por turno de trabalho. "
+                "Rei Símio, por exemplo, nunca perde mais de **9.000 MC** por trabalho taxado."
             )
         )
 
         embed.add_field(
-            name="♻️ O Grande Reset",
+            name="⚽ REMOVIDO",
+            inline=False,
+            value="**Apostas Esportivas** — removidas por votação da comunidade. Obrigado a todos que participaram! 🗳️"
+        )
+
+        embed.add_field(
+            name="⚠️ AVISO",
             inline=False,
             value=(
-                "• A economia foi nivelada. Todos os jogadores voltaram ao cargo inicial.\n"
-                "• Os campeões do Top 3 da Era passada receberam seus Pacotes de Fundação com itens exclusivos (que estão vinculados com `🔒`).\n"
-                "• Os preços da `!loja` foram resetados.\n"
-                "Que a corrida para o Top 1 recomece!"
+                "Tudo que foi **adicionado ou modificado** nessa atualização pode conter bugs.\n"
+                "Se encontrar qualquer comportamento estranho, reporte imediatamente para a staff.\n"
+                "*Quanto mais rápido o report, mais rápido o fix.* 🔧"
             )
         )
 
-        embed.set_footer(text="A selva pune os lentos e recompensa os cruéis. Boa sorte! 🦍")
+        embed.set_footer(text="v11.0 · A selva pune os lentos e recompensa os cruéis 🦍")
 
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)

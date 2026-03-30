@@ -1,23 +1,23 @@
 {
     "757752617722970243": {
-        "data": "2026-03-26",
+        "data": "2026-03-30",
         "missoes": {
-            "sabotador": {
+            "roleta": {
                 "atual": 0,
                 "meta": 2,
-                "desc": "😈 Sabote ou engane (`!casca`, `!c4`, `!imposto`, `!impostor`)",
+                "desc": "🎡 Faça apostas na Roleta (`!roleta`)",
                 "concluida": false
             },
-            "abridor": {
+            "ditador": {
                 "atual": 0,
-                "meta": 2,
-                "desc": "📦 Abra caixas ou gaiolas do inventário (`!abrir`)",
+                "meta": 1,
+                "desc": "🔇 Aplique um castigo de voz (`!castigo`, `!desconectar`)",
                 "concluida": false
             },
-            "desafiante": {
+            "esportista": {
                 "atual": 0,
                 "meta": 2,
-                "desc": "⚔️ Desafie alguém (`!truco`, `!cipo`, `!gatilho`, `!jokenpo`, `!rinha`, `!tesouro`)",
+                "desc": "⚽ Use a casa de apostas esportivas (`!futebol`)",
                 "concluida": false
             }
         },

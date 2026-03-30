@@ -213,10 +213,29 @@ class Economy(commands.Cog):
                 elif cd_imposto > 0:
                     self.bot.cooldown_imposto[user_id] = cd_imposto
 
+            # ── Teto de imposto por cargo (valor máximo confiscável por trabalho) ──
+            IMPOSTO_TETO = {
+                "Lêmure":      20,
+                "Macaquinho":  60,
+                "Babuíno":     150,
+                "Chimpanzé":   400,
+                "Orangutango": 900,
+                "Gorila":      2000,
+                "Ancestral":   4500,
+                "Rei Símio":   9000,
+            }
+            # Saldo mínimo garantido após o imposto (nunca fica abaixo disso)
+            SALDO_MINIMO = 50.0
+
             imposto_msg = ""
             if user_id in self.bot.impostos:
                 imposto_data = self.bot.impostos[user_id]
-                taxa  = round(ganho * 0.25, 2)
+                taxa_bruta = round(ganho * 0.25, 2)
+
+                # Limita pelo teto do cargo (nunca confisca mais do que o teto)
+                teto_cargo = IMPOSTO_TETO.get(cargo, 20)
+                taxa = round(min(taxa_bruta, teto_cargo), 2)
+
                 ganho = round(ganho - taxa, 2)
 
                 cobrador_db = db.get_user_data(imposto_data['cobrador_id'])

@@ -4,16 +4,43 @@ import database as db
 import random
 import time
 import asyncio
+from datetime import datetime, timezone, timedelta
 
 # Configurações de Dano e Cooldown
 BOSS_MAX_HP = 10000
 COOLDOWN_ATAQUE = 120 # 2 minutos entre qualquer ataque
+
+# Fuso horário de Brasília (UTC-3)
+BRT = timezone(timedelta(hours=-3))
+
+# Janela de spawn diário: entre 13h e 18h BRT
+# O boss spawna em um horário aleatório dentro dessa janela, uma vez por dia.
+SPAWN_HORA_MIN = 13
+SPAWN_HORA_MAX = 18
 
 def gerar_barra_hp(hp_atual, hp_max):
     tamanho = 15
     preenchido = int((hp_atual / hp_max) * tamanho)
     vazio = tamanho - preenchido
     return f"[{'🟥' * preenchido}{'⬛' * vazio}] {hp_atual}/{hp_max} HP"
+
+# ── FUNÇÃO MESTRA PARA CONSUMIR ITENS (IGNORA O CADEADO) ──
+def consumir_item(user_row: int, inv_list: list, nome_base: str) -> bool:
+    """Verifica se o usuário tem o item (com ou sem 🔒) e consome-o."""
+    item_para_remover = None
+    
+    if nome_base in inv_list:
+        item_para_remover = nome_base
+    else:
+        nome_vinculado = f"{nome_base} 🔒"
+        if nome_vinculado in inv_list:
+            item_para_remover = nome_vinculado
+
+    if item_para_remover:
+        inv_list.remove(item_para_remover)
+        db.update_value(user_row, 6, ", ".join(inv_list) if inv_list else "Nenhum")
+        return True
+    return False
 
 class BossView(disnake.ui.View):
     def __init__(self, cog):
@@ -30,8 +57,8 @@ class BossView(disnake.ui.View):
         # Verifica Cooldown
         cd_usuario = self.cog.cooldowns.get(user_id, 0)
         if agora < cd_usuario:
-            faltam = int(cd_usuario - agora)
-            return await inter.response.send_message(f"⏳ Você está recuperando o fôlego! Tente de novo em {faltam}s.", ephemeral=True)
+            ts_liberacao = int(cd_usuario)
+            return await inter.response.send_message(f"⏳ Você está recuperando o fôlego! Tente de novo <t:{ts_liberacao}:R>.", ephemeral=True)
 
         user_db = db.get_user_data(user_id)
         if not user_db:
@@ -57,22 +84,18 @@ class BossView(disnake.ui.View):
             msg_extra = f"Seu mascote atacou ferozmente! (-20% de Fome)"
 
         elif tipo == "cabra":
-            inv = [i.strip() for i in str(user_db['data'][5]).split(",") if i.strip()]
-            if "Pé de Cabra" not in inv:
+            inv = [i.strip() for i in str(user_db['data'][5]).split(",") if i.strip() and i.strip() != "Nenhum"]
+            # Usa a função mestra para ignorar o cadeado
+            if not consumir_item(user_db['row'], inv, "Pé de Cabra"):
                 return await inter.response.send_message("❌ Você não tem um Pé de Cabra no inventário!", ephemeral=True)
-            
-            inv.remove("Pé de Cabra")
-            db.update_value(user_db['row'], 6, ", ".join(inv) if inv else "Nenhum")
             dano = random.randint(400, 600)
             msg_extra = "Você quebrou o Pé de Cabra nas costas do gorila!"
 
         elif tipo == "c4":
-            inv = [i.strip() for i in str(user_db['data'][5]).split(",") if i.strip()]
-            if "Carga de C4" not in inv:
+            inv = [i.strip() for i in str(user_db['data'][5]).split(",") if i.strip() and i.strip() != "Nenhum"]
+            # Usa a função mestra para ignorar o cadeado
+            if not consumir_item(user_db['row'], inv, "Carga de C4"):
                 return await inter.response.send_message("❌ Você não tem uma Carga de C4 no inventário!", ephemeral=True)
-            
-            inv.remove("Carga de C4")
-            db.update_value(user_db['row'], 6, ", ".join(inv) if inv else "Nenhum")
             dano = random.randint(1500, 2500)
             msg_extra = "BOOOM! Você explodiu uma C4 na cara do monstro!"
 
@@ -122,11 +145,14 @@ class WorldBoss(commands.Cog):
         self.fim_evento = 0
         self.canal_id = 1474153029690200105 # Canal principal
         self.mensagem_atual = None
+        self._spawn_agendado = False  # garante um único spawn por dia
         
         self.loop_boss_status.start()
+        self.loop_spawn_diario.start()
 
     def cog_unload(self):
         self.loop_boss_status.cancel()
+        self.loop_spawn_diario.cancel()
 
     def gerar_embed(self):
         tempo_restante = int(self.fim_evento)
@@ -164,6 +190,34 @@ class WorldBoss(commands.Cog):
             await self.mensagem_atual.edit(embed=embed, view=BossView(self))
         except:
             pass
+
+    # ── LOOP: SPAWN DIÁRIO ENTRE 13H E 18H BRT ──────────────────────────────
+    @tasks.loop(minutes=1.0)
+    async def loop_spawn_diario(self):
+        agora_brt = datetime.now(BRT)
+        hora_atual = agora_brt.hour
+
+        # Fora da janela de spawn → reseta a flag do dia para o próximo ciclo
+        if hora_atual < SPAWN_HORA_MIN or hora_atual >= SPAWN_HORA_MAX:
+            self._spawn_agendado = False
+            return
+
+        # Dentro da janela mas o boss já foi spawnado hoje (ou já está ativo)
+        if self._spawn_agendado or self.boss_ativo:
+            return
+
+        # Sorteia um minuto aleatório dentro da janela para não spawnar sempre às 13h00 em ponto
+        # A chance por minuto é distribuída ao longo dos 300 minutos da janela (13h–18h)
+        if random.random() > (1 / 300):
+            return
+
+        self._spawn_agendado = True  # trava: não spawna duas vezes no mesmo dia
+        canal = self.bot.get_channel(self.canal_id)
+        await self.iniciar_boss(canal)
+
+    @loop_spawn_diario.before_loop
+    async def before_spawn_diario(self):
+        await self.bot.wait_until_ready()
 
     # ── LOOP: A CADA 10 MINUTOS, REENVIA A MENSAGEM PARA NÃO SUMIR ──
     @tasks.loop(minutes=10.0)
@@ -226,23 +280,19 @@ class WorldBoss(commands.Cog):
             mvp_id, mvp_dmg = rank[0]
             mvp_nome = self.nomes_jogadores[mvp_id]
 
-            # Recompensa o MVP
+            # Recompensa o MVP (somente item vinculado, sem MC)
             user_mvp = db.get_user_data(mvp_id)
             if user_mvp:
-                saldo = db.parse_float(user_mvp['data'][2])
-                db.update_value(user_mvp['row'], 3, saldo + 5000.0)
                 inv = [i.strip() for i in str(user_mvp['data'][5]).split(",") if i.strip() and i.strip() != "Nenhum"]
-                inv.append("Relíquia Ancestral 🔒")
+                inv.extend(["Relíquia Ancestral 🔒", "Gaiola Misteriosa 🔒"])
                 db.update_value(user_mvp['row'], 6, ", ".join(inv))
 
-            # Recompensa os participantes
+            # Recompensa os participantes (somente item vinculado, sem MC)
             for uid, dmg in rank[1:]:
                 u_data = db.get_user_data(uid)
                 if u_data:
-                    saldo = db.parse_float(u_data['data'][2])
-                    db.update_value(u_data['row'], 3, saldo + 1000.0)
                     inv = [i.strip() for i in str(u_data['data'][5]).split(",") if i.strip() and i.strip() != "Nenhum"]
-                    inv.append("Baú do Caçador 🔒")
+                    inv.extend(["Baú do Caçador 🔒", "Caixote de Madeira 🔒"])
                     db.update_value(u_data['row'], 6, ", ".join(inv))
 
             embed = disnake.Embed(
@@ -250,9 +300,10 @@ class WorldBoss(commands.Cog):
                 description=(
                     "A selva está salva graças ao esforço conjunto de vocês!\n\n"
                     f"🥇 **MVP da Batalha:** {mvp_nome} (`{mvp_dmg} DMG`)\n"
-                    "└ *Prêmio: 5.000 MC + Relíquia Ancestral 🔒*\n\n"
+                    "└ *Prêmio: 1x Relíquia Ancestral 🔒 + 1x Gaiola Misteriosa 🔒*\n\n"
                     "🏅 **Outros Participantes:**\n"
-                    "└ *Prêmio: 1.000 MC + Baú do Caçador 🔒*"
+                    "└ *Prêmio: 1x Baú do Caçador 🔒 + 1x Caixote de Madeira 🔒*\n\n"
+                    "⚠️ Os itens são **vinculados** — não podem ser vendidos ou trocados. Use-os para dominar a selva!"
                 ),
                 color=disnake.Color.green()
             )
@@ -270,10 +321,6 @@ class WorldBoss(commands.Cog):
                 color=disnake.Color.dark_red()
             )
             await canal.send(embed=embed)
-            
-            # Punição (Remove MC do banco se quiser implementar no futuro)
-            # Para não ser TÃO cruel no começo, vamos apenas deixar o susto. 
-            # Se quiser subtrair dinheiro, precisaria iterar sobre todos os usuários do GSheet, o que pode dar limite na API.
 
 def setup(bot):
     bot.add_cog(WorldBoss(bot))
