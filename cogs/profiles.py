@@ -319,6 +319,14 @@ class Profiles(commands.Cog):
         ultimo_roubo  = db.parse_float(user["data"][6] if len(user["data"]) > 6 else None)
         ultimo_invest = db.parse_float(user["data"][7] if len(user["data"]) > 7 else None)
 
+        # Lê passivos para calcular o CD real de trabalho (redução por passivos)
+        passivos = db.get_passivos(user)
+        reducao_cd_trabalho = 0
+        for p in passivos:
+            from economy import PASSIVOS_EFEITOS
+            reducao_cd_trabalho += PASSIVOS_EFEITOS.get(p, {}).get("reducao_cd_trabalho", 0)
+        cd_trabalho_efetivo = max(0, 3600 - reducao_cd_trabalho)
+
         def _cd(ultimo, cooldown):
             if agora - ultimo >= cooldown:
                 return "✅ livre"
@@ -426,7 +434,7 @@ class Profiles(commands.Cog):
         embed.add_field(
             name="🕐 Próximos turnos",
             value=(
-                f"🔨 {_cd(ultimo_work,   3600)}\n"
+                f"🔨 {_cd(ultimo_work,   cd_trabalho_efetivo)}\n"
                 f"🥷 {_cd(ultimo_roubo,  7200)}\n"
                 f"🏛️ {_cd(ultimo_invest, 86400)}"
             ),

@@ -70,9 +70,10 @@ CATALOGO_CARGOS = {
 }
 
 CATALOGO_EQUIPAMENTOS = {
-    "item:escudo":      (1000.0, "Escudo",      "🛡️", "Bloqueia 3 roubos · limite 1/dia após quebrar"),
-    "item:pe_de_cabra": (1200.0, "Pé de Cabra", "🕵️", "Chance de roubo 65% + fura Escudos"),
-    "item:seguro":      (950.0,  "Seguro",      "📄", "Reembolsa 60% se você for roubado"),
+    "item:escudo":          (1000.0, "Escudo",              "🛡️", "Bloqueia 3 roubos · limite 1/dia após quebrar"),
+    "item:pe_de_cabra":     (1200.0, "Pé de Cabra",         "🕵️", "Chance de roubo 65% + fura Escudos"),
+    "item:seguro":          (950.0,  "Seguro",              "📄", "Reembolsa 60% se você for roubado"),
+    "item:anti_imposto":    (1500.0, "Escudo Anti-Imposto", "🏛️", "Uso único: bloqueia 1 !taxar e devolve o item ao cobrador"),
 }
 
 CATALOGO_CONSUMIVEIS = {
@@ -139,13 +140,14 @@ NOME_PATRIMONIO = {
 }
 
 NOME_ITEM = {
-    "item:escudo":      "Escudo",
-    "item:pe_de_cabra": "Pé de Cabra",
-    "item:seguro":      "Seguro",
-    "item:casca":       "Casca de Banana",
-    "item:imposto":     "Imposto do Gorila",
-    "item:troca_nick":  "Troca de Nick",
-    "item:racao":       "Ração Símia",
+    "item:escudo":          "Escudo",
+    "item:pe_de_cabra":     "Pé de Cabra",
+    "item:seguro":          "Seguro",
+    "item:casca":           "Casca de Banana",
+    "item:imposto":         "Imposto do Gorila",
+    "item:troca_nick":      "Troca de Nick",
+    "item:racao":           "Ração Símia",
+    "item:anti_imposto":    "Escudo Anti-Imposto",
 }
 
 NOME_CARGO = {
@@ -159,12 +161,13 @@ NOME_CARGO = {
 }
 
 DICA_ITEM = {
-    "item:casca":       "Use `!casca @alvo` para jogar.",
-    "item:imposto":     "Use `!taxar @alvo` para cobrar.",
-    "item:troca_nick":  "Use `!apelidar @alvo <nick>` para renomear.",
-    "item:pe_de_cabra": "Equipado automaticamente no `!roubar` — chance 65%.",
-    "item:seguro":      "Ativado automaticamente se você for roubado.",
-    "item:racao":       "Use `!alimentar` para saciar a fome do seu mascote.",
+    "item:casca":           "Use `!casca @alvo` para jogar.",
+    "item:imposto":         "Use `!taxar @alvo` para cobrar.",
+    "item:troca_nick":      "Use `!apelidar @alvo <nick>` para renomear.",
+    "item:pe_de_cabra":     "Equipado automaticamente no `!roubar` — chance 65%.",
+    "item:seguro":          "Ativado automaticamente se você for roubado.",
+    "item:racao":           "Use `!alimentar` para saciar a fome do seu mascote.",
+    "item:anti_imposto":    "Guardado no inventário — ativado automaticamente se alguém usar `!taxar` em você.",
 }
 
 SLUGS_MULTIPLOS = set(CATALOGO_CONSUMIVEIS)
@@ -347,7 +350,7 @@ def _build_categoria(author_id, saldo, cat):
 def _embed_inicio(saldo: float) -> disnake.Embed:
     embed = disnake.Embed(title="🛒 MERCADO NEGRO", description=f"💰 Seu saldo: **{formatar_moeda(saldo)} MC**\nEscolha uma categoria!", color=disnake.Color.dark_theme())
     embed.add_field(name="📈 Progressão",       value="Cargos que aumentam salário e limite de apostas", inline=False)
-    embed.add_field(name="🛡️ Equipamentos",     value="Escudo · Pé de Cabra · Seguro", inline=False)
+    embed.add_field(name="🛡️ Equipamentos",     value="Escudo · Pé de Cabra · Seguro · Escudo Anti-Imposto", inline=False)
     embed.add_field(name="😈 Sabotagem & Pets", value="Casca · Imposto · Troca de Nick · Ração Símia", inline=False)
     embed.add_field(name="🏠 Patrimônio",       value="Passivos permanentes mid/end-game · 18k–600k MC\nKitnet · Moto · Mansão · Iate · Ilha Privada e mais", inline=False)
     embed.add_field(name="✨ Cosméticos",       value="Cores, molduras e títulos", inline=False)

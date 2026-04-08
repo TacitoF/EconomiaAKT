@@ -162,6 +162,17 @@ class Items(commands.Cog):
             if not self._consumir_item(user['row'], inv_list, "Imposto do Gorila"):
                 return await ctx.send("❌ Você não tem o item **Imposto do Gorila** no inventário!")
 
+            # ── Verificar se a vítima tem Escudo Anti-Imposto ──
+            vitima_inv_str  = str(vitima_db['data'][5]) if len(vitima_db['data']) > 5 else ""
+            vitima_inv_list = [i.strip() for i in vitima_inv_str.split(',') if i.strip()]
+
+            if self._consumir_item(vitima_db['row'], vitima_inv_list, "Escudo Anti-Imposto"):
+                # Ambos os itens são consumidos: o escudo da vítima E o Imposto do Gorila do cobrador
+                return await ctx.send(
+                    f"🛡️ **BLOQUEADO!** {vitima.mention} usou um **Escudo Anti-Imposto** e destruiu o decreto!\n"
+                    f"💥 O **Imposto do Gorila** de {ctx.author.mention} foi consumido no confronto."
+                )
+
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
             db.set_imposto(vitima_db['row'], str(ctx.author.id), 5)
 

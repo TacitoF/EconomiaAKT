@@ -24,12 +24,13 @@ def formatar_moeda(valor: float) -> str:
 
 class TesouroGameView(disnake.ui.View):
     """View do Caça ao Tesouro (Grade 5x5)."""
-    def __init__(self, p1: disnake.Member, p2: disnake.Member, aposta: float, msg_game: disnake.Message):
+    def __init__(self, p1: disnake.Member, p2: disnake.Member, aposta: float, msg_game):
         super().__init__(timeout=60) # 60 segundos de inatividade cancela o jogo
         self.p1 = p1
         self.p2 = p2
         self.aposta = aposta
         self.msg_game = msg_game
+        self.ultima_acao = ""
         
         self.current_player = random.choice([p1, p2])
         self.points = {p1.id: 0, p2.id: 0}
@@ -54,10 +55,29 @@ class TesouroGameView(disnake.ui.View):
             btn.callback = self.make_callback(i, btn)
             self.add_item(btn)
 
+    def _build_embed(self, descricao: str, cor=disnake.Color.gold()) -> disnake.Embed:
+        """Constrói sempre um embed fresco para evitar problemas de cache do disnake."""
+        embed = disnake.Embed(
+            title="🗺️ CAÇA AO TESOURO",
+            description=descricao,
+            color=cor
+        )
+        embed.add_field(name=f"👤 {self.p1.display_name}", value=f"🍌 **{self.points[self.p1.id]}**", inline=True)
+        embed.add_field(name=f"👤 {self.p2.display_name}", value=f"🍌 **{self.points[self.p2.id]}**", inline=True)
+        return embed
+
+    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
+        if inter.author.id not in (self.p1.id, self.p2.id):
+            await inter.response.send_message("🐒 Você não faz parte desta expedição!", ephemeral=True)
+            return False
+        return True
+
     def make_callback(self, index: int, button: disnake.ui.Button):
         async def callback(inter: disnake.MessageInteraction):
             if inter.author.id != self.current_player.id:
-                return await inter.response.send_message("🐒 Calma aí, não é a sua vez de cavar!", ephemeral=True)
+                return await inter.response.send_message(
+                    f"🐒 Calma aí! É a vez de **{self.current_player.display_name}** cavar!", ephemeral=True
+                )
 
             item = self.board[index]
             button.disabled = True
@@ -84,16 +104,14 @@ class TesouroGameView(disnake.ui.View):
                 acao_msg = f"🟫 **{inter.author.display_name}** só encontrou terra. *(Passa a vez)*"
                 self.current_player = self.p2 if self.current_player == self.p1 else self.p1
 
+            self.ultima_acao = acao_msg
+
             if self.bananas_found >= 10:
                 self.finalizado = True
                 return await self.finalizar_jogo(inter, acao_msg)
 
-            embed = self.msg_game.embeds[0]
-            embed.description = f"{acao_msg}\n\nÉ a vez de **{self.current_player.mention}** cavar!"
-            embed.set_field_at(0, name=f"👤 {self.p1.display_name}", value=f"🍌 **{self.points[self.p1.id]}**", inline=True)
-            embed.set_field_at(1, name=f"👤 {self.p2.display_name}", value=f"🍌 **{self.points[self.p2.id]}**", inline=True)
-
-            await inter.response.edit_message(embed=embed, view=self)
+            desc = f"{acao_msg}\n\nÉ a vez de **{self.current_player.mention}** cavar!"
+            await inter.response.edit_message(embed=self._build_embed(desc), view=self)
 
         return callback
 
@@ -147,18 +165,21 @@ class TesouroGameView(disnake.ui.View):
 
         for item in self.children:
             item.disabled = True
-            
+
+        if self.msg_game is None:
+            return
+
         try:
             for p_id in [self.p1.id, self.p2.id]:
                 u_db = db.get_user_data(str(p_id))
                 if u_db:
                     saldo = db.parse_float(u_db['data'][2])
                     db.update_value(u_db['row'], 3, round(saldo + self.aposta, 2))
-            
-            embed = self.msg_game.embeds[0]
-            embed.title = "⏱️ JOGO CANCELADO"
-            embed.description = f"**{self.current_player.display_name}** demorou muito a jogar! O campo minado fechou e as apostas foram devolvidas."
-            embed.color = disnake.Color.dark_grey()
+
+            desc = f"**{self.current_player.display_name}** demorou muito a jogar! O campo minado fechou e as apostas foram devolvidas."
+            embed = disnake.Embed(title="⏱️ JOGO CANCELADO", description=desc, color=disnake.Color.dark_grey())
+            embed.add_field(name=f"👤 {self.p1.display_name}", value=f"🍌 **{self.points[self.p1.id]}**", inline=True)
+            embed.add_field(name=f"👤 {self.p2.display_name}", value=f"🍌 **{self.points[self.p2.id]}**", inline=True)
             await self.msg_game.edit(embed=embed, view=self)
         except Exception as e:
             print(f"Erro no timeout do Tesouro: {e}")
@@ -204,24 +225,27 @@ class TesouroInviteView(disnake.ui.View):
             await inter.response.edit_message(content=f"🔥 Desafio aceito! O pote é de **{formatar_moeda(self.aposta * 2)} MC**.", view=self)
             self.stop()
 
-            # Inicia o jogo
+            # Inicia o jogo — cria a view ANTES de enviar para ter o current_player definido
+            view_game = TesouroGameView(self.p1, self.p2, self.aposta, None)
+
             embed_game = disnake.Embed(
                 title="🗺️ CAÇA AO TESOURO",
                 description=(
                     f"Existem **10 Bananas** (🍌) e **3 Cobras** (🐍) escondidas.\n"
                     f"Quem achar mais bananas leva o pote!\n\n"
-                    f"O primeiro a cavar é: **[NOME]**"
+                    f"O primeiro a cavar é: **{view_game.current_player.mention}**"
                 ),
                 color=disnake.Color.gold()
             )
             embed_game.add_field(name=f"👤 {self.p1.display_name}", value="🍌 **0**", inline=True)
             embed_game.add_field(name=f"👤 {self.p2.display_name}", value="🍌 **0**", inline=True)
 
-            msg_game = await self.ctx.send(content=f"{self.p1.mention} {self.p2.mention}", embed=embed_game)
-            view_game = TesouroGameView(self.p1, self.p2, self.aposta, msg_game)
-            
-            embed_game.description = embed_game.description.replace("[NOME]", view_game.current_player.mention)
-            await msg_game.edit(embed=embed_game, view=view_game)
+            msg_game = await self.ctx.send(
+                content=f"{self.p1.mention} {self.p2.mention}",
+                embed=embed_game,
+                view=view_game
+            )
+            view_game.msg_game = msg_game
 
         except Exception as e:
             print(f"Erro no aceite do Tesouro: {e}")

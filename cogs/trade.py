@@ -508,8 +508,11 @@ class Trade(commands.Cog):
                 item_encontrado = None
                 for inv_item in inv_list:
                     if item.lower() in inv_item.lower():
-                        item_encontrado = inv_item
-                        break
+                        if "🔒" not in inv_item:
+                            item_encontrado = inv_item
+                            break
+                        elif item_encontrado is None:
+                            item_encontrado = inv_item
 
                 if not item_encontrado:
                     itens_fmt = "\n".join(f"• {i}" for i in _inv_transferivel(inv_list)) or "*Inventário vazio*"
@@ -594,8 +597,11 @@ class Trade(commands.Cog):
             item_encontrado = None
             for inv_item in inv_list:
                 if item.lower() in inv_item.lower():
-                    item_encontrado = inv_item
-                    break
+                    if "🔒" not in inv_item:
+                        item_encontrado = inv_item
+                        break
+                    elif item_encontrado is None:
+                        item_encontrado = inv_item
 
             if not item_encontrado:
                 itens_fmt = "\n".join(f"• {i}" for i in inv_list) if inv_list else "*Inventário vazio*"

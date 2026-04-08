@@ -33,6 +33,19 @@ PASSIVOS_EFEITOS = {
     "Manto das Sombras":    {"chance_roubo": +12},
     "Talismã da Fortuna":   {"cripto_piso": -0.10},         # reduz prejuízo máximo
 
+    # ── Tier Patrimônio — Raro ──
+    "Bicicleta Elétrica":   {"reducao_cd_trabalho": 900},   # -15min de CD no !trabalhar
+    "Trailer":              {"limite_roubavel": -0.05},      # -5% no máximo que podem te roubar
+    "Moto":                 {"chance_roubo": +6},            # +6% chance de sucesso no !roubar
+    "Kitnet":               {"bonus_trabalho": +0.08},       # +8% ganho no !trabalhar
+
+    # ── Tier Patrimônio — Lendário ──
+    "Carro Esportivo":      {"chance_roubo": +10, "multa_reducao": 0.15},  # +10% roubo, -15% multa se falhar
+    "Mansão":               {"bonus_trabalho": +0.20},       # +20% ganho no !trabalhar
+    "Iate":                 {"reducao_cd_trabalho": 1800},   # -30min de CD no !trabalhar
+    "Helicóptero":          {"chance_defesa": -20},          # -20% chance do ladrão ter sucesso contra você
+    "Ilha Privada":         {"bonus_trabalho": +0.15, "chance_defesa": -10},  # +15% trabalho, -10% ser roubado
+
     # ── Prêmio de Temporada (concedido pelo !resetar_economia) ──
     "Troféu do Campeão":    {"bonus_trabalho": +0.20},      # +20% no !trabalhar por 7 dias
 }
@@ -412,6 +425,7 @@ class Economy(commands.Cog):
             fx_ladrao       = get_efeitos_passivos(passivos_ladrao)
             chance_sucesso += fx_ladrao.get("chance_roubo", 0)
             pct_max_bonus   = fx_ladrao.get("pct_max_roubo", 0.0)
+            multa_reducao   = fx_ladrao.get("multa_reducao", 0.0)   # Carro Esportivo: -15% na multa
             devolve_pct     = 0.0  # usado na vitima
 
             # ── PASSIVOS da vítima ──
@@ -642,8 +656,8 @@ class Economy(commands.Cog):
                     # MULTA NORMAL
                     pct_multa  = random.uniform(0.05, 0.10)
                     multa_base = max(min(round(saldo_ladrao * pct_multa, 2), 5000.0), 30.0)
-                    # Passivo Cão de Guarda da vítima aumenta a multa
-                    multa = round(multa_base * multa_multiplicador * (1 + multa_bonus_alvo), 2)
+                    # Passivo Cão de Guarda da vítima aumenta a multa; Carro Esportivo reduz
+                    multa = round(multa_base * multa_multiplicador * (1 + multa_bonus_alvo) * max(0.0, 1 - multa_reducao), 2)
 
                     db.update_value(ladrao_data['row'], 3, round(saldo_ladrao - multa, 2))
                     db.update_value(alvo_data['row'],   3, round(saldo_alvo + multa, 2))
@@ -653,6 +667,8 @@ class Economy(commands.Cog):
                     cao_guarda_msg = ""
                     if multa_bonus_alvo > 0:
                         cao_guarda_msg = f"🔰 **Cão de Guarda** de {vitima.display_name} aumentou a multa em +{int(multa_bonus_alvo*100)}%!"
+                    if multa_reducao > 0:
+                        cao_guarda_msg += f"\n🏎️ **Carro Esportivo** reduziu a sua multa em -{int(multa_reducao*100)}%!"
 
                     emb_f = disnake.Embed(
                         title="👮 PRESO! O roubo falhou.",

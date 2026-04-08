@@ -22,7 +22,7 @@ def formatar_moeda(valor: float) -> str:
 
 
 class JokenpoGameView(disnake.ui.View):
-    def __init__(self, p1: disnake.Member, p2: disnake.Member, aposta: float, msg_game: disnake.Message):
+    def __init__(self, p1: disnake.Member, p2: disnake.Member, aposta: float, msg_game):
         super().__init__(timeout=45)
         self.p1 = p1
         self.p2 = p2
@@ -31,10 +31,14 @@ class JokenpoGameView(disnake.ui.View):
         self.choices = {p1.id: None, p2.id: None}
         self.finalizado = False
 
-    async def registrar_escolha(self, inter: disnake.MessageInteraction, escolha: str, emoji: str):
+    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
+        # Apenas os dois jogadores podem interagir; outros recebem mensagem ephemeral
         if inter.author.id not in self.choices:
-            return await inter.response.send_message("🐒 Você não faz parte deste duelo!", ephemeral=True)
-            
+            await inter.response.send_message("🐒 Você não faz parte deste duelo!", ephemeral=True)
+            return False
+        return True
+
+    async def registrar_escolha(self, inter: disnake.MessageInteraction, escolha: str, emoji: str):
         if self.choices[inter.author.id] is not None:
             return await inter.response.send_message("⚠️ Você já fez sua escolha! Aguarde o adversário.", ephemeral=True)
 
@@ -64,7 +68,10 @@ class JokenpoGameView(disnake.ui.View):
 
         for item in self.children:
             item.disabled = True
-            
+
+        if self.msg_game is None:
+            return
+
         try:
             for p_id in [self.p1.id, self.p2.id]:
                 u_db = db.get_user_data(str(p_id))
@@ -210,9 +217,13 @@ class JokenpoInviteView(disnake.ui.View):
                 ),
                 color=disnake.Color.orange()
             )
-            msg_game = await self.ctx.send(content=f"{self.p1.mention} {self.p2.mention}", embed=embed_game)
-            view_game = JokenpoGameView(self.p1, self.p2, self.aposta, msg_game)
-            await msg_game.edit(view=view_game)
+            view_game = JokenpoGameView(self.p1, self.p2, self.aposta, None)
+            msg_game = await self.ctx.send(
+                content=f"{self.p1.mention} {self.p2.mention}",
+                embed=embed_game,
+                view=view_game
+            )
+            view_game.msg_game = msg_game
 
         except Exception as e:
             print(f"Erro no aceite do Jokenpo: {e}")

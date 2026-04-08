@@ -98,9 +98,11 @@ class Lootbox(commands.Cog):
         elif chance <= 40:
             return {"tipo": "item", "nome": "Carga de C4",       "emoji": "🧨"}
         elif chance <= 55:
-            return {"tipo": "item", "nome": "Troca de Nick",     "emoji": "🪄"}
+            return {"tipo": "item", "nome": "Troca de Nick",       "emoji": "🪄"}
+        elif chance <= 60:
+            return {"tipo": "item", "nome": "Escudo Anti-Imposto", "emoji": "🏛️"}
         elif chance <= 65:
-            return {"tipo": "item", "nome": "Seguro",            "emoji": "📄"}
+            return {"tipo": "item", "nome": "Seguro",              "emoji": "📄"}
         elif chance <= 85:
             return _sortear_cosmetico(COSM_EPICOS)
         elif chance <= 100:
@@ -182,7 +184,8 @@ class Lootbox(commands.Cog):
                 "`20%` 🦍 Imposto do Gorila\n"
                 "`20%` 🧨 Carga de C4\n"
                 "`15%` 🪄 Troca de Nick\n"
-                "`10%` 📄 Seguro\n"
+                "`05%` 🏛️ Escudo Anti-Imposto\n"
+                "`05%` 📄 Seguro\n"
                 "`20%` 🟣 Cosmético Épico\n"
                 "`15%` 🌟 Cosmético Lendário"
             ),
