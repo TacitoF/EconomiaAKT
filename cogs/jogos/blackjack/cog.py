@@ -126,14 +126,15 @@ class BlackjackCog(commands.Cog):
                 if view._get_pontos_mao(p_id, 1) == 21:
                     view.players_data[p_id]["status"] = "parou"
 
-            await view.atualizar_embed()
-
             # Avança índice para o primeiro jogador que ainda está jogando
             while (
                 view.current_player_idx < len(view.player_ids) and
                 view.players_data[view.player_ids[view.current_player_idx]]["status"] == "parou"
             ):
                 view.current_player_idx += 1
+
+            # Atualiza embed — o fluxo continua mesmo se falhar (ex: erro 503)
+            await view.atualizar_embed()
 
             if view.current_player_idx >= len(view.player_ids):
                 await view._proximo_turno()

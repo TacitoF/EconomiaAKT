@@ -231,14 +231,24 @@ class BlackjackView(disnake.ui.View):
 
         embed.set_footer(text=footer)
 
-        try:
-            if self.message:
-                await self.message.edit(
-                    embed=embed,
-                    view=None if (self.terminado or self.dealer_jogando) else self
-                )
-        except Exception as e:
-            print(f"Erro ao atualizar embed do Blackjack: {e}")
+        if not self.message:
+            return
+
+        view_arg = None if (self.terminado or self.dealer_jogando) else self
+        for tentativa in range(3):
+            try:
+                await self.message.edit(embed=embed, view=view_arg)
+                return  # sucesso
+            except disnake.errors.NotFound:
+                # Mensagem deletada — não tem o que fazer
+                return
+            except Exception as e:
+                print(f"Erro ao atualizar embed do Blackjack (tentativa {tentativa + 1}/3): {e}")
+                if tentativa < 2:
+                    await asyncio.sleep(2)
+
+        # Se chegou aqui, todas as tentativas falharam
+        print("❌ Falha definitiva ao atualizar embed do Blackjack após 3 tentativas.")
 
     def _montar_resultado_jogador(self, p: dict, p_id: int, p_p: int, d_p: int) -> str:
         def label_mao(pm, aposta_mao, status):
