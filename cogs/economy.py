@@ -472,6 +472,8 @@ class Economy(commands.Cog):
                     fome_gasta_vitima = 10
                     msg_mascotes += f"🐉 **Dragão-de-Komodo** de {vitima.display_name} defendeu a área (-25% chance)\n"
 
+                # Consome fome aqui — antes do escudo — garantindo desconto
+                # independente do resultado (bloqueio, sucesso ou falha)
                 if fome_gasta_vitima > 0:
                     db.set_mascote(alvo_data['row'], tipo_pet_vitima, max(0, fome_vitima - fome_gasta_vitima))
 
@@ -491,6 +493,8 @@ class Economy(commands.Cog):
                 elif tipo_pet_ladrao == "dragao_komodo":
                     chance_sucesso += 25; msg_mascotes += f"🐉 **Dragão-de-Komodo** imobilizou o alvo (+25% chance)\n"; buff_ativado = True
 
+                # Consome fome aqui — antes do escudo — garantindo desconto
+                # independente do resultado (bloqueio, sucesso ou falha)
                 if buff_ativado:
                     nova_fome_l = max(0, fome_ladrao - 15)
                     db.set_mascote(ladrao_data['row'], tipo_pet_ladrao, nova_fome_l)
