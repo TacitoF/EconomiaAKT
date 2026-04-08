@@ -323,7 +323,7 @@ class Profiles(commands.Cog):
         passivos = db.get_passivos(user)
         reducao_cd_trabalho = 0
         for p in passivos:
-            from economy import PASSIVOS_EFEITOS
+            from cogs.economy import PASSIVOS_EFEITOS
             reducao_cd_trabalho += PASSIVOS_EFEITOS.get(p, {}).get("reducao_cd_trabalho", 0)
         cd_trabalho_efetivo = max(0, 3600 - reducao_cd_trabalho)
 
