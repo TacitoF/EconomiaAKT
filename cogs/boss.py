@@ -238,7 +238,7 @@ class WorldBoss(commands.Cog):
                 pass
             
             embed = self.gerar_embed()
-            self.mensagem_atual = await canal.send(content="@everyone ⚠️ **LEMBRETE: O GORILA AINDA ESTÁ VIVO!**", embed=embed, view=BossView(self))
+            self.mensagem_atual = await canal.send(content="@here ⚠️ **LEMBRETE: O GORILA AINDA ESTÁ VIVO!**", embed=embed, view=BossView(self))
 
     @commands.command()
     @commands.has_permissions(administrator=True)
@@ -260,7 +260,7 @@ class WorldBoss(commands.Cog):
         canal_envio = canal or self.bot.get_channel(self.canal_id)
         if canal_envio:
             embed = self.gerar_embed()
-            self.mensagem_atual = await canal_envio.send(content="@everyone", embed=embed, view=BossView(self))
+            self.mensagem_atual = await canal_envio.send(content="@here", embed=embed, view=BossView(self))
 
     async def encerrar_boss(self, vitoria: bool, canal):
         self.boss_ativo = False

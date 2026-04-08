@@ -301,7 +301,7 @@ class ResetEconomia(commands.Cog):
             )
 
         embed_reset.set_footer(text="Que a nova temporada seja épica. 🦍")
-        await canal_anuncio.send(content="@everyone", embed=embed_reset)
+        await canal_anuncio.send(content="@here", embed=embed_reset)
 
         # Feedback privado ao owner
         aviso = f"✅ Reset concluído! {len(todos)} usuário(s) zerado(s)."

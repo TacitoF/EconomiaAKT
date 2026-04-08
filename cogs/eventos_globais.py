@@ -213,7 +213,7 @@ class EventosGlobais(commands.Cog):
                 ),
                 color=disnake.Color.dark_red()
             )
-            await canal.send(content="@everyone", embed=embed)
+            await canal.send(content="@here", embed=embed)
 
         # Espera 30 minutos sem travar o bot
         await asyncio.sleep(1800)

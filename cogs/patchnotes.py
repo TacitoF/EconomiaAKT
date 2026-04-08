@@ -95,7 +95,7 @@ class Patchnotes(commands.Cog):
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         try:
-            await canal_patchnotes.send(content="@everyone", embed=embed)
+            await canal_patchnotes.send(content="@here", embed=embed)
             await ctx.author.send("✅ Patchnotes publicado com sucesso!")
         except Exception as e:
             await ctx.author.send(f"❌ Erro ao enviar as notas de atualização: {e}")
