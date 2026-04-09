@@ -78,101 +78,156 @@ class Missoes(commands.Cog):
             }
             self._salvar_dados()
 
-    # ── INTERCEPTADOR DE ERROS ──
+    # ── INTERCEPTADOR: marca falha via ctx.send/reply e via on_command_error ──
     @commands.Cog.listener()
     async def on_command(self, ctx):
-        if ctx.author.bot: return
-        
-        ctx.comando_falhou_missao = False
-        original_send = ctx.send
+        if ctx.author.bot:
+            return
+
+        # Flag começa como None (neutra). Só muda para True (sucesso) ou False (falha).
+        ctx._missao_status = None
+
+        original_send  = ctx.send
         original_reply = ctx.reply
-        
-        def _verificar_falha(*args, **kwargs):
-            texto = ""
-            if args: texto += str(args[0])
-            if kwargs.get('content'): texto += str(kwargs.get('content'))
-            if kwargs.get('embed'):
-                texto += str(kwargs.get('embed').title) + str(kwargs.get('embed').description)
-            
-            if any(emoji in texto for emoji in ["❌", "⚠️", "🚫", "😬"]):
-                ctx.comando_falhou_missao = True
+
+        EMOJIS_FALHA = ("❌", "⚠️", "🚫", "😬")
+
+        def _conteudo_tem_falha(*args, **kwargs) -> bool:
+            partes = []
+            if args:
+                partes.append(str(args[0]))
+            if kwargs.get("content"):
+                partes.append(str(kwargs["content"]))
+            embed = kwargs.get("embed")
+            if embed:
+                partes.append(str(getattr(embed, "title", "") or ""))
+                partes.append(str(getattr(embed, "description", "") or ""))
+            texto = " ".join(partes)
+            return any(e in texto for e in EMOJIS_FALHA)
 
         async def interceptor_send(*args, **kwargs):
-            _verificar_falha(*args, **kwargs)
+            if _conteudo_tem_falha(*args, **kwargs):
+                ctx._missao_status = False   # falha confirmada
             return await original_send(*args, **kwargs)
 
         async def interceptor_reply(*args, **kwargs):
-            _verificar_falha(*args, **kwargs)
+            if _conteudo_tem_falha(*args, **kwargs):
+                ctx._missao_status = False
             return await original_reply(*args, **kwargs)
 
-        ctx.send = interceptor_send
+        ctx.send  = interceptor_send
         ctx.reply = interceptor_reply
 
-    # ── RASTREADOR DE PROGRESSO ──
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        """Qualquer erro de comando (args errados, sem permissão, cooldown…) = falha."""
+        if ctx.author.bot:
+            return
+        ctx._missao_status = False
+
+    # ── RASTREADOR DE PROGRESSO ──────────────────────────────────────────────
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
-        if ctx.author.bot: return
-        
-        if getattr(ctx, 'comando_falhou_missao', False):
+        if ctx.author.bot:
             return
-        
-        user_id = str(ctx.author.id)
+
+        # Aguarda um tick para garantir que todos os ctx.send já foram chamados
+        # (inclusive os de erro que chegam via return await ctx.send(...))
+        import asyncio
+        await asyncio.sleep(0)
+
+        # Se qualquer send/reply enviou emoji de falha, não conta
+        if ctx._missao_status is False:
+            return
+
+        user_id   = str(ctx.author.id)
         cmd_usado = ctx.command.name
 
         self._gerar_missoes_usuario(user_id)
         usuario_dados = self.dados[user_id]
-        
+
         if usuario_dados.get("resgatado", False):
             return
 
         houve_progresso = False
         user_db = db.get_user_data(user_id)
-        
+
         for chave_missao, info in usuario_dados["missoes"].items():
-            if info["concluida"]: continue
-            
+            if info["concluida"]:
+                continue
+
             comandos_validos = TIPOS_MISSOES.get(chave_missao, {}).get("comandos", [])
-            
-            if cmd_usado in comandos_validos:
-                
-                # ── VALIDAÇÕES ANTI-ESPERTINHOS (CORRIGIDAS) ──
-                
-                # Extrai o alvo real do comando a partir dos argumentos (kwargs ou args)
-                alvo = None
-                for arg in list(ctx.args) + list(ctx.kwargs.values()):
-                    if isinstance(arg, (disnake.Member, disnake.User)):
-                        alvo = arg
-                        break
+            if cmd_usado not in comandos_validos:
+                continue
 
-                if chave_missao == "cuidador":
-                    if not user_db: continue
-                    tipo, fome = db.get_mascote(user_db)
-                    # Se não tem pet ou ele já está com fome 100, não conta (não gastou ração)
-                    if not tipo or fome >= 100: 
-                        continue 
+            # ── Extrai alvo (Member/User) dos argumentos do comando ──
+            alvo = None
+            for arg in list(ctx.args) + list(ctx.kwargs.values()):
+                if isinstance(arg, (disnake.Member, disnake.User)):
+                    alvo = arg
+                    break
 
-                if chave_missao == "cacador":
-                    # Se não houver um alvo nos argumentos, significa que a pessoa só abriu o mural
-                    if not alvo:
-                        continue
-                        
-                if chave_missao in ["sabotador", "generoso", "comerciante", "desafiante"]:
-                    if alvo:
-                        # Se tentou sabotar/pagar a si mesmo ou a um bot
-                        if alvo.bot or alvo.id == ctx.author.id:
-                            continue
-                # ─────────────────────────────────────────────
+            # ── Validações específicas por missão ─────────────────────────────
 
-                info["atual"] += 1
-                houve_progresso = True
-                
-                if info["atual"] >= info["meta"]:
-                    info["atual"] = info["meta"]
-                    info["concluida"] = True
-                    try:
-                        await ctx.send(f"✅ **{ctx.author.mention}, você concluiu uma Missão Diária!** Use `!missoes` para checar.", delete_after=10)
-                    except:
-                        pass
+            # cuidador: só conta se o pet existia E a fome estava abaixo de 100
+            # (ou seja, a ração foi de fato consumida)
+            if chave_missao == "cuidador":
+                if not user_db:
+                    continue
+                tipo_pet, fome_pet = db.get_mascote(user_db)
+                if not tipo_pet or fome_pet >= 100:
+                    continue
+
+            # cacador: só conta se passou um @alvo (não apenas abriu o mural)
+            if chave_missao == "cacador":
+                if not alvo:
+                    continue
+
+            # sabotador/generoso/comerciante/desafiante:
+            # alvo não pode ser o próprio usuário nem um bot
+            if chave_missao in ("sabotador", "generoso", "comerciante", "desafiante"):
+                if alvo and (alvo.bot or alvo.id == ctx.author.id):
+                    continue
+
+            # abridor: exige pelo menos 1 argumento (nome da caixa/gaiola)
+            if chave_missao == "abridor":
+                tem_arg = bool(ctx.args[1:]) or bool(ctx.kwargs)
+                if not tem_arg:
+                    continue
+
+            # apostador: exige pelo menos 1 argumento (valor da aposta)
+            if chave_missao == "apostador":
+                tem_arg = bool(ctx.args[1:]) or bool(ctx.kwargs)
+                if not tem_arg:
+                    continue
+
+            # investidor: exige tipo + valor (pelo menos 2 args além do self/ctx)
+            if chave_missao == "investidor":
+                args_reais = [a for a in ctx.args if not isinstance(a, commands.Context)]
+                if len(args_reais) < 2:
+                    continue
+
+            # ditador: exige alvo em voz + tipo + tempo — se não há alvo, era help
+            if chave_missao == "ditador":
+                if not alvo:
+                    continue
+
+            # ─────────────────────────────────────────────────────────────────
+
+            info["atual"] += 1
+            houve_progresso = True
+
+            if info["atual"] >= info["meta"]:
+                info["atual"] = info["meta"]
+                info["concluida"] = True
+                try:
+                    await ctx.send(
+                        f"✅ **{ctx.author.mention}, você concluiu uma Missão Diária!** "
+                        f"Use `!missoes` para checar.",
+                        delete_after=10
+                    )
+                except Exception:
+                    pass
 
         if houve_progresso:
             self._salvar_dados()
