@@ -1,11 +1,17 @@
 {
-    "757752617722970243": {
-        "data": "2026-03-30",
+    "1466264262761648352": {
+        "data": "2026-04-09",
         "missoes": {
-            "roleta": {
+            "trabalhador": {
+                "atual": 0,
+                "meta": 4,
+                "desc": "🔨 Trabalhe duro na selva (`!trabalhar`)",
+                "concluida": false
+            },
+            "generoso": {
                 "atual": 0,
                 "meta": 2,
-                "desc": "🎡 Faça apostas na Roleta (`!roleta`)",
+                "desc": "💸 Transfira dinheiro a alguém (`!pagar`)",
                 "concluida": false
             },
             "ditador": {
@@ -13,12 +19,30 @@
                 "meta": 1,
                 "desc": "🔇 Aplique um castigo de voz (`!castigo`, `!desconectar`)",
                 "concluida": false
+            }
+        },
+        "resgatado": false
+    },
+    "757752617722970243": {
+        "data": "2026-04-09",
+        "missoes": {
+            "cacador": {
+                "atual": 0,
+                "meta": 1,
+                "desc": "🎯 Coloque uma recompensa num alvo (`!recompensa`)",
+                "concluida": false
             },
-            "esportista": {
+            "blackjack": {
                 "atual": 0,
                 "meta": 2,
-                "desc": "⚽ Use a casa de apostas esportivas (`!futebol`)",
+                "desc": "🃏 Sente-se à mesa de Blackjack (`!21`)",
                 "concluida": false
+            },
+            "cuidador": {
+                "atual": 1,
+                "meta": 1,
+                "desc": "🍗 Alimente seu mascote (`!alimentar`)",
+                "concluida": true
             }
         },
         "resgatado": false

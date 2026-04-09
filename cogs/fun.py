@@ -54,6 +54,7 @@ class Fun(commands.Cog):
                     await vitima.edit(mute=True, deafen=True, reason=f"Castigo de {ctx.author.name}")
                     msg = f"🤐 **CASTIGO TOTAL!** {vitima.mention} ficou mudo e surdo por {tempo} minuto(s)!"
 
+                ctx._missao_ok = True  # missão: aplicar castigo com sucesso
                 await ctx.send(f"💸 {ctx.author.mention} pagou **{custo:.2f} MC** e... {msg}")
                 await asyncio.sleep(tempo * 60)
 
@@ -96,6 +97,7 @@ class Fun(commands.Cog):
             db.update_value(user['row'], 3, round(saldo - custo, 2))
             try:
                 await vitima.move_to(None, reason=f"Expulso por {ctx.author.name}")
+                ctx._missao_ok = True  # missão: desconectar alguém da call
                 await ctx.send(f"👟 {ctx.author.mention} pagou **{custo:.2f} MC** e expulsou {vitima.mention} da call!")
             except disnake.Forbidden:
                 db.update_value(user['row'], 3, round(saldo, 2))

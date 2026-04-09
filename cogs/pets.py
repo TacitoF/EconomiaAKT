@@ -182,6 +182,9 @@ class Pets(commands.Cog):
             nova_fome = min(fome + 50, 100)
             db.set_mascote(user['row'], tipo, nova_fome)
 
+            # Flag lida pelo sistema de missões para confirmar sucesso real
+            ctx._alimentou_pet = True
+
             info = INFO_MASCOTES.get(tipo, {"imagem": "🐾"})
             await ctx.send(f"🍗 {ctx.author.mention} deu Ração Símia para o mascote {info['imagem']}!\nFome restaurada: **{fome}% ➔ {nova_fome}%**.")
 

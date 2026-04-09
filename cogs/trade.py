@@ -547,6 +547,8 @@ class Trade(commands.Cog):
                     "preco":         preco,
                 }
 
+                ctx._missao_ok = True # FLAG DE MISSÃO
+
                 # Embed anti-scam: comprador vê item e preço claramente em campos separados
                 embed = disnake.Embed(
                     title="🏪 PROPOSTA DE VENDA",
@@ -626,6 +628,8 @@ class Trade(commands.Cog):
 
             _, preco_base = ITENS_REEMBOLSAVEIS[item_encontrado]
             valor_reembolso = round(preco_base * TAXA_REEMBOLSO, 2)
+
+            ctx._missao_ok = True # FLAG DE MISSÃO
 
             embed = disnake.Embed(
                 title="♻️ VENDER AO SISTEMA?",

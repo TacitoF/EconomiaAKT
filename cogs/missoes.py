@@ -75,19 +75,27 @@ TIPOS_MISSOES = {
         "meta": 1,
         "desc": "🍗 Alimente seu mascote (`!alimentar`)",
         "comandos": ["alimentar"],
-        "modo": "interceptar"
+        # !alimentar: o resultado é texto puro via ctx.send, mas o on_command listener
+        # configura o interceptador DEPOIS do cog_before_invoke. Como o comando não tem
+        # args e o resultado depende de estado interno (fome, ração), é mais confiável
+        # verificar apenas que o comando completou sem erro + mascote existe.
+        "modo": "args_validos"
     },
     "abridor": {
         "meta": 2,
         "desc": "📦 Abra caixas ou gaiolas do inventário (`!abrir`)",
         "comandos": ["abrir_caixa"],
-        "modo": "interceptar"
+        "modo": "args_validos"  # resultado final via embed editado pela lootbox
     },
     "comerciante": {
         "meta": 1,
         "desc": "🛒 Coloque um item à venda (`!vender`)",
-        "comandos": ["vender"],
-        "modo": "interceptar"
+        "comandos": ["vender", "reembolso"],
+        # !vender ao sistema: mostra embed de confirmação → resultado via inter.response.edit_message
+        # !vender @usuario: envia proposta via ctx.send (detectável), mas o aceite é via View
+        # !reembolso: mesma mecânica de confirmação via View
+        # Ambos os caminhos usam Views, por isso args_validos é mais confiável.
+        "modo": "args_validos"
     },
     "ditador": {
         "meta": 1,
@@ -184,7 +192,7 @@ class Missoes(commands.Cog):
             ctx._missao_status = "args_validos"
             return
 
-        ctx._missao_status   = False  # padrão: falha
+        ctx._missao_status   = None  # None = ainda não decidido; True = sucesso; False = falha travada
         ctx._missao_impostor = False  # flag especial para !impostor
 
         original_send  = ctx.send
@@ -386,18 +394,28 @@ class Missoes(commands.Cog):
                 if not alvo or alvo.bot or alvo.id == ctx.author.id:
                     continue
 
-            # cuidador: verifica que o mascote existe
+            # cuidador: só conta se a ração foi realmente consumida (flag setada em pets.py)
             if chave_missao == "cuidador":
-                if not user_db:
-                    continue
-                tipo_pet, _ = db.get_mascote(user_db)
-                if not tipo_pet:
+                if not getattr(ctx, "_alimentou_pet", False):
                     continue
 
             # abridor: exige nome da caixa como argumento
             if chave_missao == "abridor":
                 tem_nome_caixa = bool(ctx.kwargs.get("nome_caixa")) or bool(ctx.args[1:])
                 if not tem_nome_caixa:
+                    continue
+
+            # comerciante: !vender e !reembolso devem ter pelo menos 1 argumento real
+            # (o nome do item). Chamadas sem args retornam ⚠️ tutorial — já bloqueadas
+            # pelo on_command_error ou pelo interceptador em modo interceptar.
+            # Aqui validamos para o modo args_validos.
+            if chave_missao == "comerciante":
+                tem_args = (
+                    bool(ctx.kwargs.get("args", "").strip())   # !vender usa `*, args: str`
+                    or bool(ctx.kwargs.get("item", ""))         # !reembolso usa `*, item: str`
+                    or bool([a for a in ctx.args if not isinstance(a, (commands.Context, disnake.Member, disnake.User))])
+                )
+                if not tem_args:
                     continue
 
             # ditador: exige @alvo real (não bot, não si mesmo)
