@@ -103,100 +103,140 @@ class Missoes(commands.Cog):
 
     # ── INTERCEPTADOR DE RESULTADO ───────────────────────────────────────────
     # Lógica opt-in: padrão = False (falha).
-    # Só muda para True se o bot responder com sinal EXPLÍCITO de sucesso.
-    # Uma vez marcado False (por emoji de erro), jamais volta a True.
+    # Só muda para True se o bot responder com título/texto EXATO de sucesso.
+    #
+    # REGRAS DE DETECÇÃO:
+    #   FALHA  → verifica apenas content (texto puro) e title do embed.
+    #            NÃO verifica fields — eles podem conter ⚠️/❌ informativos
+    #            dentro de embeds de sucesso (ex: bounty, boss, lootbox).
+    #   SUCESSO → verifica títulos EXATOS dos embeds de cada comando,
+    #             ou strings únicas de textos puros de sucesso.
+    #             Para !impostor: o sucesso é detectado via flag ctx._missao_impostor
+    #             definida antes do webhook.send (já que o webhook não passa pelo interceptor).
     @commands.Cog.listener()
     async def on_command(self, ctx):
         if ctx.author.bot:
             return
 
-        # Padrão: falha. Precisa de sinal positivo para virar True.
-        ctx._missao_status = False
+        ctx._missao_status   = False  # padrão: falha
+        ctx._missao_impostor = False  # flag especial para !impostor
 
         original_send  = ctx.send
         original_reply = ctx.reply
 
-        # Emojis/strings que indicam FALHA — têm prioridade absoluta
-        SINAIS_FALHA = ("❌", "⚠️", "🚫", "😬")
+        # ── Sinais de FALHA: apenas no content (texto puro) ou no TÍTULO do embed ──
+        # Não verificamos fields — eles podem ter ⚠️/❌ em contextos informativos.
+        SINAIS_FALHA_CONTENT = ("❌", "⚠️", "🚫", "😬", "⏳")
+        SINAIS_FALHA_TITLE   = ("❌", "⚠️", "🚫")
 
-        # Emojis/strings que indicam SUCESSO claro do comando
-        # Cobrindo todos os comandos rastreados pelas missões:
-        #   trabalhar → embed com "💰 Ganho" / "Saldo atual"
-        #   roubar    → "🥷 SUCESSO" ou "👮 PRESO" ou "💀 SAQUE" ou "🛡️ Ataque bloqueado"
-        #               (falha no roubo ainda conta para a missão "gatuno")
-        #   cassino   → cada jogo tem seu próprio sinal (varia, mas todos usam MC ou embed)
-        #   casca/c4/taxar/impostor → mensagens de confirmação sem ❌/⚠️
-        #   investir  → "RENDA FIXA" / "📈" / "📉" / "⚖️"
-        #   pagar     → "💸 PIX REALIZADO"
-        #   recompensa→ "🚨 CAÇADA ATUALIZADA"
-        #   alimentar → "🍗" + "Fome restaurada"
-        #   abrir_caixa → embed com título de resultado (sem ❌/⚠️)
-        #   vender    → embed "🏪 PROPOSTA DE VENDA" ou "♻️ VENDER AO SISTEMA"
-        #   castigo   → confirmação com custo pago
-        #   desconectar → "👟" + pagou
-        #   blackjack/roleta → resultados com MC
-        SINAIS_SUCESSO = (
-            # Trabalho e economia
-            "💰", "🏦", "💸 PIX", "PIX REALIZADO",
-            # Roubo — sucesso E falha contam para "gatuno"
-            "🥷", "👮 PRESO", "💀 SAQUE", "🛡️ Ataque bloqueado", "🛡️ BLOQUEADO",
-            # Sabotagem
-            "🍌", "CASCA DE BANANA", "DECRETO ASSINADO", "💥 BOOM", "BOOM! ESCUDO",
-            "Impostor_Temporario", "MALDIÇÃO SÍMIA",
-            # Banco
-            "RENDA FIXA", "📈", "📉", "⚖️ **ESTÁVEL",
-            # Recompensa/bounty
-            "CAÇADA ATUALIZADA",
-            # Pet
-            "Fome restaurada", "🍗",
-            # Lootbox — qualquer embed sem ❌/⚠️ com conteúdo de resultado
-            "está abrindo", "SORTEADO", "MASCOTE OBTIDO",
-            # Comércio
-            "PROPOSTA DE VENDA", "VENDER AO SISTEMA", "♻️",
-            # Diversão/castigo
-            "foi silenciado", "foi ensurdecido", "CASTIGO TOTAL", "👟",
-            # Cassino/duelo (sinais genéricos usados por jogos)
-            "ganhou", "perdeu", "VITÓRIA", "DERROTA", "rodada", "CRASH",
-            # Confirmação genérica de conclusão (sem ser do sistema de missões)
-            "MC`", " MC**", "MC\n",
+        # ── Títulos EXATOS de embeds de sucesso (mapeados diretamente dos cogs) ──
+        TITULOS_SUCESSO = {
+            # economy.py — !trabalhar: embed sem title, detectado pelo set_author
+            # economy.py — !roubar
+            "🥷 SUCESSO!",
+            "🥷 SUCESSO (com pena)...",
+            "💀 SAQUE DE PURGE!",
+            "👮 PRESO! O roubo falhou.",   # falha no roubo ainda conta para "gatuno"
+            "🛡️ Ataque bloqueado!",        # escudo ativado ainda conta para "gatuno"
+            # economy.py — !pagar
+            "💸 PIX REALIZADO!",
+            # bank.py — !investir
+            "🏛️ RENDA FIXA — RENDIMENTO APLICADO!",
+            # bounty.py — !recompensa
+            "🚨 CAÇADA ATUALIZADA!",
+            # items.py — !c4
+            "💥 BOOM! ESCUDO DESTRUÍDO!",
+            # items.py — !taxar (usa texto puro, não embed — tratado abaixo)
+            # sabotagem.py — !amaldicoar
+            "🍌 MALDIÇÃO SÍMIA CONJURADA!",
+            # lootbox.py — !abrir_caixa
+            "🎉 🪵 LOOT OBTIDO!", "🎉 🪙 LOOT OBTIDO!", "🎉 🏺 LOOT OBTIDO!", "🎉 🐾 LOOT OBTIDO!",
+            # trade.py — !vender
+            "🏪 PROPOSTA DE VENDA",
+            "♻️ VENDER AO SISTEMA?",
+            # blackjack / roleta / cassino (títulos dos jogos — completar se necessário)
+            "🃏 BLACKJACK", "🎡 ROLETA", "🎰 CASSINO", "💥 CRASH",
+        }
+
+        # ── Strings EXATAS em textos puros (content) de sucesso ──
+        # Apenas frases únicas que NÃO aparecem em mensagens de erro.
+        TEXTOS_SUCESSO_CONTENT = (
+            # economy.py — !trabalhar: embed sem title, usa set_author → não tem texto puro
+            # economy.py — !roubar fallback (purge sem embed)
+            # items.py — !casca (texto puro, sem embed)
+            "atirou uma **Casca de Banana**",
+            # items.py — !taxar (texto puro, sem embed)
+            "DECRETO ASSINADO!",
+            # pets.py — !alimentar (texto puro, sem embed)
+            "Fome restaurada:",
+            # fun.py — !castigo / !desconectar (textos puros)
+            "pagou **",          # "pagou **300.00 MC** e..." — único nos sucessos
+            # bank.py — !investir cripto (textos puros após o sleep)
+            "🚀 **ALTA!**",
+            "⚖️ **ESTÁVEL!**",
+            "📉 **CRASH!**",
         )
 
-        def _extrair_texto(*args, **kwargs) -> str:
-            partes = []
+        # ── Detecção via set_author: !trabalhar usa embed sem title ──
+        # O embed tem set_author com "foi trabalhar" — detectamos pela descrição ausente
+        # e pelo field name "💰 Ganho". Usamos o field NAME (não value) que é seguro.
+        FIELD_NAMES_SUCESSO = (
+            "💰 Ganho",   # !trabalhar
+        )
+
+        def _e_falha(content_texto: str, embed_title: str) -> bool:
+            """Verifica falha apenas no content e no título do embed."""
+            if any(s in content_texto for s in SINAIS_FALHA_CONTENT):
+                return True
+            if any(s in embed_title for s in SINAIS_FALHA_TITLE):
+                return True
+            return False
+
+        def _e_sucesso(content_texto: str, embed_title: str, field_names: list) -> bool:
+            """Verifica sucesso por título exato, texto puro exato, ou field name seguro."""
+            if embed_title in TITULOS_SUCESSO:
+                return True
+            if any(s in content_texto for s in TEXTOS_SUCESSO_CONTENT):
+                return True
+            if any(fn in field_names for fn in FIELD_NAMES_SUCESSO):
+                return True
+            return False
+
+        def _extrair(args, kwargs):
+            content_texto = ""
+            embed_title   = ""
+            field_names   = []
+            # Texto puro (positional arg ou kwarg "content")
             if args:
-                partes.append(str(args[0]))
-            if kwargs.get("content"):
-                partes.append(str(kwargs["content"]))
-            embed = kwargs.get("embed")
-            if embed:
-                partes.append(str(getattr(embed, "title", "") or ""))
-                partes.append(str(getattr(embed, "description", "") or ""))
-                for field in getattr(embed, "fields", []):
-                    partes.append(str(getattr(field, "value", "") or ""))
-            return " ".join(partes)
-
-        def _e_falha(texto: str) -> bool:
-            return any(s in texto for s in SINAIS_FALHA)
-
-        def _e_sucesso(texto: str) -> bool:
-            return any(s in texto for s in SINAIS_SUCESSO)
+                content_texto = str(args[0])
+            elif kwargs.get("content"):
+                content_texto = str(kwargs["content"])
+            # Embed
+            emb = kwargs.get("embed")
+            if emb:
+                embed_title = str(getattr(emb, "title", "") or "")
+                field_names = [str(getattr(f, "name", "") or "") for f in getattr(emb, "fields", [])]
+            return content_texto, embed_title, field_names
 
         async def interceptor_send(*args, **kwargs):
-            texto = _extrair_texto(*args, **kwargs)
-            if _e_falha(texto):
-                ctx._missao_status = False          # trava permanente em falha
-            elif _e_sucesso(texto) and ctx._missao_status is not False:
+            ct, et, fn = _extrair(args, kwargs)
+            ctx._missao_teve_send = True            # registra que o bot enviou algo
+            if _e_falha(ct, et):
+                ctx._missao_status = False          # trava em falha — não pode voltar
+            elif _e_sucesso(ct, et, fn) and ctx._missao_status is not False:
                 ctx._missao_status = True
             return await original_send(*args, **kwargs)
 
         async def interceptor_reply(*args, **kwargs):
-            texto = _extrair_texto(*args, **kwargs)
-            if _e_falha(texto):
+            ct, et, fn = _extrair(args, kwargs)
+            ctx._missao_teve_send = True
+            if _e_falha(ct, et):
                 ctx._missao_status = False
-            elif _e_sucesso(texto) and ctx._missao_status is not False:
+            elif _e_sucesso(ct, et, fn) and ctx._missao_status is not False:
                 ctx._missao_status = True
             return await original_reply(*args, **kwargs)
 
+        ctx._missao_teve_send = False   # ainda não enviou nada
         ctx.send  = interceptor_send
         ctx.reply = interceptor_reply
 
@@ -216,6 +256,15 @@ class Missoes(commands.Cog):
         # Aguarda um tick para que todos os ctx.send assíncronos já tenham rodado
         import asyncio
         await asyncio.sleep(0)
+
+        # Caso especial: !impostor — o sucesso usa webhook.send (não ctx.send),
+        # então o interceptador nunca vê a mensagem de sucesso.
+        # Se o comando foi "impostor" E o bot não enviou NADA via ctx.send
+        # (ou seja, _missao_teve_send é False), significa que chegou até o
+        # webhook.send sem erros → contamos como sucesso.
+        cmd_usado = ctx.command.name
+        if cmd_usado == "impostor" and not getattr(ctx, "_missao_teve_send", True):
+            ctx._missao_status = True
 
         # Só conta se o comando gerou sinal EXPLÍCITO de sucesso
         if ctx._missao_status is not True:
