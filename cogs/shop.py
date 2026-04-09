@@ -72,7 +72,7 @@ CATALOGO_CARGOS = {
 CATALOGO_EQUIPAMENTOS = {
     "item:escudo":          (1000.0, "Escudo",              "🛡️", "Bloqueia 3 roubos · limite 1/dia após quebrar"),
     "item:pe_de_cabra":     (1200.0, "Pé de Cabra",         "🕵️", "Chance de roubo 65% + fura Escudos"),
-    "item:seguro":          (950.0,  "Seguro",              "📄", "Reembolsa 60% se você for roubado"),
+    "item:seguro":          (950.0,  "Seguro",              "📄", "Reembolsa 60% por roubo sofrido · 5 cargas · quebra ao zerar"),
     "item:anti_imposto":    (1500.0, "Escudo Anti-Imposto", "🏛️", "Uso único: bloqueia 1 !taxar e devolve o item ao cobrador"),
 }
 

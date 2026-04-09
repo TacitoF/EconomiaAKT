@@ -4,7 +4,8 @@ import database as db
 import time
 import random
 
-ESCUDO_CARGAS = 3
+ESCUDO_CARGAS  = 3
+SEGURO_CARGAS  = 5
 
 def formatar_moeda(valor: float) -> str:
     return f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -69,6 +70,7 @@ class Economy(commands.Cog):
         if not hasattr(bot, 'tracker_emblemas'):
             bot.tracker_emblemas = {'trabalhos': {}, 'roubos_sucesso': {}, 'roubos_falha': {}}
         if not hasattr(bot, 'escudos_ativos'):    bot.escudos_ativos    = {}
+        if not hasattr(bot, 'seguros_ativos'):    bot.seguros_ativos    = {}
         if not hasattr(bot, 'cooldown_imposto'):  bot.cooldown_imposto  = {}
 
     async def cog_before_invoke(self, ctx):
@@ -579,13 +581,43 @@ class Economy(commands.Cog):
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - corte_saldo, 2))
                     escudo_sangue_msg = f"🔰 **Escudo de Sangue:** {vitima.mention} recuperou **{formatar_moeda(devolvido)} MC** do roubo!"
 
+                # ── SEGURO (sistema de cargas) ──
+                if vitima_id not in self.bot.seguros_ativos:
+                    cargas_seg_db = db.get_seguro_cargas(alvo_data)
+                    if cargas_seg_db > 0:
+                        self.bot.seguros_ativos[vitima_id] = cargas_seg_db
+
+                cargas_seg_atuais = self.bot.seguros_ativos.get(vitima_id, 0)
+
+                # Ativa o seguro do inventário se ainda não estiver ativo
+                if cargas_seg_atuais == 0:
+                    tem_seguro = "Seguro" in inv_alvo or "Seguro 🔒" in inv_alvo
+                    if tem_seguro:
+                        cargas_seg_atuais = SEGURO_CARGAS
+                        self.bot.seguros_ativos[vitima_id] = cargas_seg_atuais
+                        # Remove o item do inventário ao ativar
+                        for nome_seg in ("Seguro 🔒", "Seguro"):
+                            if nome_seg in inv_alvo:
+                                inv_alvo.remove(nome_seg)
+                                break
+                        db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
+                        db.set_seguro_cargas(alvo_data['row'], cargas_seg_atuais)
+
                 seguro_msg = ""
-                if "Seguro" in inv_alvo:
+                if cargas_seg_atuais > 0:
                     recuperado = round(valor_roubado * 0.6, 2)
-                    db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado + recuperado, 2))
-                    inv_alvo.remove("Seguro")
-                    db.update_value(alvo_data['row'], 6, ", ".join(inv_alvo))
-                    seguro_msg = f"📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{formatar_moeda(recuperado)} MC**!"
+                    cargas_seg_atuais -= 1
+                    if cargas_seg_atuais > 0:
+                        self.bot.seguros_ativos[vitima_id] = cargas_seg_atuais
+                        db.set_seguro_cargas(alvo_data['row'], cargas_seg_atuais)
+                        status_seg = f"*(Cargas restantes: **{cargas_seg_atuais}/{SEGURO_CARGAS}** 📄)*"
+                    else:
+                        del self.bot.seguros_ativos[vitima_id]
+                        db.set_seguro_cargas(alvo_data['row'], 0)
+                        status_seg = f"*(O seguro **EXPIROU** após usar todas as cargas! {vitima.mention} está desprotegido 💥)*"
+                    if not escudo_sangue_msg:
+                        db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado + recuperado, 2))
+                    seguro_msg = f"📄 **SEGURO ACIONADO:** {vitima.mention} foi reembolsado em **{formatar_moeda(recuperado)} MC**! {status_seg}"
                 elif not escudo_sangue_msg:
                     db.update_value(alvo_data['row'], 3, round(saldo_alvo - valor_roubado, 2))
 

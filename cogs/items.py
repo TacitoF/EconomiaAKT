@@ -4,7 +4,8 @@ import database as db
 import time
 import asyncio
 
-ESCUDO_CARGAS = 3
+ESCUDO_CARGAS  = 3
+SEGURO_CARGAS  = 5
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  CATÁLOGO DE PASSIVOS — usado no !equipar / !desequipar / !passivos
@@ -56,6 +57,7 @@ class Items(commands.Cog):
         if not hasattr(bot, 'cascas'):           bot.cascas           = set()
         if not hasattr(bot, 'impostos'):         bot.impostos         = {}
         if not hasattr(bot, 'escudos_ativos'):   bot.escudos_ativos   = {}
+        if not hasattr(bot, 'seguros_ativos'):   bot.seguros_ativos   = {}
         if not hasattr(bot, 'escudo_compras'):   bot.escudo_compras   = {}
         if not hasattr(bot, 'cooldown_imposto'): bot.cooldown_imposto = {}
 
@@ -298,6 +300,75 @@ class Items(commands.Cog):
             raise
         except Exception as e:
             print(f"❌ Erro no !escudo de {ctx.author}: {e}")
+            await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    #  !seguro
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @commands.command(aliases=["ativar_seguro", "status_seguro"])
+    async def seguro(self, ctx, alvo: disnake.Member = None):
+        if alvo is None:
+            alvo = ctx.author
+
+        alvo_id = str(alvo.id)
+        alvo_db = db.get_user_data(alvo_id)
+
+        cargas_db  = db.get_seguro_cargas(alvo_db) if alvo_db else 0
+        cargas_mem = self.bot.seguros_ativos.get(alvo_id, 0)
+        cargas     = max(cargas_db, cargas_mem)
+        if cargas > 0:
+            self.bot.seguros_ativos[alvo_id] = cargas
+
+        if cargas > 0:
+            if alvo.id == ctx.author.id:
+                return await ctx.send(
+                    f"📄 {ctx.author.mention}, o seu Seguro está **ativo** com "
+                    f"**{cargas}/{SEGURO_CARGAS} cargas** restantes.\n"
+                    f"Cada roubo sofrido consome 1 carga e reembolsa **60%** do valor roubado."
+                )
+            else:
+                return await ctx.send(
+                    f"📄 {alvo.mention} está protegido por um Seguro com "
+                    f"**{cargas}/{SEGURO_CARGAS} cargas** restantes."
+                )
+
+        try:
+            user = db.get_user_data(str(ctx.author.id))
+            if not user:
+                return await ctx.send("❌ Conta não encontrada!")
+
+            inv_str  = str(user['data'][5]) if len(user['data']) > 5 else ""
+            inv_list = [i.strip() for i in inv_str.split(',') if i.strip()]
+
+            if alvo.id == ctx.author.id:
+                tem_seguro = "Seguro" in inv_list or "Seguro 🔒" in inv_list
+                if tem_seguro:
+                    # Ativa o seguro e remove o item do inventário
+                    for nome_seg in ("Seguro 🔒", "Seguro"):
+                        if nome_seg in inv_list:
+                            inv_list.remove(nome_seg)
+                            break
+                    db.update_value(user['row'], 6, ", ".join(inv_list) if inv_list else "Nenhum")
+                    self.bot.seguros_ativos[alvo_id] = SEGURO_CARGAS
+                    db.set_seguro_cargas(user['row'], SEGURO_CARGAS)
+                    return await ctx.send(
+                        f"📄 {ctx.author.mention} ativou o seu **Seguro**! "
+                        f"Você está coberto por **{SEGURO_CARGAS} roubos**.\n"
+                        f"💡 *A cada roubo sofrido, 60% do valor é reembolsado e 1 carga é consumida.*"
+                    )
+                else:
+                    return await ctx.send(
+                        f"📄 {ctx.author.mention}, você não tem nenhum Seguro ativo nem no inventário.\n"
+                        f"Compre um na `!loja` por **950 MC**!"
+                    )
+            else:
+                return await ctx.send(f"📄 {alvo.mention} não tem nenhum Seguro ativo no momento.")
+
+        except commands.CommandError:
+            raise
+        except Exception as e:
+            print(f"❌ Erro no !seguro de {ctx.author}: {e}")
             await ctx.send(f"⚠️ {ctx.author.mention}, ocorreu um erro. Tente novamente!")
 
     # ──────────────────────────────────────────────────────────────────────────
