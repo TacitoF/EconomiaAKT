@@ -12,21 +12,44 @@ ARQUIVO_MISSOES = "missoes_db.json"
 TZ_BR = timezone(timedelta(hours=-3))
 
 # ── CATÁLOGO EXPANDIDO DE MISSÕES DIÁRIAS ──
+#
+# REGRA CRÍTICA: "comandos" deve conter o ctx.command.name (nome principal do
+# decorator), NÃO os aliases. O disnake sempre expõe o nome principal em
+# ctx.command.name, independentemente do alias que o usuário digitou.
+#
+# Mapeamento verificado contra os cogs:
+#   trabalhar   → economy.py  @commands.command(aliases=["work"])
+#   roubar      → economy.py  @commands.command(aliases=["assaltar","furtar","rob"])
+#   crash/bicho/minas/raspadinha → arquivos de cassino (nome principal confirmado)
+#   truco/cipo/gatilho/jokenpo/rinha/tesouro → arquivos de duelo (nome principal)
+#   casca       → items.py    @commands.command(aliases=["banana"])
+#   taxar       → items.py    @commands.command(aliases=["imposto"])   ← nome principal é "taxar"
+#   c4          → items.py    @commands.command(aliases=["explodir","bomb"])
+#   impostor    → sabotagem.py
+#   investir    → bank.py     @commands.command(aliases=["banco","depositar"])  ← nome principal é "investir"
+#   pagar       → economy.py  @commands.command(aliases=["pix","transferir","pay"])
+#   recompensa  → bounty.py   @commands.command(aliases=["bounty","cacada"])
+#   alimentar   → pets.py     @commands.command(aliases=["darcomida","comida"])  ← sem "dar_comida"
+#   abrir_caixa → lootbox.py  @commands.command(aliases=["abrir"])  ← nome principal é "abrir_caixa"
+#   vender      → trade.py    @commands.command(aliases=["negociar","comercio"])  ← sem "sell"
+#   castigo     → fun.py      @commands.command()
+#   desconectar → fun.py      @commands.command(name="desconectar", ...)
+#   blackjack/roleta → arquivos de cassino (nome principal confirmado)
 TIPOS_MISSOES = {
-    "trabalhador": {"meta": 4, "desc": "🔨 Trabalhe duro na selva (`!trabalhar`)", "comandos": ["trabalhar", "work"]},
-    "gatuno":      {"meta": 3, "desc": "🥷 Tente assaltar alguém (`!roubar`)", "comandos": ["roubar", "assaltar", "furtar", "rob"]},
-    "apostador":   {"meta": 3, "desc": "🎰 Jogue no Cassino Solo (`!crash`, `!bicho`, `!minas`, `!raspadinha`)", "comandos": ["crash", "bicho", "minas", "raspadinha", "bilhete", "loto", "loteria"]},
-    "desafiante":  {"meta": 2, "desc": "⚔️ Desafie alguém (`!truco`, `!cipo`, `!gatilho`, `!jokenpo`, `!rinha`, `!tesouro`)", "comandos": ["truco", "cipo", "gatilho", "jokenpo", "rinha", "tesouro"]},
-    "sabotador":   {"meta": 2, "desc": "😈 Sabote ou engane (`!casca`, `!c4`, `!imposto`, `!impostor`)", "comandos": ["casca", "banana", "c4", "imposto", "impostor"]},
-    "investidor":  {"meta": 1, "desc": "🏦 Faça um investimento no banco (`!investir`)", "comandos": ["investir", "banco", "depositar"]},
-    "generoso":    {"meta": 2, "desc": "💸 Transfira dinheiro a alguém (`!pagar`)", "comandos": ["pagar", "pix", "transferir", "pay"]},
-    "cacador":     {"meta": 1, "desc": "🎯 Coloque uma recompensa num alvo (`!recompensa`)", "comandos": ["recompensa", "bounty", "cacada"]},
-    "cuidador":    {"meta": 1, "desc": "🍗 Alimente seu mascote (`!alimentar`)", "comandos": ["alimentar", "dar_comida"]},
-    "abridor":     {"meta": 2, "desc": "📦 Abra caixas ou gaiolas do inventário (`!abrir`)", "comandos": ["abrir", "abrir_caixa"]},
-    "comerciante": {"meta": 1, "desc": "🛒 Coloque um item à venda (`!vender`)", "comandos": ["vender", "sell", "negociar"]},
-    "ditador":     {"meta": 1, "desc": "🔇 Aplique um castigo de voz (`!castigo`, `!desconectar`)", "comandos": ["castigo", "desconectar"]},
-    "blackjack":   {"meta": 2, "desc": "🃏 Sente-se à mesa de Blackjack (`!21`)", "comandos": ["blackjack", "bj", "21"]},
-    "roleta":      {"meta": 2, "desc": "🎡 Faça apostas na Roleta (`!roleta`)", "comandos": ["roleta"]}
+    "trabalhador": {"meta": 4, "desc": "🔨 Trabalhe duro na selva (`!trabalhar`)",                                               "comandos": ["trabalhar"]},
+    "gatuno":      {"meta": 3, "desc": "🥷 Tente assaltar alguém (`!roubar`)",                                                   "comandos": ["roubar"]},
+    "apostador":   {"meta": 3, "desc": "🎰 Jogue no Cassino Solo (`!crash`, `!bicho`, `!minas`, `!raspadinha`)",                 "comandos": ["crash", "bicho", "minas", "raspadinha", "bilhete", "loto", "loteria"]},
+    "desafiante":  {"meta": 2, "desc": "⚔️ Desafie alguém (`!truco`, `!cipo`, `!gatilho`, `!jokenpo`, `!rinha`, `!tesouro`)",   "comandos": ["truco", "cipo", "gatilho", "jokenpo", "rinha", "tesouro"]},
+    "sabotador":   {"meta": 2, "desc": "😈 Sabote ou engane (`!casca`, `!c4`, `!taxar`, `!impostor`)",                          "comandos": ["casca", "c4", "taxar", "impostor"]},
+    "investidor":  {"meta": 1, "desc": "🏦 Faça um investimento no banco (`!investir`)",                                         "comandos": ["investir"]},
+    "generoso":    {"meta": 2, "desc": "💸 Transfira dinheiro a alguém (`!pagar`)",                                              "comandos": ["pagar"]},
+    "cacador":     {"meta": 1, "desc": "🎯 Coloque uma recompensa num alvo (`!recompensa`)",                                     "comandos": ["recompensa"]},
+    "cuidador":    {"meta": 1, "desc": "🍗 Alimente seu mascote (`!alimentar`)",                                                 "comandos": ["alimentar"]},
+    "abridor":     {"meta": 2, "desc": "📦 Abra caixas ou gaiolas do inventário (`!abrir`)",                                     "comandos": ["abrir_caixa"]},
+    "comerciante": {"meta": 1, "desc": "🛒 Coloque um item à venda (`!vender`)",                                                 "comandos": ["vender"]},
+    "ditador":     {"meta": 1, "desc": "🔇 Aplique um castigo de voz (`!castigo`, `!desconectar`)",                              "comandos": ["castigo", "desconectar"]},
+    "blackjack":   {"meta": 2, "desc": "🃏 Sente-se à mesa de Blackjack (`!21`)",                                                "comandos": ["blackjack", "bj", "21"]},
+    "roleta":      {"meta": 2, "desc": "🎡 Faça apostas na Roleta (`!roleta`)",                                                  "comandos": ["roleta"]}
 }
 
 class Missoes(commands.Cog):
@@ -78,32 +101,64 @@ class Missoes(commands.Cog):
             }
             self._salvar_dados()
 
-    # ── INTERCEPTADOR: detecta falha E sucesso via ctx.send/reply ──
+    # ── INTERCEPTADOR DE RESULTADO ───────────────────────────────────────────
+    # Lógica opt-in: padrão = False (falha).
+    # Só muda para True se o bot responder com sinal EXPLÍCITO de sucesso.
+    # Uma vez marcado False (por emoji de erro), jamais volta a True.
     @commands.Cog.listener()
     async def on_command(self, ctx):
         if ctx.author.bot:
             return
 
-        # Padrão é False (falha). Só muda para True se detectarmos sinal de sucesso.
+        # Padrão: falha. Precisa de sinal positivo para virar True.
         ctx._missao_status = False
 
         original_send  = ctx.send
         original_reply = ctx.reply
 
-        # Emojis/textos que indicam FALHA — se aparecer, garante False
-        EMOJIS_FALHA = ("❌", "⚠️", "🚫", "😬")
+        # Emojis/strings que indicam FALHA — têm prioridade absoluta
+        SINAIS_FALHA = ("❌", "⚠️", "🚫", "😬")
 
-        # Emojis/textos que indicam SUCESSO — se aparecer (e não tiver falha), marca True
-        EMOJIS_SUCESSO = (
-            "💰", "💸", "🪙", "💵", "🏦",   # dinheiro/banco
-            "🥷", "🔨", "⚔️", "🎰", "🎲",   # ações de jogo
-            "🐾", "🍗", "🐒",               # pets/alimentar
-            "🔇", "🎧", "🤐", "👟",         # castigo/desconectar
-            "📦", "🎁", "🏺", "🗃️",         # itens/caixas
-            "🛒", "🤝", "💱",               # comércio/troca
-            "🚨", "🥊", "🎯", "🃏", "🎡",   # bounty/duelos/cassino
-            "✅", "🏆", "🎉",               # confirmações gerais
-            "MC", " MC`", "MC\n",           # qualquer mensagem com "MC" (valor monetário)
+        # Emojis/strings que indicam SUCESSO claro do comando
+        # Cobrindo todos os comandos rastreados pelas missões:
+        #   trabalhar → embed com "💰 Ganho" / "Saldo atual"
+        #   roubar    → "🥷 SUCESSO" ou "👮 PRESO" ou "💀 SAQUE" ou "🛡️ Ataque bloqueado"
+        #               (falha no roubo ainda conta para a missão "gatuno")
+        #   cassino   → cada jogo tem seu próprio sinal (varia, mas todos usam MC ou embed)
+        #   casca/c4/taxar/impostor → mensagens de confirmação sem ❌/⚠️
+        #   investir  → "RENDA FIXA" / "📈" / "📉" / "⚖️"
+        #   pagar     → "💸 PIX REALIZADO"
+        #   recompensa→ "🚨 CAÇADA ATUALIZADA"
+        #   alimentar → "🍗" + "Fome restaurada"
+        #   abrir_caixa → embed com título de resultado (sem ❌/⚠️)
+        #   vender    → embed "🏪 PROPOSTA DE VENDA" ou "♻️ VENDER AO SISTEMA"
+        #   castigo   → confirmação com custo pago
+        #   desconectar → "👟" + pagou
+        #   blackjack/roleta → resultados com MC
+        SINAIS_SUCESSO = (
+            # Trabalho e economia
+            "💰", "🏦", "💸 PIX", "PIX REALIZADO",
+            # Roubo — sucesso E falha contam para "gatuno"
+            "🥷", "👮 PRESO", "💀 SAQUE", "🛡️ Ataque bloqueado", "🛡️ BLOQUEADO",
+            # Sabotagem
+            "🍌", "CASCA DE BANANA", "DECRETO ASSINADO", "💥 BOOM", "BOOM! ESCUDO",
+            "Impostor_Temporario", "MALDIÇÃO SÍMIA",
+            # Banco
+            "RENDA FIXA", "📈", "📉", "⚖️ **ESTÁVEL",
+            # Recompensa/bounty
+            "CAÇADA ATUALIZADA",
+            # Pet
+            "Fome restaurada", "🍗",
+            # Lootbox — qualquer embed sem ❌/⚠️ com conteúdo de resultado
+            "está abrindo", "SORTEADO", "MASCOTE OBTIDO",
+            # Comércio
+            "PROPOSTA DE VENDA", "VENDER AO SISTEMA", "♻️",
+            # Diversão/castigo
+            "foi silenciado", "foi ensurdecido", "CASTIGO TOTAL", "👟",
+            # Cassino/duelo (sinais genéricos usados por jogos)
+            "ganhou", "perdeu", "VITÓRIA", "DERROTA", "rodada", "CRASH",
+            # Confirmação genérica de conclusão (sem ser do sistema de missões)
+            "MC`", " MC**", "MC\n",
         )
 
         def _extrair_texto(*args, **kwargs) -> str:
@@ -121,17 +176,16 @@ class Missoes(commands.Cog):
             return " ".join(partes)
 
         def _e_falha(texto: str) -> bool:
-            return any(e in texto for e in EMOJIS_FALHA)
+            return any(s in texto for s in SINAIS_FALHA)
 
         def _e_sucesso(texto: str) -> bool:
-            return any(e in texto for e in EMOJIS_SUCESSO)
+            return any(s in texto for s in SINAIS_SUCESSO)
 
         async def interceptor_send(*args, **kwargs):
             texto = _extrair_texto(*args, **kwargs)
             if _e_falha(texto):
-                ctx._missao_status = False
+                ctx._missao_status = False          # trava permanente em falha
             elif _e_sucesso(texto) and ctx._missao_status is not False:
-                # Só marca True se ainda não foi marcado como falha
                 ctx._missao_status = True
             return await original_send(*args, **kwargs)
 
@@ -148,7 +202,7 @@ class Missoes(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        """Qualquer erro de comando (args errados, sem permissão, cooldown…) = falha."""
+        """Qualquer erro de comando (args inválidos, sem permissão, cooldown…) = falha."""
         if ctx.author.bot:
             return
         ctx._missao_status = False
@@ -159,16 +213,16 @@ class Missoes(commands.Cog):
         if ctx.author.bot:
             return
 
-        # Aguarda um tick para garantir que todos os ctx.send já foram chamados
+        # Aguarda um tick para que todos os ctx.send assíncronos já tenham rodado
         import asyncio
         await asyncio.sleep(0)
 
-        # Só conta se o comando gerou sinal explícito de sucesso
+        # Só conta se o comando gerou sinal EXPLÍCITO de sucesso
         if ctx._missao_status is not True:
             return
 
         user_id   = str(ctx.author.id)
-        cmd_usado = ctx.command.name
+        cmd_usado = ctx.command.name  # sempre o nome PRINCIPAL, nunca o alias
 
         self._gerar_missoes_usuario(user_id)
         usuario_dados = self.dados[user_id]
@@ -196,47 +250,93 @@ class Missoes(commands.Cog):
 
             # ── Validações específicas por missão ─────────────────────────────
 
-            # cuidador: só conta se o pet existia E a fome estava abaixo de 100
-            # (ou seja, a ração foi de fato consumida)
-            if chave_missao == "cuidador":
-                if not user_db:
-                    continue
-                tipo_pet, fome_pet = db.get_mascote(user_db)
-                if not tipo_pet or fome_pet >= 100:
-                    continue
+            # trabalhador: !trabalhar sem args — nenhuma validação extra necessária,
+            # o interceptador já garante que o embed de sucesso foi enviado.
 
-            # cacador: só conta se passou um @alvo (não apenas abriu o mural)
-            if chave_missao == "cacador":
+            # gatuno: qualquer tentativa de roubo conta (sucesso OU falha com multa),
+            # mas exige @vitima. Sem alvo = exibiu o "uso:" → já bloqueado pelo interceptador.
+            if chave_missao == "gatuno":
                 if not alvo:
                     continue
 
-            # sabotador/generoso/comerciante/desafiante:
-            # alvo não pode ser o próprio usuário nem um bot
-            if chave_missao in ("sabotador", "generoso", "comerciante", "desafiante"):
-                if alvo and (alvo.bot or alvo.id == ctx.author.id):
-                    continue
-
-            # abridor: exige pelo menos 1 argumento (nome da caixa/gaiola)
-            if chave_missao == "abridor":
-                tem_arg = bool(ctx.args[1:]) or bool(ctx.kwargs)
-                if not tem_arg:
-                    continue
-
-            # apostador: exige pelo menos 1 argumento (valor da aposta)
+            # apostador: exige pelo menos 1 argumento (valor da aposta).
+            # Sem valor = exibiu o tutorial com ⚠️ → já bloqueado pelo interceptador.
+            # Validação extra: garante que o arg não é um Member (evita !crash @alguem)
             if chave_missao == "apostador":
-                tem_arg = bool(ctx.args[1:]) or bool(ctx.kwargs)
-                if not tem_arg:
+                args_reais = [a for a in ctx.args if not isinstance(a, (commands.Context, disnake.Member, disnake.User))]
+                if not args_reais:
                     continue
 
-            # investidor: exige tipo + valor (pelo menos 2 args além do self/ctx)
+            # desafiante: exige @alvo que não seja o próprio usuário nem bot
+            if chave_missao == "desafiante":
+                if not alvo or alvo.bot or alvo.id == ctx.author.id:
+                    continue
+
+            # sabotador: exige @alvo que não seja o próprio usuário nem bot.
+            # Cobertura: casca @alvo, c4 @alvo, taxar @alvo, impostor @alvo msg
+            if chave_missao == "sabotador":
+                if not alvo or alvo.bot or alvo.id == ctx.author.id:
+                    continue
+
+            # investidor: exige tipo ("fixo"/"cripto") + valor.
+            # Sem args = exibiu o menu com ⚠️ → já bloqueado.
+            # Validação extra: confirma que há pelo menos 2 args reais (tipo + valor)
             if chave_missao == "investidor":
                 args_reais = [a for a in ctx.args if not isinstance(a, commands.Context)]
                 if len(args_reais) < 2:
                     continue
 
-            # ditador: exige alvo em voz + tipo + tempo — se não há alvo, era help
+            # generoso: exige @recebedor + valor > 0, e recebedor ≠ si mesmo/bot.
+            # Sem args = ⚠️ já bloqueado. Validação extra:
+            if chave_missao == "generoso":
+                if not alvo or alvo.bot or alvo.id == ctx.author.id:
+                    continue
+
+            # cacador: exige @vitima + valor.
+            # !recompensas (mural) tem nome de comando diferente → não bate em "recompensa"
+            # Mas !recompensa @alvo sem valor retorna ⚠️ → já bloqueado.
+            # Validação extra: confirma que há @alvo
+            if chave_missao == "cacador":
+                if not alvo or alvo.bot or alvo.id == ctx.author.id:
+                    continue
+
+            # cuidador: !alimentar só avança se havia mascote ativo com fome < 100
+            # E havia Ração Símia no inventário. Lê o estado ANTES da execução
+            # não é possível (já foi consumida), então verifica que o mascote EXISTE
+            # e que a fome atual é > 0 (após alimentar, nunca seria 0 se havia ração).
+            # O interceptador já garante que o bot enviou "🍗" + "Fome restaurada".
+            if chave_missao == "cuidador":
+                if not user_db:
+                    continue
+                tipo_pet, _ = db.get_mascote(user_db)
+                if not tipo_pet:
+                    continue
+
+            # abridor: abrir_caixa exige nome_caixa como argumento.
+            # Sem arg = ⚠️ já bloqueado pelo interceptador.
+            # Validação extra: confirma que há pelo menos 1 arg real (nome da caixa)
+            if chave_missao == "abridor":
+                # ctx.kwargs pode conter "nome_caixa" ou ctx.args pode ter o valor
+                tem_nome_caixa = bool(ctx.kwargs.get("nome_caixa")) or bool(ctx.args[1:])
+                if not tem_nome_caixa:
+                    continue
+
+            # comerciante: !vender exige pelo menos o nome do item (não pode ser vazio).
+            # !vender sem args = ⚠️ já bloqueado.
+            # Para venda entre jogadores, a PROPOSTA foi enviada (sucesso da ação).
+            # O comprador aceitar/recusar é irrelevante para a missão.
+            # Sem validação extra necessária — interceptador já cuida.
+
+            # ditador: exige @alvo que esteja em canal de voz.
+            # Sem alvo = ⚠️ já bloqueado. Valida que há alvo real:
             if chave_missao == "ditador":
-                if not alvo:
+                if not alvo or alvo.bot or alvo.id == ctx.author.id:
+                    continue
+
+            # blackjack/roleta: exige valor apostado como argumento.
+            if chave_missao in ("blackjack", "roleta"):
+                args_reais = [a for a in ctx.args if not isinstance(a, (commands.Context, disnake.Member, disnake.User))]
+                if not args_reais:
                     continue
 
             # ─────────────────────────────────────────────────────────────────
