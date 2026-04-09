@@ -78,21 +78,35 @@ class Missoes(commands.Cog):
             }
             self._salvar_dados()
 
-    # ── INTERCEPTADOR: marca falha via ctx.send/reply e via on_command_error ──
+    # ── INTERCEPTADOR: detecta falha E sucesso via ctx.send/reply ──
     @commands.Cog.listener()
     async def on_command(self, ctx):
         if ctx.author.bot:
             return
 
-        # Flag começa como None (neutra). Só muda para True (sucesso) ou False (falha).
-        ctx._missao_status = None
+        # Padrão é False (falha). Só muda para True se detectarmos sinal de sucesso.
+        ctx._missao_status = False
 
         original_send  = ctx.send
         original_reply = ctx.reply
 
+        # Emojis/textos que indicam FALHA — se aparecer, garante False
         EMOJIS_FALHA = ("❌", "⚠️", "🚫", "😬")
 
-        def _conteudo_tem_falha(*args, **kwargs) -> bool:
+        # Emojis/textos que indicam SUCESSO — se aparecer (e não tiver falha), marca True
+        EMOJIS_SUCESSO = (
+            "💰", "💸", "🪙", "💵", "🏦",   # dinheiro/banco
+            "🥷", "🔨", "⚔️", "🎰", "🎲",   # ações de jogo
+            "🐾", "🍗", "🐒",               # pets/alimentar
+            "🔇", "🎧", "🤐", "👟",         # castigo/desconectar
+            "📦", "🎁", "🏺", "🗃️",         # itens/caixas
+            "🛒", "🤝", "💱",               # comércio/troca
+            "🚨", "🥊", "🎯", "🃏", "🎡",   # bounty/duelos/cassino
+            "✅", "🏆", "🎉",               # confirmações gerais
+            "MC", " MC`", "MC\n",           # qualquer mensagem com "MC" (valor monetário)
+        )
+
+        def _extrair_texto(*args, **kwargs) -> str:
             partes = []
             if args:
                 partes.append(str(args[0]))
@@ -102,17 +116,31 @@ class Missoes(commands.Cog):
             if embed:
                 partes.append(str(getattr(embed, "title", "") or ""))
                 partes.append(str(getattr(embed, "description", "") or ""))
-            texto = " ".join(partes)
+                for field in getattr(embed, "fields", []):
+                    partes.append(str(getattr(field, "value", "") or ""))
+            return " ".join(partes)
+
+        def _e_falha(texto: str) -> bool:
             return any(e in texto for e in EMOJIS_FALHA)
 
+        def _e_sucesso(texto: str) -> bool:
+            return any(e in texto for e in EMOJIS_SUCESSO)
+
         async def interceptor_send(*args, **kwargs):
-            if _conteudo_tem_falha(*args, **kwargs):
-                ctx._missao_status = False   # falha confirmada
+            texto = _extrair_texto(*args, **kwargs)
+            if _e_falha(texto):
+                ctx._missao_status = False
+            elif _e_sucesso(texto) and ctx._missao_status is not False:
+                # Só marca True se ainda não foi marcado como falha
+                ctx._missao_status = True
             return await original_send(*args, **kwargs)
 
         async def interceptor_reply(*args, **kwargs):
-            if _conteudo_tem_falha(*args, **kwargs):
+            texto = _extrair_texto(*args, **kwargs)
+            if _e_falha(texto):
                 ctx._missao_status = False
+            elif _e_sucesso(texto) and ctx._missao_status is not False:
+                ctx._missao_status = True
             return await original_reply(*args, **kwargs)
 
         ctx.send  = interceptor_send
@@ -132,12 +160,11 @@ class Missoes(commands.Cog):
             return
 
         # Aguarda um tick para garantir que todos os ctx.send já foram chamados
-        # (inclusive os de erro que chegam via return await ctx.send(...))
         import asyncio
         await asyncio.sleep(0)
 
-        # Se qualquer send/reply enviou emoji de falha, não conta
-        if ctx._missao_status is False:
+        # Só conta se o comando gerou sinal explícito de sucesso
+        if ctx._missao_status is not True:
             return
 
         user_id   = str(ctx.author.id)
