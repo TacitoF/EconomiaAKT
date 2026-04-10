@@ -68,6 +68,8 @@ class Bank(commands.Cog):
                 db.update_value(user["row"], 3, novo_saldo)
                 db.update_value(user["row"], 8, agora)
 
+                ctx._missao_ok = True  # missão: investir na renda fixa
+
                 proximo = int(agora + 86400)
                 embed_fixo = disnake.Embed(
                     title="🏛️ RENDA FIXA — RENDIMENTO APLICADO!",
@@ -122,6 +124,8 @@ class Bank(commands.Cog):
                     lucro    = round(retorno - valor, 2)
 
                     db.update_value(user_atual['row'], 3, round(db.parse_float(user_atual['data'][2]) + retorno, 2))
+
+                    ctx._missao_ok = True  # missão: operar cripto (independente do resultado)
 
                     if variacao > 0:
                         await ctx.send(f"🚀 **ALTA!** {ctx.author.mention} resgatou **{retorno:.2f} MC** (Lucro: `+{lucro:.2f} MC`).")

@@ -110,6 +110,9 @@ class Items(commands.Cog):
                 return await ctx.send("❌ Você não tem uma **Casca de Banana** no inventário!")
 
             self.bot.cascas.add(str(vitima.id))
+            
+            ctx._missao_ok = True
+
             await ctx.send(
                 f"🍌 {ctx.author.mention} atirou uma **Casca de Banana** aos pés de {vitima.mention}!\n"
                 f"O próximo trabalho dele será uma tragédia..."
@@ -169,6 +172,7 @@ class Items(commands.Cog):
             vitima_inv_list = [i.strip() for i in vitima_inv_str.split(',') if i.strip()]
 
             if self._consumir_item(vitima_db['row'], vitima_inv_list, "Escudo Anti-Imposto"):
+                ctx._missao_ok = True
                 # Ambos os itens são consumidos: o escudo da vítima E o Imposto do Gorila do cobrador
                 return await ctx.send(
                     f"🛡️ **BLOQUEADO!** {vitima.mention} usou um **Escudo Anti-Imposto** e destruiu o decreto!\n"
@@ -177,6 +181,8 @@ class Items(commands.Cog):
 
             self.bot.impostos[vitima_id] = {'cobrador_id': str(ctx.author.id), 'cargas': 5}
             db.set_imposto(vitima_db['row'], str(ctx.author.id), 5)
+            
+            ctx._missao_ok = True
 
             cargo_cobrador = user['data'][3] if len(user['data']) > 3 and user['data'][3] else "Lêmure"
             await ctx.send(
@@ -221,6 +227,8 @@ class Items(commands.Cog):
                 except: pass
                 return await ctx.send("❌ Você não tem o item **Troca de Nick** no inventário!")
 
+            ctx._missao_ok = True
+            
             tempo_fim = int(time.time() + 1800)
             await ctx.send(
                 f"🪄 {ctx.author.mention} transformou o nome de `{nick_antigo}` em **{novo_nick}**!\n"
@@ -283,6 +291,7 @@ class Items(commands.Cog):
                 if self._consumir_item(user['row'], inv_list, "Escudo"):
                     self.bot.escudos_ativos[alvo_id] = ESCUDO_CARGAS
                     db.set_escudo_data(user['row'], ESCUDO_CARGAS)
+                    ctx._missao_ok = True
                     return await ctx.send(
                         f"🛡️ {ctx.author.mention} ativou o seu **Escudo**! "
                         f"Você está protegido contra **{ESCUDO_CARGAS} tentativas de roubo**.\n"
@@ -352,6 +361,9 @@ class Items(commands.Cog):
                     db.update_value(user['row'], 6, ", ".join(inv_list) if inv_list else "Nenhum")
                     self.bot.seguros_ativos[alvo_id] = SEGURO_CARGAS
                     db.set_seguro_cargas(user['row'], SEGURO_CARGAS)
+                    
+                    ctx._missao_ok = True
+
                     return await ctx.send(
                         f"📄 {ctx.author.mention} ativou o seu **Seguro**! "
                         f"Você está coberto por **{SEGURO_CARGAS} roubos**.\n"
@@ -402,6 +414,8 @@ class Items(commands.Cog):
                 )
 
             db.update_value(user['row'], 5, 0)
+            
+            ctx._missao_ok = True
 
             minutos  = int(cd_restante // 60)
             segundos = int(cd_restante % 60)
@@ -456,6 +470,8 @@ class Items(commands.Cog):
                 )
 
             db.update_value(user['row'], 7, 0)
+            
+            ctx._missao_ok = True
 
             horas    = int(cd_restante // 3600)
             minutos  = int((cd_restante % 3600) // 60)
@@ -542,6 +558,8 @@ class Items(commands.Cog):
                 inv_alvo.remove(item_escudo_no_inv)
                 db.update_value(alvo_db['row'], 6, ", ".join(inv_alvo))
 
+            ctx._missao_ok = True
+
             embed = disnake.Embed(
                 title="💥 BOOM! ESCUDO DESTRUÍDO!",
                 description=(
@@ -602,6 +620,8 @@ class Items(commands.Cog):
 
             nova_expira = agora + GREVE_DURACAO
             db.set_greve(vitima_db['row'], nova_expira)
+            
+            ctx._missao_ok = True
 
             embed = disnake.Embed(
                 title="🪧 GREVE DECLARADA!",
@@ -687,6 +707,8 @@ class Items(commands.Cog):
 
             passivos_atuais.append(nome_base_passivo)
             db.set_passivos(user['row'], passivos_atuais)
+            
+            ctx._missao_ok = True
 
             info  = PASSIVOS_INFO[nome_base_passivo]
             slots_usados = len(passivos_atuais)
@@ -757,6 +779,8 @@ class Items(commands.Cog):
 
             passivos_atuais.remove(item_base_encontrado)
             db.set_passivos(user['row'], passivos_atuais)
+            
+            ctx._missao_ok = True
 
             info = PASSIVOS_INFO.get(item_base_encontrado, {})
             emoji = info.get('emoji', '🔰')

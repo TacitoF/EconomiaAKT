@@ -52,6 +52,7 @@ class Sabotagem(commands.Cog):
                     username=alvo.display_name,
                     avatar_url=alvo.display_avatar.url
                 )
+                ctx._missao_ok = True  # missão: usar !impostor com sucesso
             finally:
                 await webhook.delete()
 
@@ -96,6 +97,8 @@ class Sabotagem(commands.Cog):
             db.update_value(user['row'], 3, round(saldo - custo, 2))
             tempo_fim = int(time.time() + 60)
             self.amaldicoados[alvo.id] = tempo_fim
+
+            ctx._missao_ok = True  # missão: amaldiçoar alguém
 
             embed = disnake.Embed(
                 title="🍌 MALDIÇÃO SÍMIA CONJURADA!",

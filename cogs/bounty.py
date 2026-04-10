@@ -26,25 +26,35 @@ class Bounty(commands.Cog):
         valor = round(valor, 2)
         try:
             pagador = db.get_user_data(str(ctx.author.id))
-            saldo   = db.parse_float(pagador['data'][2]) if pagador else 0.0
-            if not pagador or saldo < valor:
-                return await ctx.send("❌ Saldo insuficiente!")
+            if not pagador:
+                return await ctx.send("❌ Você não tem conta registrada!")
+            
+            saldo = db.parse_float(pagador['data'][2])
+            if saldo < valor:
+                return await ctx.send(f"❌ Saldo insuficiente! Você precisa de **{valor:.2f} MC**.")
 
-            db.update_value(pagador['row'], 3, round(saldo - valor, 2))
+            vitima_db = db.get_user_data(str(vitima.id))
+            if not vitima_db:
+                return await ctx.send(f"❌ {vitima.mention} não tem conta na selva!")
+
             vitima_id = str(vitima.id)
-            self.bot.recompensas[vitima_id] = round(self.bot.recompensas.get(vitima_id, 0.0) + valor, 2)
+            db.update_value(pagador['row'], 3, round(saldo - valor, 2))
+            self.bot.recompensas[vitima_id] = self.bot.recompensas.get(vitima_id, 0.0) + valor
 
-            total = self.bot.recompensas[vitima_id]
+            # ── FLAG DE SUCESSO DA MISSÃO ──
+            ctx._missao_ok = True
+
             embed = disnake.Embed(
-                title="🚨 CAÇADA ATUALIZADA!",
+                title="🎯 NOVO ALVO PROCURADO!",
                 description=(
-                    f"**{ctx.author.mention}** colocou um prêmio na cabeça de **{vitima.mention}**!\n\n"
-                    f"💰 **Prêmio acumulado:** `{total:.2f} MC`\n\n"
-                    f"🥷 *Quem roubar {vitima.mention} com sucesso embolsa o prêmio inteiro.*\n"
-                    f"⚠️ *Ladrões também geram bounty automático ao roubar — cuidado com a cabeça!*"
+                    f"{ctx.author.mention} colocou a cabeça de {vitima.mention} a prêmio!\n\n"
+                    f"💰 **Recompensa Adicionada:** `{valor:.2f} MC`\n"
+                    f"💀 **Prêmio Acumulado:** `{self.bot.recompensas[vitima_id]:.2f} MC`\n\n"
+                    f"*(Quem assaltar este jogador com sucesso leva o prêmio inteiro!)*"
                 ),
-                color=disnake.Color.red()
+                color=disnake.Color.dark_red()
             )
+            embed.set_thumbnail(url=vitima.display_avatar.url)
             await ctx.send(embed=embed)
 
         except commands.CommandError:
@@ -73,13 +83,9 @@ class Bounty(commands.Cog):
             user = self.bot.get_user(int(u_id))
             nome = user.display_name if user else f"ID: {u_id}"
             prefixo = medalhas[i] if i < 3 else f"`#{i+1}`"
-            embed.add_field(
-                name=f"{prefixo} {nome}",
-                value=f"💰 **{val:.2f} MC**",
-                inline=False
-            )
+            embed.add_field(name=f"{prefixo} {nome}", value=f"🎯 Prêmio: `{val:.2f} MC`", inline=False)
 
-        embed.set_footer(text="Roube um procurado com sucesso para embolsar o prêmio.")
+        embed.set_footer(text="Assalte os procurados com !roubar para embolsar a grana!")
         await ctx.send(embed=embed)
 
 def setup(bot):

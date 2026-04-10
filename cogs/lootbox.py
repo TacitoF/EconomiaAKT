@@ -269,6 +269,8 @@ class Lootbox(commands.Cog):
             inv_list.remove(caixa_encontrada)
             db.update_value(user["row"], 6, ", ".join(inv_list) if inv_list else "Nenhum")
 
+            ctx._missao_ok = True  # FLAG DE SUCESSO DA MISSÃO (O jogador realmente gastou a caixa)
+
             premio = sorteio_func()
 
             msg = await ctx.send(f"🔓 {ctx.author.mention} está abrindo **{caixa_alvo}**... {emoji_caixa}")
