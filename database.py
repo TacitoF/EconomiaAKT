@@ -361,6 +361,30 @@ def set_fazenda(row: int, slug_mascote: str, fome: int):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+#  SEGURO DE CARGAS (coluna 19)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def get_seguro_cargas(user_data: dict) -> int:
+    """Retorna o número de cargas restantes do seguro. 0 se não houver."""
+    raw = str(user_data["data"][18]) if len(user_data["data"]) > 18 else ""
+    raw = raw.strip()
+    if not raw:
+        return 0
+    try:
+        return int(raw)
+    except ValueError:
+        return 0
+
+def set_seguro_cargas(row: int, cargas: int):
+    """Salva o número de cargas do seguro na coluna 19."""
+    try:
+        valor = str(cargas) if cargas > 0 else ""
+        call_with_retry(sheet.update_cell, row, 19, valor)
+    except Exception as e:
+        handle_db_error(e)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 #  BUSCA EM MASSA (usado pelo reset de economia)
 # ──────────────────────────────────────────────────────────────────────────────
 
