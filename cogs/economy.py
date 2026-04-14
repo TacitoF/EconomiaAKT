@@ -416,10 +416,17 @@ class Economy(commands.Cog):
             usou_pe_de_cabra = False
             chance_sucesso   = 45
 
+            # Detecta Pé de Cabra com ou sem cadeado (🔒 vem do boss)
+            _pe_cabra_nome = None
             if "Pé de Cabra" in inv_ladrao:
+                _pe_cabra_nome = "Pé de Cabra"
+            elif "Pé de Cabra 🔒" in inv_ladrao:
+                _pe_cabra_nome = "Pé de Cabra 🔒"
+
+            if _pe_cabra_nome:
                 chance_sucesso   = 65
                 usou_pe_de_cabra = True
-                inv_ladrao.remove("Pé de Cabra")
+                inv_ladrao.remove(_pe_cabra_nome)
                 db.update_value(ladrao_data['row'], 6, ", ".join(inv_ladrao))
 
             # ── PASSIVOS do ladrão ──
@@ -552,6 +559,10 @@ class Economy(commands.Cog):
                     return await ctx.send(embed=emb_b)
 
             # ── ROUBO ──
+            # Garante que a chance nunca fique negativa (combinação de pets/passivos
+            # defensivos podia levar chance_sucesso a valores <= 0, tornando o roubo
+            # matematicamente impossível) nem acima de 95%.
+            chance_sucesso = max(5, min(95, chance_sucesso))
             if random.randint(1, 100) <= chance_sucesso:
                 if saldo_alvo < 80:
                     return await ctx.send(f"😬 {vitima.mention} está tão pobre que não vale a pena o risco.")
