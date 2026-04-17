@@ -24,25 +24,25 @@
         "resgatado": false
     },
     "757752617722970243": {
-        "data": "2026-04-09",
+        "data": "2026-04-17",
         "missoes": {
-            "cacador": {
-                "atual": 0,
-                "meta": 1,
-                "desc": "🎯 Coloque uma recompensa num alvo (`!recompensa`)",
-                "concluida": false
-            },
-            "blackjack": {
+            "desafiante": {
                 "atual": 0,
                 "meta": 2,
-                "desc": "🃏 Sente-se à mesa de Blackjack (`!21`)",
+                "desc": "⚔️ Desafie alguém (`!cipo`, `!bang`, `!duelo`, `!rinha`, `!tesouro`, `!truco`)",
                 "concluida": false
             },
-            "cuidador": {
-                "atual": 1,
-                "meta": 1,
-                "desc": "🍗 Alimente seu mascote (`!alimentar`)",
-                "concluida": true
+            "roleta": {
+                "atual": 0,
+                "meta": 2,
+                "desc": "🎡 Faça apostas na Roleta (`!roleta`)",
+                "concluida": false
+            },
+            "apostador": {
+                "atual": 0,
+                "meta": 3,
+                "desc": "🎰 Jogue no Cassino Solo (`!crash`, `!bicho`, `!minas`, `!raspadinha`)",
+                "concluida": false
             }
         },
         "resgatado": false

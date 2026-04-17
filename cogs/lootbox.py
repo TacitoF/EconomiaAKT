@@ -449,15 +449,17 @@ class Lootbox(commands.Cog):
                 info_ativo   = INFO_MASCOTES.get(tipo_ativo)   if tem_ativo   else None
                 info_fazenda = INFO_MASCOTES.get(faz_tipo)     if tem_fazenda else None
 
-                # ── SLOTS TOTALMENTE LIVRES: adiciona direto ──────────────────
+                nome_novo = f"{premio['emoji']} **{premio['nome']}** ({premio['raridade']})"
+
+                # ── CASO 1: Nenhum slot ocupado → ativo direto, sem escolha ──
                 if not tem_ativo and not tem_fazenda:
                     db.set_mascote(user["row"], premio["slug"], 100)
-
                     embed = disnake.Embed(
-                        title=f"🎉 {emoji_caixa} LOOT OBTIDO!",
+                        title=f"🎉 {emoji_caixa} MASCOTE OBTIDO!",
                         description=(
                             f"A gaiola foi aberta e revelou:\n\n"
-                            f"{premio['emoji']} **{premio['nome']}** ({premio['raridade']})"
+                            f"{nome_novo}\n\n"
+                            f"✅ Sem outros mascotes, ele foi direto para o seu slot **ativo**!"
                         ),
                         color=cor_final
                     )
@@ -465,18 +467,36 @@ class Lootbox(commands.Cog):
                     embed.set_footer(text="Use !mascote para ver os atributos do seu novo companheiro!")
                     return await msg.edit(content="", embed=embed)
 
-                # ── UM OU AMBOS OS SLOTS OCUPADOS: mostra escolha ─────────────
-                # Monta a descrição da situação atual
-                linhas_situacao = []
-                if tem_ativo:
-                    linhas_situacao.append(f"🔹 **Pet ativo:** {info_ativo['imagem']} {info_ativo['nome']}")
-                if tem_fazenda:
-                    linhas_situacao.append(f"🏡 **Pet na fazenda:** {info_fazenda['imagem']} {info_fazenda['nome']}")
+                # ── CASO 2: Tem ativo, mas fazenda livre → vai direto pra fazenda ──
+                if tem_ativo and not tem_fazenda:
+                    db.set_fazenda(user["row"], premio["slug"], 100)
+                    info_at = info_ativo or {"imagem": "🐾", "nome": tipo_ativo}
+                    embed = disnake.Embed(
+                        title=f"🏡 {emoji_caixa} MASCOTE GUARDADO NA FAZENDA!",
+                        description=(
+                            f"A gaiola foi aberta e revelou:\n\n"
+                            f"{nome_novo}\n\n"
+                            f"Você já tem {info_at['imagem']} **{info_at['nome']}** como mascote ativo, "
+                            f"então o novo foi direto para a **fazenda**!\n\n"
+                            f"📌 Use `!fazenda` para ver seu mascote guardado.\n"
+                            f"🔄 Use `!trocarpet` para alternar entre eles.\n"
+                            f"🐾 Use `!mascote` para ver o seu pet ativo atual."
+                        ),
+                        color=cor_final
+                    )
+                    embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+                    embed.set_footer(text="Mascotes na fazenda não perdem fome e ficam em espera!")
+                    return await msg.edit(content="", embed=embed)
 
+                # ── CASO 3: Ambos os slots ocupados → exibe escolha com botões ──
+                linhas_situacao = [
+                    f"🔹 **Pet ativo:** {info_ativo['imagem']} {info_ativo['nome']}",
+                    f"🏡 **Pet na fazenda:** {info_fazenda['imagem']} {info_fazenda['nome']}",
+                ]
                 embed_escolha = disnake.Embed(
                     title=f"🐾 {premio['emoji']} {premio['nome']} ({premio['raridade']}) apareceu!",
                     description=(
-                        f"Você encontrou um novo mascote, mas seus slots estão ocupados.\n\n"
+                        f"Você encontrou um novo mascote, mas **ambos os slots estão ocupados**.\n\n"
                         + "\n".join(linhas_situacao)
                         + "\n\n**O que deseja fazer com o novo pet?**\n"
                         "*(Você tem 60 segundos para decidir — senão ele foge!)*"
