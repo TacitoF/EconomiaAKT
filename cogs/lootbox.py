@@ -46,10 +46,178 @@ COSM_LENDARIOS = [
     ("titulo:Lenda da Selva", "🏷️ Título: Lenda da Selva", "🏷️"),
 ]
 
+INFO_MASCOTES = {
+    "capivara":        {"nome": "Capivara",                   "imagem": "🦦"},
+    "preguica":        {"nome": "Bicho-Preguiça",             "imagem": "🦥"},
+    "sapo_boi":        {"nome": "Sapo-Boi",                   "imagem": "🐸"},
+    "papagaio":        {"nome": "Papagaio",                   "imagem": "🦜"},
+    "jiboia":          {"nome": "Jiboia",                     "imagem": "🐍"},
+    "gamba":           {"nome": "Gambá",                      "imagem": "🦔"},
+    "macaco_prego":    {"nome": "Macaco-Prego",               "imagem": "🐒"},
+    "harpia":          {"nome": "Harpia",                     "imagem": "🦅"},
+    "lobo_guara":      {"nome": "Lobo-Guará",                 "imagem": "🐺"},
+    "onca":            {"nome": "Onça Pintada",               "imagem": "🐆"},
+    "gorila_prateado": {"nome": "Gorila Costas-Prateadas",    "imagem": "🦍"},
+    "dragao_komodo":   {"nome": "Dragão-de-Komodo",           "imagem": "🐉"},
+}
+
 
 def _sortear_cosmetico(pool: list) -> dict:
     slug, label, emoji = random.choice(pool)
     return {"tipo": "cosmetico", "slug": slug, "nome": label, "emoji": emoji}
+
+
+# ── VIEW DE ESCOLHA DA GAIOLA ──────────────────────────────────────────────────
+class GaiolaView(disnake.ui.View):
+    """
+    Exibida quando o jogador abre uma Gaiola Misteriosa.
+    Oferece 3 opções dependendo do estado dos slots do jogador:
+      • Trocar por pet ativo       (sempre disponível se tiver pet ativo)
+      • Trocar por pet na fazenda  (sempre disponível se tiver pet na fazenda)
+      • Deixar fugir               (sempre disponível — descarta o novo pet)
+    Se ambos os slots estiverem livres, o pet é adicionado diretamente sem View.
+    """
+
+    def __init__(self, author: disnake.Member, premio: dict, cor: disnake.Color,
+                 tem_ativo: bool, tem_fazenda: bool,
+                 info_ativo: dict | None, info_fazenda: dict | None):
+        super().__init__(timeout=60)
+        self.author       = author
+        self.premio       = premio
+        self.cor          = cor
+        self.tem_ativo    = tem_ativo
+        self.tem_fazenda  = tem_fazenda
+        self.info_ativo   = info_ativo
+        self.info_fazenda = info_fazenda
+        self.finalizado   = False
+
+        # Adiciona apenas os botões relevantes
+        if tem_ativo:
+            nome_ativo = f"{info_ativo['imagem']} {info_ativo['nome']}" if info_ativo else "Pet Ativo"
+            btn_ativo = disnake.ui.Button(
+                label=f"Trocar por ativo ({nome_ativo})",
+                style=disnake.ButtonStyle.primary,
+                emoji="🔄",
+                custom_id="trocar_ativo"
+            )
+            btn_ativo.callback = self.trocar_ativo
+            self.add_item(btn_ativo)
+
+        if tem_fazenda:
+            nome_fazenda = f"{info_fazenda['imagem']} {info_fazenda['nome']}" if info_fazenda else "Pet Fazenda"
+            btn_fazenda = disnake.ui.Button(
+                label=f"Trocar por fazenda ({nome_fazenda})",
+                style=disnake.ButtonStyle.success,
+                emoji="🏡",
+                custom_id="trocar_fazenda"
+            )
+            btn_fazenda.callback = self.trocar_fazenda
+            self.add_item(btn_fazenda)
+
+        btn_fugir = disnake.ui.Button(
+            label="Deixar fugir",
+            style=disnake.ButtonStyle.danger,
+            emoji="🌿",
+            custom_id="deixar_fugir"
+        )
+        btn_fugir.callback = self.deixar_fugir
+        self.add_item(btn_fugir)
+
+    async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
+        if interaction.author.id != self.author.id:
+            await interaction.response.send_message(
+                "❌ Essa escolha não é sua!", ephemeral=True
+            )
+            return False
+        return True
+
+    async def on_timeout(self):
+        if not self.finalizado:
+            # Desabilita todos os botões e avisa o timeout
+            for item in self.children:
+                item.disabled = True
+            try:
+                await self.message.edit(
+                    content=f"⌛ {self.author.mention}, o tempo esgotou! O **{self.premio['emoji']} {self.premio['nome']}** fugiu para a selva.",
+                    view=self
+                )
+            except Exception:
+                pass
+
+    def _nome_novo(self) -> str:
+        return f"{self.premio['emoji']} **{self.premio['nome']}** ({self.premio['raridade']})"
+
+    async def _finalizar(self, interaction: disnake.MessageInteraction, descricao: str):
+        self.finalizado = True
+        self.stop()
+        for item in self.children:
+            item.disabled = True
+
+        embed = disnake.Embed(
+            title=f"🐾 {self.premio['emoji']} MASCOTE OBTIDO!",
+            description=descricao,
+            color=self.cor
+        )
+        embed.set_author(name=self.author.display_name, icon_url=self.author.display_avatar.url)
+        embed.set_footer(text="Use !mascote para ver os atributos do seu novo companheiro!")
+        await interaction.response.edit_message(content="", embed=embed, view=self)
+
+    async def trocar_ativo(self, interaction: disnake.MessageInteraction):
+        """Substitui o pet ativo pelo novo; o antigo ativo é libertado."""
+        user = db.get_user_data(str(self.author.id))
+        if not user:
+            return await interaction.response.send_message("❌ Conta não encontrada!", ephemeral=True)
+
+        tipo_ativo, fome_ativo = db.get_mascote(user)
+
+        # Remove o pet ativo (liberta) e coloca o novo como ativo
+        db.set_mascote(user['row'], self.premio['slug'], 100)
+
+        info_antigo = INFO_MASCOTES.get(tipo_ativo, {"nome": tipo_ativo, "imagem": "🐾"}) if tipo_ativo else None
+        desc_antigo = f"\n\n*{info_antigo['imagem']} **{info_antigo['nome']}** foi solto na selva.*" if info_antigo else ""
+
+        await self._finalizar(
+            interaction,
+            f"Você trocou pelo novo pet: {self._nome_novo()}!{desc_antigo}"
+        )
+
+    async def trocar_fazenda(self, interaction: disnake.MessageInteraction):
+        """Substitui o pet da fazenda pelo novo; o antigo da fazenda é libertado."""
+        user = db.get_user_data(str(self.author.id))
+        if not user:
+            return await interaction.response.send_message("❌ Conta não encontrada!", ephemeral=True)
+
+        faz_tipo, _ = db.get_fazenda(user)
+
+        # Remove o pet da fazenda (liberta) e coloca o novo na fazenda
+        db.set_fazenda(user['row'], self.premio['slug'], 100)
+
+        info_antigo = INFO_MASCOTES.get(faz_tipo, {"nome": faz_tipo, "imagem": "🐾"}) if faz_tipo else None
+        desc_antigo = f"\n\n*{info_antigo['imagem']} **{info_antigo['nome']}** que estava na fazenda foi solto na selva.*" if info_antigo else ""
+
+        await self._finalizar(
+            interaction,
+            f"O novo pet foi enviado direto para a fazenda: {self._nome_novo()}!{desc_antigo}"
+        )
+
+    async def deixar_fugir(self, interaction: disnake.MessageInteraction):
+        """Descarta o novo pet — nada é alterado no banco."""
+        self.finalizado = True
+        self.stop()
+        for item in self.children:
+            item.disabled = True
+
+        embed = disnake.Embed(
+            title="🌿 Pet Libertado",
+            description=(
+                f"Você abriu a gaiola e deixou o **{self.premio['emoji']} {self.premio['nome']}** "
+                f"({self.premio['raridade']}) correr livre pela selva.\n\n"
+                f"*Seus slots de mascote permanecem inalterados.*"
+            ),
+            color=disnake.Color.dark_grey()
+        )
+        embed.set_author(name=self.author.display_name, icon_url=self.author.display_avatar.url)
+        await interaction.response.edit_message(content="", embed=embed, view=self)
 
 
 class Lootbox(commands.Cog):
@@ -241,15 +409,6 @@ class Lootbox(commands.Cog):
             if not user:
                 return await ctx.send("❌ Você não tem conta!")
 
-            # ── PROTEÇÃO DA GAIOLA ──
-            if caixa_alvo == "Gaiola Misteriosa":
-                tipo_atual, _ = db.get_mascote(user)
-                if tipo_atual:
-                    return await ctx.send(
-                        f"❌ {ctx.author.mention}, você já tem um mascote acompanhando-o!\n"
-                        f"Use o comando `!guardar` para o enviar para a fazenda, ou `!libertar` para o soltar na selva antes de abrir uma nova gaiola."
-                    )
-
             inv_str  = str(user["data"][5]) if len(user["data"]) > 5 else ""
             inv_list = [i.strip() for i in inv_str.split(",") if i.strip()]
 
@@ -278,10 +437,65 @@ class Lootbox(commands.Cog):
 
             # ── 1. MASCOTES ──
             if premio["tipo"] == "mascote":
-                db.set_mascote(user["row"], premio["slug"], 100)
-                texto_premio = f"**{premio['nome']}** ({premio['raridade']})"
                 cor_final = premio["cor"]
-                footer = "Use !mascote para ver os atributos do seu novo companheiro!"
+
+                # Verifica o estado atual dos slots
+                tipo_ativo,   fome_ativo   = db.get_mascote(user)
+                faz_tipo,     faz_fome     = db.get_fazenda(user)
+
+                tem_ativo   = bool(tipo_ativo)
+                tem_fazenda = bool(faz_tipo)
+
+                info_ativo   = INFO_MASCOTES.get(tipo_ativo)   if tem_ativo   else None
+                info_fazenda = INFO_MASCOTES.get(faz_tipo)     if tem_fazenda else None
+
+                # ── SLOTS TOTALMENTE LIVRES: adiciona direto ──────────────────
+                if not tem_ativo and not tem_fazenda:
+                    db.set_mascote(user["row"], premio["slug"], 100)
+
+                    embed = disnake.Embed(
+                        title=f"🎉 {emoji_caixa} LOOT OBTIDO!",
+                        description=(
+                            f"A gaiola foi aberta e revelou:\n\n"
+                            f"{premio['emoji']} **{premio['nome']}** ({premio['raridade']})"
+                        ),
+                        color=cor_final
+                    )
+                    embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+                    embed.set_footer(text="Use !mascote para ver os atributos do seu novo companheiro!")
+                    return await msg.edit(content="", embed=embed)
+
+                # ── UM OU AMBOS OS SLOTS OCUPADOS: mostra escolha ─────────────
+                # Monta a descrição da situação atual
+                linhas_situacao = []
+                if tem_ativo:
+                    linhas_situacao.append(f"🔹 **Pet ativo:** {info_ativo['imagem']} {info_ativo['nome']}")
+                if tem_fazenda:
+                    linhas_situacao.append(f"🏡 **Pet na fazenda:** {info_fazenda['imagem']} {info_fazenda['nome']}")
+
+                embed_escolha = disnake.Embed(
+                    title=f"🐾 {premio['emoji']} {premio['nome']} ({premio['raridade']}) apareceu!",
+                    description=(
+                        f"Você encontrou um novo mascote, mas seus slots estão ocupados.\n\n"
+                        + "\n".join(linhas_situacao)
+                        + "\n\n**O que deseja fazer com o novo pet?**\n"
+                        "*(Você tem 60 segundos para decidir — senão ele foge!)*"
+                    ),
+                    color=cor_final
+                )
+                embed_escolha.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+
+                view = GaiolaView(
+                    author=ctx.author,
+                    premio=premio,
+                    cor=cor_final,
+                    tem_ativo=tem_ativo,
+                    tem_fazenda=tem_fazenda,
+                    info_ativo=info_ativo,
+                    info_fazenda=info_fazenda,
+                )
+                view.message = await msg.edit(content="", embed=embed_escolha, view=view)
+                return  # A partir daqui o fluxo é controlado pelos botões
 
             # ── 2. COSMÉTICOS ──
             elif premio["tipo"] == "cosmetico":
@@ -336,7 +550,7 @@ class Lootbox(commands.Cog):
                     }
                     footer = DICAS_USO.get(premio["nome"], "Item adicionado ao inventário. Veja !inventario.")
 
-            # ── MONTA O EMBED FINAL ──
+            # ── MONTA O EMBED FINAL (cosméticos e itens) ──
             embed = disnake.Embed(
                 title=f"🎉 {emoji_caixa} LOOT OBTIDO!",
                 description=f"A caixa foi aberta e revelou:\n\n{premio['emoji']} {texto_premio}",

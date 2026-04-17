@@ -102,7 +102,7 @@ class Bank(commands.Cog):
 
                 # debita antes do sleep pra evitar double-spend
                 db.update_value(user['row'], 3, round(saldo - valor, 2))
-
+                ctx._missao_ok = True  # missão: investir em cripto (independente do resultado)
                 usos_atual += 1
                 db.set_cripto_usos(user['row'], usos_atual, timestamp_inicio)
 
